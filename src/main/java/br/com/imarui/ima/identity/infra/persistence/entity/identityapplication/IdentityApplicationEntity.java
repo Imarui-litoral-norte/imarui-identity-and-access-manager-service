@@ -1,5 +1,6 @@
 package br.com.imarui.ima.identity.infra.persistence.entity.identityapplication;
 
+import br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind;
 import br.com.imarui.ima.identity.core.domain.enums.identityapplication.IdentityApplicationStatus;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
@@ -16,6 +17,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
@@ -38,54 +40,48 @@ import java.util.UUID;
 public class IdentityApplicationEntity {
 
     @Id
-    @Column(
-            name = "id",
-            nullable = false,
-            updatable = false
-    )
+    @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
-    @Column(
-            name = "full_name",
-            nullable = false,
-            length = 150
-    )
-    private String fullName;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "identity_kind", nullable = false, length = 30)
+    private IdentityKind kind;
 
-    @Column(
-            name = "cpf",
-            nullable = false,
-            length = 11
-    )
-    private String cpf;
-
-    @Column(
-            name = "email",
-            nullable = false,
-            length = 180
-    )
+    @Column(name = "email", nullable = false, length = 180)
     private String email;
 
-    @Column(
-            name = "phone_number",
-            nullable = false,
-            length = 20
-    )
+    @Column(name = "full_name", length = 150)
+    private String fullName;
+
+    @Column(name = "cpf", length = 11)
+    private String cpf;
+
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
+
+    @Column(name = "phone_number", length = 15)
     private String phoneNumber;
 
+    @Column(name = "legal_name", length = 150)
+    private String legalName;
+
+    @Column(name = "trade_name", length = 150)
+    private String tradeName;
+
+    @Column(name = "cnpj", length = 14)
+    private String cnpj;
+
+    @Column(name = "service_name", length = 100)
+    private String serviceName;
+
+    @Column(name = "service_description", length = 500)
+    private String serviceDescription;
+
     @Enumerated(EnumType.STRING)
-    @Column(
-            name = "status",
-            nullable = false,
-            length = 20
-    )
+    @Column(name = "status", nullable = false, length = 20)
     private IdentityApplicationStatus status;
 
-    @Column(
-            name = "requested_at",
-            nullable = false,
-            updatable = false
-    )
+    @Column(name = "requested_at", nullable = false, updatable = false)
     private Instant requestedAt;
 
     @Column(name = "reviewed_at")
@@ -94,10 +90,7 @@ public class IdentityApplicationEntity {
     @Column(name = "reviewed_by_identity_id")
     private UUID reviewedByIdentityId;
 
-    @Column(
-            name = "rejection_reason",
-            length = 500
-    )
+    @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
 
     @Column(name = "resolved_identity_id")
@@ -110,18 +103,22 @@ public class IdentityApplicationEntity {
     private UUID resultingAffiliationId;
 
     @Version
-    @Column(
-            name = "version",
-            nullable = false
-    )
+    @Column(name = "version", nullable = false)
     private Long version;
 
     public IdentityApplicationEntity(
             UUID id,
+            IdentityKind kind,
+            String email,
             String fullName,
             String cpf,
-            String email,
+            LocalDate birthDate,
             String phoneNumber,
+            String legalName,
+            String tradeName,
+            String cnpj,
+            String serviceName,
+            String serviceDescription,
             IdentityApplicationStatus status,
             Instant requestedAt,
             Instant reviewedAt,
@@ -132,10 +129,17 @@ public class IdentityApplicationEntity {
             UUID resultingAffiliationId
     ) {
         this.id = id;
+        this.kind = kind;
+        this.email = email;
         this.fullName = fullName;
         this.cpf = cpf;
-        this.email = email;
+        this.birthDate = birthDate;
         this.phoneNumber = phoneNumber;
+        this.legalName = legalName;
+        this.tradeName = tradeName;
+        this.cnpj = cnpj;
+        this.serviceName = serviceName;
+        this.serviceDescription = serviceDescription;
         this.status = status;
         this.requestedAt = requestedAt;
         this.reviewedAt = reviewedAt;

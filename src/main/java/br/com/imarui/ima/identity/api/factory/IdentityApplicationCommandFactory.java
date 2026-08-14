@@ -1,8 +1,13 @@
 package br.com.imarui.ima.identity.api.factory;
 
 import br.com.imarui.ima.identity.api.dto.identityapplication.request.create.CreateIdentityApplicationRequest;
+import br.com.imarui.ima.identity.api.dto.identityapplication.request.create.CreateLegalEntityIdentityApplicationRequest;
 import br.com.imarui.ima.identity.api.dto.identityapplication.request.create.CreatePersonIdentityApplicationRequest;
+import br.com.imarui.ima.identity.api.dto.identityapplication.request.create.CreateServiceIdentityApplicationRequest;
 import br.com.imarui.ima.identity.core.application.command.identityapplication.CreateIdentityApplicationCommand;
+import br.com.imarui.ima.identity.core.application.command.identityapplication.CreateLegalEntityIdentityApplicationCommand;
+import br.com.imarui.ima.identity.core.application.command.identityapplication.CreatePersonIdentityApplicationCommand;
+import br.com.imarui.ima.identity.core.application.command.identityapplication.CreateServiceIdentityApplicationCommand;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
@@ -18,32 +23,36 @@ public final class IdentityApplicationCommandFactory {
                 "request cannot be null"
         );
 
-        return switch (request) {
-            case CreatePersonIdentityApplicationRequest person ->
-                    new CreatePersonIdentityApplicationCommand(
-                            person.fullName(),
-                            person.cpf(),
-                            person.email(),
-                            person.phoneNumber()
-                    );
+        if (request instanceof CreatePersonIdentityApplicationRequest person) {
+            return new CreatePersonIdentityApplicationCommand(
+                    person.fullName(),
+                    person.cpf(),
+                    person.email(),
+                    person.birthDate(),
+                    person.phoneNumber()
+            );
+        }
 
-            case CreateCompanyIdentityApplicationRequest company ->
-                    new CreateCompanyIdentityApplicationCommand(
-                            company.corporateName(),
-                            company.tradeName(),
-                            company.cnpj(),
-                            company.email(),
-                            company.phoneNumber()
-                    );
+        if (request instanceof CreateLegalEntityIdentityApplicationRequest legalEntity) {
+            return new CreateLegalEntityIdentityApplicationCommand(
+                    legalEntity.legalName(),
+                    legalEntity.tradeName(),
+                    legalEntity.cnpj(),
+                    legalEntity.email()
+            );
+        }
 
-            case CreateEmployeeIdentityApplicationRequest employee ->
-                    new CreateEmployeeIdentityApplicationCommand(
-                            employee.fullName(),
-                            employee.cpf(),
-                            employee.email(),
-                            employee.phoneNumber(),
-                            employee.employeeCode()
-                    );
-        };
+        if (request instanceof CreateServiceIdentityApplicationRequest service) {
+            return new CreateServiceIdentityApplicationCommand(
+                    service.name(),
+                    service.description(),
+                    service.email()
+            );
+        }
+
+        throw new IllegalArgumentException(
+                "Unsupported identity application request: "
+                        + request.getClass().getName()
+        );
     }
 }

@@ -1,21 +1,24 @@
 package br.com.imarui.ima.identity.api.dto.identityapplication.response;
 
 import br.com.imarui.ima.identity.core.application.result.identityapplication.IdentityApplicationResult;
+import br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind;
 import br.com.imarui.ima.identity.core.domain.enums.identityapplication.IdentityApplicationStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
+@Schema(description = "Solicitacao de cadastro de uma identidade.")
 public record IdentityApplicationResponse(
         UUID id,
-        String fullName,
-        String cpf,
+        IdentityKind type,
         String email,
-        String phoneNumber,
         IdentityApplicationStatus status,
+        IdentityApplicationDetailsResponse details,
         Instant requestedAt,
         Instant reviewedAt,
-        UUID reviewedBy,
+        UUID reviewedByIdentityId,
         String rejectionReason,
         UUID resolvedIdentityId,
         UUID assignedTenantId,
@@ -25,13 +28,17 @@ public record IdentityApplicationResponse(
     public static IdentityApplicationResponse from(
             IdentityApplicationResult result
     ) {
+        Objects.requireNonNull(
+                result,
+                "IdentityApplicationResult must not be null."
+        );
+
         return new IdentityApplicationResponse(
                 result.id(),
-                result.fullName(),
-                result.cpf(),
+                result.kind(),
                 result.email(),
-                result.phoneNumber(),
                 result.status(),
+                IdentityApplicationDetailsResponse.from(result.details()),
                 result.requestedAt(),
                 result.reviewedAt(),
                 result.reviewedBy(),

@@ -6,6 +6,7 @@ import br.com.imarui.ima.identity.api.factory.IdentityApplicationCommandFactory;
 import br.com.imarui.ima.identity.core.application.command.identityapplication.CreateIdentityApplicationCommand;
 import br.com.imarui.ima.identity.core.application.result.identityapplication.IdentityApplicationResult;
 import br.com.imarui.ima.identity.core.application.usecase.identityapplication.CreateIdentityApplicationUseCase;
+import br.com.imarui.ima.identity.core.application.usecase.identityapplication.GetIdentityApplicationUseCase;
 import br.com.imarui.ima.identity.core.domain.model.identityapplication.IdentityApplicationId;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,24 +30,20 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 public class IdentityApplicationController {
 
-
-    private final CreateIdentityApplicationUseCase
-            createIdentityApplicationUseCase;
-
-    private final IdentityApplicationCommandFactory
-            commandFactory;
+    private final CreateIdentityApplicationUseCase createIdentityApplicationUseCase;
+    private final GetIdentityApplicationUseCase getIdentityApplicationUseCase;
+    private final IdentityApplicationCommandFactory commandFactory;
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<IdentityApplicationResponse> create(
             @Valid
             @RequestBody
             CreateIdentityApplicationRequest request
-    ) {
-        CreateIdentityApplicationCommand command =
-                commandFactory.from(request);
 
-        IdentityApplicationResult result =
-                createIdentityApplicationUseCase.execute(command);
+    ) {
+
+        CreateIdentityApplicationCommand command = commandFactory.from(request);
+        IdentityApplicationResult result = createIdentityApplicationUseCase.execute(command);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

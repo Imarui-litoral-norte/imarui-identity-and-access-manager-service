@@ -1,18 +1,19 @@
 package br.com.imarui.ima.identity.core.application.result.identityapplication;
 
+import br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind;
 import br.com.imarui.ima.identity.core.domain.enums.identityapplication.IdentityApplicationStatus;
 import br.com.imarui.ima.identity.core.domain.model.identityapplication.IdentityApplication;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 public record IdentityApplicationResult(
         UUID id,
-        String fullName,
-        String cpf,
+        IdentityKind kind,
         String email,
-        String phoneNumber,
         IdentityApplicationStatus status,
+        IdentityApplicationDetailsResult details,
         Instant requestedAt,
         Instant reviewedAt,
         UUID reviewedBy,
@@ -25,13 +26,19 @@ public record IdentityApplicationResult(
     public static IdentityApplicationResult from(
             IdentityApplication application
     ) {
+        Objects.requireNonNull(
+                application,
+                "application cannot be null"
+        );
+
         return new IdentityApplicationResult(
                 application.getId().value(),
-                application.getFullName().value(),
-                application.getCpf().value(),
+                application.getKind(),
                 application.getEmail().value(),
-                application.getPhoneNumber().value(),
                 application.getStatus(),
+                IdentityApplicationDetailsResult.from(
+                        application.getDetails()
+                ),
                 application.getRequestedAt(),
                 application.getReviewedAt(),
                 application.getReviewedBy() == null

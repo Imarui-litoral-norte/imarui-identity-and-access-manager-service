@@ -1,14 +1,12 @@
 package br.com.imarui.ima.identity.core.domain.model.identityapplication;
 
+import br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind;
 import br.com.imarui.ima.identity.core.domain.enums.identityapplication.IdentityApplicationStatus;
 import br.com.imarui.ima.identity.core.domain.exception.identityapplication.IdentityApplicationReviewNotAllowedException;
 import br.com.imarui.ima.identity.core.domain.exception.identityapplication.InvalidIdentityApplicationStateException;
 import br.com.imarui.ima.identity.core.domain.model.affiliation.AffiliationId;
 import br.com.imarui.ima.identity.core.domain.model.identity.Email;
-import br.com.imarui.ima.identity.core.domain.model.identity.IdentityFullName;
 import br.com.imarui.ima.identity.core.domain.model.identity.IdentityId;
-import br.com.imarui.ima.identity.core.domain.model.identity.PhoneNumber;
-import br.com.imarui.ima.identity.core.domain.model.identity.person.Cpf;
 import br.com.imarui.ima.identity.core.domain.model.tenant.TenantId;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
@@ -23,10 +21,8 @@ public final class IdentityApplication {
     private static final int MAX_REJECTION_REASON_LENGTH = 500;
 
     private final IdentityApplicationId id;
-    private final IdentityFullName fullName;
-    private final Cpf cpf;
     private final Email email;
-    private final PhoneNumber phoneNumber;
+    private final IdentityApplicationDetails details;
     private IdentityApplicationStatus status;
     private final Instant requestedAt;
     private Instant reviewedAt;
@@ -38,10 +34,8 @@ public final class IdentityApplication {
 
     private IdentityApplication(
             IdentityApplicationId id,
-            IdentityFullName fullName,
-            Cpf cpf,
             Email email,
-            PhoneNumber phoneNumber,
+            IdentityApplicationDetails details,
             IdentityApplicationStatus status,
             Instant requestedAt,
             Instant reviewedAt,
@@ -56,24 +50,14 @@ public final class IdentityApplication {
                 "id cannot be null"
         );
 
-        this.fullName = Objects.requireNonNull(
-                fullName,
-                "fullName cannot be null"
-        );
-
-        this.cpf = Objects.requireNonNull(
-                cpf,
-                "cpf cannot be null"
-        );
-
         this.email = Objects.requireNonNull(
                 email,
                 "email cannot be null"
         );
 
-        this.phoneNumber = Objects.requireNonNull(
-                phoneNumber,
-                "phoneNumber cannot be null"
+        this.details = Objects.requireNonNull(
+                details,
+                "details cannot be null"
         );
 
         this.status = Objects.requireNonNull(
@@ -100,20 +84,16 @@ public final class IdentityApplication {
 
     public static IdentityApplication create(
             @NotNull IdentityApplicationId id,
-            @NotNull IdentityFullName fullName,
-            @NotNull Cpf cpf,
             @NotNull Email email,
-            @NotNull PhoneNumber phoneNumber,
+            @NotNull IdentityApplicationDetails details,
             @NotNull Instant now
     ) {
         Objects.requireNonNull(now, "now cannot be null");
 
         return new IdentityApplication(
                 id,
-                fullName,
-                cpf,
                 email,
-                phoneNumber,
+                details,
                 IdentityApplicationStatus.PENDING,
                 now,
                 null,
@@ -127,10 +107,8 @@ public final class IdentityApplication {
 
     public static IdentityApplication reconstitute(
             @NotNull IdentityApplicationId id,
-            @NotNull IdentityFullName fullName,
-            @NotNull Cpf cpf,
             @NotNull Email email,
-            @NotNull PhoneNumber phoneNumber,
+            @NotNull IdentityApplicationDetails details,
             @NotNull IdentityApplicationStatus status,
             @NotNull Instant requestedAt,
             @Nullable Instant reviewedAt,
@@ -142,10 +120,8 @@ public final class IdentityApplication {
     ) {
         return new IdentityApplication(
                 id,
-                fullName,
-                cpf,
                 email,
-                phoneNumber,
+                details,
                 status,
                 requestedAt,
                 reviewedAt,
@@ -155,6 +131,10 @@ public final class IdentityApplication {
                 assignedTenantId,
                 resultingAffiliationId
         );
+    }
+
+    public IdentityKind getKind() {
+        return details.kind();
     }
 
     public void approve(

@@ -1,9 +1,13 @@
 package br.com.imarui.ima.identity.core.application.command.identityapplication;
 
-public record CreateIdentityApplicationCommand(
-        String fullName,
-        String cpf,
-        String email,
-        String phoneNumber
-) {
+import br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind;
+
+public sealed interface CreateIdentityApplicationCommand
+        permits CreatePersonIdentityApplicationCommand,
+                CreateLegalEntityIdentityApplicationCommand,
+                CreateServiceIdentityApplicationCommand {
+
+    IdentityKind kind();
+
+    String email();
 }
