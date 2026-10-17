@@ -1,4 +1,5 @@
-package br.com.imarui.ima.identity;
+package br.com.imarui.ima.identity.core.application.identityapplication;
+import br.com.imarui.ima.identity.support.IdentitySamples;
 import br.com.imarui.ima.identity.core.application.command.identityapplication.*;
 import br.com.imarui.ima.identity.core.application.usecase.identityapplication.*;
 import br.com.imarui.ima.identity.core.application.service.IdentityApplicationConflicts;
@@ -17,7 +18,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-class IdentityApplicationUseCaseTest {
+class ApproveIdentityApplicationUseCaseTest {
     final IdentityApplicationRepository applications=mock(IdentityApplicationRepository.class);
     final IdentityRepository identities=mock(IdentityRepository.class);
     final TenantRepository tenants=mock(TenantRepository.class);
@@ -25,11 +26,11 @@ class IdentityApplicationUseCaseTest {
     final CurrentActor actor=mock(CurrentActor.class);
     final IdentityRegistrationLock lock=mock(IdentityRegistrationLock.class);
     final IdentityApplicationConflicts conflicts=new IdentityApplicationConflicts(identities,applications);
-    final Instant now=IdentityDomainTest.NOW;
+    final Instant now=IdentitySamples.NOW;
     final ApproveIdentityApplicationUseCase useCase=new ApproveIdentityApplicationUseCase(applications,identities,tenants,affiliations,actor,lock,conflicts,Clock.fixed(now,ZoneOffset.UTC));
     @ParameterizedTest @EnumSource(IdentityKind.class)
     void approvalCreatesCorrectKindAndAuditsTrustedActorUsingOnlyPorts(IdentityKind kind) {
-        var application=IdentityDomainTest.application(kind); var reviewer=IdentityId.generate();
+        var application=IdentitySamples.application(kind); var reviewer=IdentityId.generate();
         var tenant=Tenant.create(TenantId.generate(),TenantCode.from("CODE"),TenantName.from("Tenant"),now); tenant.activate(now);
         when(actor.requireIdentityId()).thenReturn(reviewer); when(applications.findByIdForUpdate(application.getId())).thenReturn(Optional.of(application));
         when(tenants.findByIdForUpdate(tenant.getId())).thenReturn(Optional.of(tenant));
@@ -45,7 +46,7 @@ class IdentityApplicationUseCaseTest {
         verifyNoInteractions(applications,identities,tenants,affiliations,lock);
     }
     @Test void approvalRechecksConflictsBeforeProvisioning() {
-        var application=IdentityDomainTest.application(IdentityKind.SERVICE); when(actor.requireIdentityId()).thenReturn(IdentityId.generate());
+        var application=IdentitySamples.application(IdentityKind.SERVICE); when(actor.requireIdentityId()).thenReturn(IdentityId.generate());
         when(applications.findByIdForUpdate(application.getId())).thenReturn(Optional.of(application));
         when(identities.existsByPrimaryEmailAndKind(application.getEmail(),application.getKind())).thenReturn(true);
         assertThrows(IdentityConflictException.class,()->useCase.execute(new ApproveIdentityApplicationCommand(application.getId(),TenantId.generate(),new AffiliationSelection(AffiliationType.EXTERNAL,null,null,null))));

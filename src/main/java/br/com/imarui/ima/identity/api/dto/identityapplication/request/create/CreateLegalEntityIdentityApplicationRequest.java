@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-@Schema(name = "CreateLegalEntityIdentityApplicationRequest")
+@Schema(name = "CreateLegalEntityIdentityApplicationRequest", description = "Solicitação LEGAL_ENTITY com razão social, CNPJ e e-mail obrigatórios; nome fantasia opcional.")
 public record CreateLegalEntityIdentityApplicationRequest(
 
         @NotBlank(message = "Legal name is required.")

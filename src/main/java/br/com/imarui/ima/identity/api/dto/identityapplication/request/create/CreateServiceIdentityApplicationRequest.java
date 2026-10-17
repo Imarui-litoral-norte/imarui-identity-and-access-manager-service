@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-@Schema(name = "CreateServiceIdentityApplicationRequest")
+@Schema(name = "CreateServiceIdentityApplicationRequest", description = "Solicitação SERVICE com nome e e-mail obrigatórios; descrição opcional.")
 public record CreateServiceIdentityApplicationRequest(
 
         @NotBlank(message = "Service name is required.")

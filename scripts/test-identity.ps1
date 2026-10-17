@@ -1,4 +1,4 @@
-param([string]$JavaHome = $env:JAVA_HOME)
+param([string]$JavaHome = $env:JAVA_HOME, [string]$Tests = "")
 $ErrorActionPreference = 'Stop'
 $repoPath = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $containerName = 'iiams-identity-tests-' + [guid]::NewGuid().ToString('N').Substring(0, 10)
@@ -21,7 +21,12 @@ try {
     $port = $mapping.Split(':')[-1]
     $env:IDENTITY_TEST_DB_URL = "jdbc:postgresql://127.0.0.1:$port/identity_test"
     Push-Location $repoPath
-    try { & .\mvnw.cmd -B clean verify; $buildExit = $LASTEXITCODE }
+    try {
+        $mavenArguments = @('-B', 'clean', 'verify')
+        if ($Tests) { $mavenArguments += "-Dtest=$Tests" }
+        & .\mvnw.cmd @mavenArguments
+        $buildExit = $LASTEXITCODE
+    }
     finally { Pop-Location }
 }
 finally {

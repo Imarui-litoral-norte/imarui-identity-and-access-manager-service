@@ -14,8 +14,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('TENANT_MANAGE')")
-@br.com.imarui.ima.identity.api.exception.IdentityApiErrors
 @io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "bearerAuth")
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Identity", description = "Identidades, solicitações e contexto Tenant/Affiliation")
+@br.com.imarui.ima.platform.openapi.security.RequiredPermission("TENANT_MANAGE")
 @RestController
 @RequestMapping("/api/v1/admin/tenants")
 @RequiredArgsConstructor
@@ -29,6 +30,8 @@ public class AdminTenantController {
 
     @PostMapping
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
+    @io.swagger.v3.oas.annotations.Operation(summary = "Criar tenant pendente", description = "Cria Tenant PENDING com code único, normalizado para maiúsculas, e name aparado. O código deve iniciar por letra e conter letras, números ou underscore, com 3–50 caracteres. Não cria afiliações. Retorna 201 e Location.")
+    @br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup(value = "Tenants · Administração", order = 80)
     public ResponseEntity<TenantResponse> create(
             @Valid @RequestBody CreateTenantRequest request,
             UriComponentsBuilder uriBuilder
@@ -52,6 +55,8 @@ public class AdminTenantController {
 
     @PostMapping("/{tenantId}/activate")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
+    @io.swagger.v3.oas.annotations.Operation(summary = "Ativar tenant pendente", description = "Executa PENDING → ACTIVE e permite provisionamento de identidades e validade contextual dos vínculos já ativos. Não altera o estado intrínseco de Identity ou Affiliation.")
+    @br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup(value = "Tenants · Administração", order = 80)
     public ResponseEntity<TenantResponse> activate(
             @PathVariable String tenantId
     ) {
@@ -68,6 +73,8 @@ public class AdminTenantController {
 
     @PostMapping("/{tenantId}/disable")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
+    @io.swagger.v3.oas.annotations.Operation(summary = "Desabilitar contexto do tenant", description = "Executa ACTIVE → DISABLED e registra revogação contextual na mesma transação. Vínculos tornam-se indisponíveis sem alterar os estados intrínsecos de Identity/Affiliation. Não exclui o Tenant.")
+    @br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup(value = "Tenants · Administração", order = 80)
     public ResponseEntity<TenantResponse> disable(
             @PathVariable String tenantId
     ) {
@@ -84,6 +91,8 @@ public class AdminTenantController {
 
     @PostMapping("/{tenantId}/reactivate")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
+    @io.swagger.v3.oas.annotations.Operation(summary = "Reativar tenant", description = "Executa DISABLED → ACTIVE. Apenas vínculos com Identity ACTIVE e Affiliation ACTIVE tornam-se efetivos novamente. Afiliações INACTIVE permanecem inativas e tokens revogados continuam inválidos.")
+    @br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup(value = "Tenants · Administração", order = 80)
     public ResponseEntity<TenantResponse> reactivate(
             @PathVariable String tenantId
     ) {
@@ -98,6 +107,8 @@ public class AdminTenantController {
 
     @PatchMapping("/{tenantId}/name")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
+    @io.swagger.v3.oas.annotations.Operation(summary = "Renomear tenant", description = "Altera apenas name de Tenant PENDING ou ACTIVE, aparando o texto e atualizando updatedAt. Não altera code. Tenant DISABLED retorna conflito.")
+    @br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup(value = "Tenants · Administração", order = 80)
     public ResponseEntity<TenantResponse> rename(
             @PathVariable String tenantId,
             @Valid @RequestBody RenameTenantRequest request
