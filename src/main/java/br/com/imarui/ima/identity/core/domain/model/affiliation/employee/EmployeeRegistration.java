@@ -15,6 +15,7 @@ public record EmployeeRegistration(String value) {
 
         value = value.trim();
 
+        if (value.length() > 255) throw new InvalidEmployeeRegistrationException("EmployeeRegistration must not exceed 255 characters.");
         if (value.isBlank()) {
             throw new InvalidEmployeeRegistrationException(
                     "EmployeeRegistration value cannot be blank."

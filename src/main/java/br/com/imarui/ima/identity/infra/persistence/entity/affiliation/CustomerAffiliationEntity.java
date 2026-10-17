@@ -20,6 +20,8 @@ import java.util.UUID;
 @DiscriminatorValue("CUSTOMER")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CustomerAffiliationEntity extends AffiliationEntity {
+    @Column(name = "tenant_id", nullable = false, updatable = false)
+    private UUID uniquenessTenantId;
 
     @Column(name = "customer_code", nullable = false, updatable = false)
     private String customerCode;
@@ -35,6 +37,7 @@ public class CustomerAffiliationEntity extends AffiliationEntity {
             Instant endedAt
     ) {
         super(id, tenantId, identityId, status, startedAt, updatedAt, endedAt);
+        this.uniquenessTenantId = tenantId;
         this.customerCode = customerCode;
     }
 

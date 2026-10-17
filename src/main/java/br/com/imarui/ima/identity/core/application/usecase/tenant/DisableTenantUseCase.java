@@ -18,6 +18,7 @@ public class DisableTenantUseCase {
 
     private final TenantRepository tenantRepository;
     private final Clock clock;
+    private final br.com.imarui.ima.identity.core.application.port.AccessRevocation accessRevocation;
 
     @Transactional
     public TenantResult execute(DisableTenantCommand command) {
@@ -35,6 +36,7 @@ public class DisableTenantUseCase {
 
         Tenant savedTenant = tenantRepository.save(tenant);
 
+        accessRevocation.revokeTenant(tenantId);
         return TenantResult.from(savedTenant);
     }
 }

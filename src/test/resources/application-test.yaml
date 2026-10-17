@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: ${IDENTITY_TEST_DB_URL:jdbc:postgresql://localhost:15437/identity_test}
+    username: identity_test
+    password: identity_test
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+security:
+  jwt:
+    secret: identity-test-signing-material-for-isolated-tests-only
+    issuer: identity-test
+management:
+  health:
+    redis:
+      enabled: false

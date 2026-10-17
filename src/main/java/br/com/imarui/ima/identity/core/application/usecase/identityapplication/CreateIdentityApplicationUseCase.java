@@ -34,6 +34,8 @@ import java.util.Objects;
 public class CreateIdentityApplicationUseCase {
 
     private final Clock clock;
+    private final br.com.imarui.ima.identity.core.application.port.IdentityRegistrationLock registrationLock;
+    private final br.com.imarui.ima.identity.core.application.service.IdentityApplicationConflicts conflicts;
     private final IdentityApplicationRepository identityApplicationRepository;
 
     @Transactional
@@ -50,6 +52,8 @@ public class CreateIdentityApplicationUseCase {
                 now
         );
 
+        registrationLock.acquire(application);
+        conflicts.check(application, true);
         return IdentityApplicationResult.from(
                 identityApplicationRepository.save(application)
         );

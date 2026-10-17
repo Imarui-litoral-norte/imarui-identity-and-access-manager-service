@@ -1,14 +1,13 @@
 package br.com.imarui.ima.identity.core.application.usecase.identityapplication;
-
 import br.com.imarui.ima.identity.core.application.result.identityapplication.IdentityApplicationResult;
+import br.com.imarui.ima.identity.core.repository.IdentityApplicationRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-
+import org.springframework.transaction.annotation.Transactional;
 @Service
+@RequiredArgsConstructor
 public class ListIdentityApplicationsUseCase {
-
-    public List<IdentityApplicationResult> execute() {
-        throw new UnsupportedOperationException("ListIdentityApplicationsUseCase is not implemented yet.");
-    }
+    private final IdentityApplicationRepository applications;
+    @Transactional(readOnly = true)
+    public java.util.List<IdentityApplicationResult> execute() { return applications.findAll().stream().map(IdentityApplicationResult::from).toList(); }
 }

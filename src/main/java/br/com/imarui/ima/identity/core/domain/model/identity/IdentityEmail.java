@@ -84,7 +84,7 @@ public class IdentityEmail {
     ) {
         Objects.requireNonNull(
                 id,
-                "UserEmailId must not be null."
+                "IdentityEmailId must not be null."
         );
 
         Objects.requireNonNull(

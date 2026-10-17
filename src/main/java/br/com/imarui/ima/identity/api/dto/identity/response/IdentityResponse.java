@@ -15,7 +15,8 @@ public record IdentityResponse(
         Instant createdAt,
         Instant updatedAt,
         Instant activatedAt,
-        Instant disabledAt
+        Instant disabledAt,
+        IdentityDetailsResponse details
 ) {
 
     public static IdentityResponse from(IdentityResult result) {
@@ -27,7 +28,8 @@ public record IdentityResponse(
                 result.createdAt(),
                 result.updatedAt(),
                 result.activatedAt(),
-                result.disabledAt()
+                result.disabledAt(),
+                IdentityDetailsResponse.from(result.details())
         );
     }
 }

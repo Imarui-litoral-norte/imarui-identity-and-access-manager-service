@@ -50,10 +50,7 @@ public class IdentityRepositoryAdapter implements IdentityRepository {
     @Override
     public Optional<Identity> findById(IdentityId identityId) {
         return jpaRepository
-                .findByIdAndStatus(
-                        identityId.value(),
-                        IdentityStatus.ACTIVE
-                )
+                .findById(identityId.value())
                 .map(mapper::toDomain);
     }
 
@@ -70,8 +67,7 @@ public class IdentityRepositoryAdapter implements IdentityRepository {
     public Optional<Identity> findPersonByCpf(Cpf cpf) {
         return jpaRepository
                 .findPersonByCpf(
-                        cpf.value(),
-                        IdentityStatus.ACTIVE
+                        cpf.value()
                 )
                 .map(mapper::toDomain);
     }
@@ -80,10 +76,14 @@ public class IdentityRepositoryAdapter implements IdentityRepository {
     public Optional<Identity> findLegalEntityByCnpj(Cnpj cnpj) {
         return jpaRepository
                 .findLegalEntityByCnpj(
-                        cnpj.value(),
-                        IdentityStatus.ACTIVE
+                        cnpj.value()
                 )
                 .map(mapper::toDomain);
+    }
+
+    @Override
+    public boolean existsByPrimaryEmailAndKind(Email email, br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind kind) {
+        return jpaRepository.existsEmailForKind(email.value(), kind.name());
     }
 
     @Override

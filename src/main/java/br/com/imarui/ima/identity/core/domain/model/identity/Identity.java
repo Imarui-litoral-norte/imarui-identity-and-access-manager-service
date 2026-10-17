@@ -106,7 +106,7 @@ public abstract class Identity {
         }
 
         if (!isActive()) {
-            throw new IllegalStateException(
+            throw new InvalidIdentityStateException(
                     "Only an active identity can be disabled."
             );
         }

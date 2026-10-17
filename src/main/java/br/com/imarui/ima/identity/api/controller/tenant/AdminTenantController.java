@@ -13,6 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
+@org.springframework.security.access.prepost.PreAuthorize("hasAuthority('TENANT_MANAGE')")
+@br.com.imarui.ima.identity.api.exception.IdentityApiErrors
+@io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/v1/admin/tenants")
 @RequiredArgsConstructor
@@ -25,6 +28,7 @@ public class AdminTenantController {
     private final CreateTenantUseCase createTenantUseCase;
 
     @PostMapping
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
     public ResponseEntity<TenantResponse> create(
             @Valid @RequestBody CreateTenantRequest request,
             UriComponentsBuilder uriBuilder
@@ -47,6 +51,7 @@ public class AdminTenantController {
     }
 
     @PostMapping("/{tenantId}/activate")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
     public ResponseEntity<TenantResponse> activate(
             @PathVariable String tenantId
     ) {
@@ -62,6 +67,7 @@ public class AdminTenantController {
     }
 
     @PostMapping("/{tenantId}/disable")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
     public ResponseEntity<TenantResponse> disable(
             @PathVariable String tenantId
     ) {
@@ -77,6 +83,7 @@ public class AdminTenantController {
     }
 
     @PostMapping("/{tenantId}/reactivate")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
     public ResponseEntity<TenantResponse> reactivate(
             @PathVariable String tenantId
     ) {
@@ -90,6 +97,7 @@ public class AdminTenantController {
     }
 
     @PatchMapping("/{tenantId}/name")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
     public ResponseEntity<TenantResponse> rename(
             @PathVariable String tenantId,
             @Valid @RequestBody RenameTenantRequest request

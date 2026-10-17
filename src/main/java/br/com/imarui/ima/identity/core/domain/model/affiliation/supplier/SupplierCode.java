@@ -15,6 +15,7 @@ public record SupplierCode(String value) {
 
         value = value.trim();
 
+        if (value.length() > 255) throw new InvalidSupplierCodeException("SupplierCode must not exceed 255 characters.");
         if (value.isBlank()) {
             throw new InvalidSupplierCodeException(
                     "SupplierCode value cannot be blank."

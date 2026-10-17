@@ -44,10 +44,7 @@ public class TenantRepositoryAdapter implements TenantRepository {
     @Override
     public Optional<Tenant> findById(TenantId tenantId) {
         return jpaRepository
-                .findByIdAndStatus(
-                        tenantId.value(),
-                        TenantStatus.ACTIVE
-                )
+                .findById(tenantId.value())
                 .map(mapper::toDomain);
     }
 

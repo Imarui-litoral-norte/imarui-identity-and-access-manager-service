@@ -1,0 +1,63 @@
+# IIAMS-8 Identity acceptance
+
+Verified on 2026-10-17 against the completed working branch `feat/identity-completion`,
+based on main `22da35f5bc2488e316fbb98d796369ee3bf4656b`.
+
+## Executed acceptance
+
+`scripts/test-identity.ps1 -JavaHome <Java 17>` created a fresh disposable PostgreSQL 17.11,
+applied Flyway V1–V4, initialized the complete Spring application with Hibernate schema validation,
+ran HTTP scenarios on a real server and built the executable jar through `clean verify`.
+Result: **58 tests, 0 failures, 0 errors, 0 skipped; BUILD SUCCESS**.
+The script removed its own test container afterwards.
+
+| Suite | Tests |
+| --- | ---: |
+| AuthenticationServiceApplicationTests (complete application bootstrap) | 1 |
+| IdentityApplicationResponseTest | 3 |
+| IdentityApplicationUseCaseTest | 5 |
+| IdentityDomainTest | 11 |
+| IdentityIntegrationTest (real PostgreSQL and signed Bearer HTTP) | 34 |
+| IdentityLifecycleTest | 4 |
+| Total | 58 |
+
+## Requirement evidence
+
+| Jira task | Implemented behavior | Executed evidence |
+| --- | --- | --- |
+| IIAMS-16 | Locked activate/disable/reactivate use cases persist IdentityResult | IdentityLifecycleTest; IdentityDomainTest for all kinds; HTTP lifecycle |
+| IIAMS-17 | Owner-derived self-delete, optional reason, HTTP 204, revocation | selfDeleteTakesItsTargetFromTrustedActorAndRejectsInvalidReasonBeforeWriting; httpOnboardingLifecycleErrorsAndSelfDeleteAreFunctional |
+| IIAMS-18 | Full typed snapshot and JOINED hard delete in one transaction | selfDeleteCommitsFullSnapshotRemovesJoinedRowsAndPermitsReregistration for all kinds; failingHistoryInsertRollsBackDeletionAndRevocationRequest; failingOperationalDeleteRollsBackAlreadyWrittenHistory |
+| IIAMS-19 | Approval creates correct Identity kind and selected Affiliation atomically | approvalPersistsCorrectKindAndReviewerAndCannotResolveTwice; approvalSupportsEachAffiliationSpecialization; scopedCodesAreUniqueOnlyWithinTenantAndApprovalRollsBack |
+| IIAMS-20 | Rejection persists actor, time and reason with no provisioning | rejectionIsAuditedAndDoesNotProvisionIdentity |
+| IIAMS-21 | CurrentActor port and trusted security adapter | actorFailureStopsApprovalBeforeAnyWrite; missingActorCannotResolveOrDelete |
+| IIAMS-22 | CPF/CNPJ and per-kind normalized e-mail uniqueness in create/approve | duplicatesAreBlockedBothBeforeAndAfterApplication; sameEmailIsAllowedAcrossKindsAndRejectionReleasesPendingKey; concurrentDuplicateSubmissionsHaveOneWinner; concurrentApprovalCanResolveOnlyOnce |
+| IIAMS-23 | Tenant PENDING -> ACTIVE <-> DISABLED with preserved record/code | tenantLifecyclePreservesCodeAndOriginalActivation; disabledTenantBlocksApprovalWithoutPartialIdentity |
+| IIAMS-24 | Single effective-affiliation policy applied to operational queries | tenantContextNeverMutatesIntrinsicAffiliationState; lifecycleQueriesHonorTenantAndIdentityWithoutMutatingAffiliation |
+| IIAMS-25 | All five specializations, lifecycle timestamps and scoped identifiers | everyAffiliationSpecializationPreservesLifetimeAndRejectsInvalidTransitions; approvalSupportsEachAffiliationSpecialization; scopedCodesAreUniqueOnlyWithinTenantAndApprovalRollsBack |
+| IIAMS-26 | AccessRevocation port and durable outbox contract | Persisted IDENTITY/TENANT requests in lifecycle tests; documented consumer contract in identity.md |
+| IIAMS-27 | Disable/delete emit transactional requests; reactivation cannot restore prior tokens | failingRevocationRollsBackIdentityDisable; oldIdentityTokenRemainsRevokedAfterReactivation; scopedTokenRemainsRevokedAfterTenantReactivation |
+| IIAMS-28 | Domain/validation/conflict/not-found/access ProblemDetail responses | httpValidationConflictAndAdministrativePermissionAreEnforced; unknownTenantDuringApprovalReturnsNotFoundAndNoPartialWrites; HTTP lifecycle errors |
+| IIAMS-29 | Identity kind plus typed Person/LegalEntity/Service details | httpResponseDiscriminatesKindsAndProtectsOtherIdentities for all kinds |
+| IIAMS-30 | Functional controllers, creation Location, explicit success/error schemas and Bearer documentation | documentedOpenApiContainsActualResponsesAndSecurity; complete HTTP onboarding/lifecycle/delete |
+| IIAMS-31 | Removed unused registration DTO and seven User exceptions | Repository source search: no User artifacts or references remain in Identity; clean compile |
+| IIAMS-32 | Core ports separate Identity from Spring Security and Authentication internals | Source search: no security/authentication imports in identity/core; full clean verify |
+| IIAMS-33 | Lifecycle, time, natural-key and subtype invariants | IdentityDomainTest and IdentityLifecycleTest |
+| IIAMS-34 | Application orchestration tested with mocked ports and real transactions | IdentityApplicationUseCaseTest; application scenarios in IdentityIntegrationTest |
+| IIAMS-35 | Real migrations, polymorphic persistence, snapshot, deletion and rollback | Flyway V1–V4 on fresh PostgreSQL; persistence/integrity scenarios in IdentityIntegrationTest |
+| IIAMS-36 | Actual HTTP contracts, variants, status, authorization and ProblemDetail | Signed-JWT HTTP scenarios and OpenAPI checks in IdentityIntegrationTest |
+| IIAMS-37 | Complete application bootstrap, no placeholders/legacy, fresh-schema clean verify and jar | 58 passing tests; source gate; executable jar built |
+
+Stories IIAMS-9–IIAMS-15 and Epic IIAMS-8 consolidate the completed requirements above.
+Source gate found no UnsupportedOperationException/TODO/FIXME, legacy User references,
+or concrete Authentication/Spring Security dependency in Identity core.
+Tenant model/controllers contain no DELETE endpoint or DELETED status.
+
+## Operational prerequisites and integration boundary
+
+Deployment requires PostgreSQL credentials, a strong JWT_SECRET, the trusted initial operator Identity/token,
+and the deliberate baseline procedure for an existing pre-Flyway database, as documented in identity.md.
+Fresh schema and the full API flow have been validated in an isolated test environment.
+Authentication's future session/refresh outbox consumer and login/token issuance remain its own module scope.
+Identity already persists revocation requests atomically and enforces their cutoff for resource API access.
+No production database migration or service restart was performed during acceptance.

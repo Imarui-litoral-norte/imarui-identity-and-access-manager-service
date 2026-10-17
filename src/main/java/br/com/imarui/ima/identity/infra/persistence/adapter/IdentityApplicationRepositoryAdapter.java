@@ -87,6 +87,15 @@ public class IdentityApplicationRepositoryAdapter
     }
 
     @Override
+    public boolean existsPendingByCnpj(br.com.imarui.ima.identity.core.domain.model.identity.LegalEntity.Cnpj cnpj) {
+        return jpaRepository.existsByCnpjAndStatus(cnpj.value(), IdentityApplicationStatus.PENDING);
+    }
+    @Override
+    public boolean existsPendingByEmailAndKind(br.com.imarui.ima.identity.core.domain.model.identity.Email email, br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind kind) {
+        return jpaRepository.existsByEmailIgnoreCaseAndKindAndStatus(email.value(), kind, IdentityApplicationStatus.PENDING);
+    }
+
+    @Override
     public boolean existsPendingByCpf(Cpf cpf) {
         return jpaRepository.existsByCpfAndStatus(
                 cpf.value(),

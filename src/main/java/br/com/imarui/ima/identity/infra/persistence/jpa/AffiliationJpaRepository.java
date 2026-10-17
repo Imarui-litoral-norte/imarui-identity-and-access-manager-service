@@ -13,6 +13,8 @@ import java.util.UUID;
 public interface AffiliationJpaRepository
         extends JpaRepository<AffiliationEntity, UUID> {
 
+    List<AffiliationEntity> findByIdentityId(UUID identityId);
+
     List<AffiliationEntity> findAllByStatusOrderByStartedAtDesc(
             AffiliationStatus status
     );

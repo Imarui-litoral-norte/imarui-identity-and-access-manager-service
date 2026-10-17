@@ -25,6 +25,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@org.springframework.security.access.prepost.PreAuthorize("hasAuthority('IDENTITY_APPLICATION_REVIEW')")
+@br.com.imarui.ima.identity.api.exception.IdentityApiErrors
+@io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping(
         value = "/api/v1/admin/identity-applications",
@@ -39,6 +42,7 @@ public class AdminIdentityApplicationController {
     private final RejectIdentityApplicationUseCase rejectIdentityApplicationUseCase;
 
     @GetMapping
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(array = @io.swagger.v3.oas.annotations.media.ArraySchema(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = IdentityApplicationResponse.class))))
     public ResponseEntity<List<IdentityApplicationResponse>> findAll() {
         List<IdentityApplicationResponse> response = listIdentityApplicationsUseCase
                 .execute()
@@ -50,6 +54,7 @@ public class AdminIdentityApplicationController {
     }
 
     @GetMapping("/{identityApplicationId}")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = IdentityApplicationResponse.class)))
     public ResponseEntity<IdentityApplicationResponse> findById(
             @PathVariable String identityApplicationId
     ) {
@@ -64,6 +69,7 @@ public class AdminIdentityApplicationController {
             value = "/{identityApplicationId}/approve",
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = IdentityApplicationResponse.class)))
     public ResponseEntity<IdentityApplicationResponse> approve(
             @PathVariable String identityApplicationId,
             @Valid @RequestBody ApproveIdentityApplicationRequest request
@@ -71,7 +77,8 @@ public class AdminIdentityApplicationController {
         ApproveIdentityApplicationCommand command =
                 new ApproveIdentityApplicationCommand(
                         IdentityApplicationId.from(identityApplicationId),
-                        TenantId.from(request.tenantId())
+                        TenantId.from(request.tenantId()),
+                        request.affiliation().toSelection()
                 );
         IdentityApplicationResult result =
                 approveIdentityApplicationUseCase.execute(command);
@@ -83,6 +90,7 @@ public class AdminIdentityApplicationController {
             value = "/{identityApplicationId}/reject",
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = IdentityApplicationResponse.class)))
     public ResponseEntity<IdentityApplicationResponse> reject(
             @PathVariable String identityApplicationId,
             @Valid @RequestBody RejectIdentityApplicationRequest request

@@ -10,7 +10,7 @@ public record IdentityEmailId(@NotNull UUID value) {
     public IdentityEmailId {
         Objects.requireNonNull(
                 value,
-                "UserEmailId value must not be null."
+                "IdentityEmailId value must not be null."
         );
     }
 
@@ -25,14 +25,14 @@ public record IdentityEmailId(@NotNull UUID value) {
     public static @NotNull IdentityEmailId from(@NotNull String value) {
         Objects.requireNonNull(
                 value,
-                "UserEmailId value must not be null."
+                "IdentityEmailId value must not be null."
         );
 
         try {
             return from(UUID.fromString(value));
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException(
-                    "Invalid UserEmailId: " + value,
+                    "Invalid IdentityEmailId: " + value,
                     exception
             );
         }

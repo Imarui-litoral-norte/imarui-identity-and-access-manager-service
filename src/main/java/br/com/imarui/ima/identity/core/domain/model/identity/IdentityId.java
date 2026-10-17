@@ -8,7 +8,7 @@ import java.util.UUID;
 public record IdentityId(@NotNull UUID value) {
 
     public IdentityId {
-        Objects.requireNonNull(value, "UserId value must not be null.");
+        Objects.requireNonNull(value, "IdentityId value must not be null.");
     }
 
     public static @NotNull IdentityId generate() {
@@ -20,13 +20,13 @@ public record IdentityId(@NotNull UUID value) {
     }
 
     public static @NotNull IdentityId from(@NotNull String value) {
-        Objects.requireNonNull(value, "UserId value must not be null.");
+        Objects.requireNonNull(value, "IdentityId value must not be null.");
 
         try {
             return from(UUID.fromString(value));
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException(
-                    "Invalid UserId: " + value,
+                    "Invalid IdentityId: " + value,
                     exception
             );
         }

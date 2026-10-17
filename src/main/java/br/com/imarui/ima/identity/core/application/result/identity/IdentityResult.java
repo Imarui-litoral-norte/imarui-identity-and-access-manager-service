@@ -15,7 +15,8 @@ public record IdentityResult(
         Instant createdAt,
         Instant updatedAt,
         Instant activatedAt,
-        Instant disabledAt
+        Instant disabledAt,
+        IdentityDetailsResult details
 ) {
 
     public static IdentityResult from(Identity identity) {
@@ -27,7 +28,8 @@ public record IdentityResult(
                 identity.getCreatedAt(),
                 identity.getUpdatedAt(),
                 identity.getActivatedAt(),
-                identity.getDisabledAt()
+                identity.getDisabledAt(),
+                IdentityDetailsResult.from(identity)
         );
     }
 }

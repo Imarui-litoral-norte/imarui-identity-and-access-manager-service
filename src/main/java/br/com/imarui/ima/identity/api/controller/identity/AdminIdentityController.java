@@ -17,6 +17,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@org.springframework.security.access.prepost.PreAuthorize("hasAuthority('IDENTITY_MANAGE')")
+@br.com.imarui.ima.identity.api.exception.IdentityApiErrors
+@io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping(
         value = "/api/v1/admin/identities",
@@ -30,6 +33,7 @@ public class AdminIdentityController {
     private final ReactivateIdentityUseCase reactivateIdentityUseCase;
 
     @PostMapping("/{identityId}/activate")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = IdentityResponse.class)))
     public ResponseEntity<IdentityResponse> activate(
             @PathVariable String identityId
     ) {
@@ -42,6 +46,7 @@ public class AdminIdentityController {
     }
 
     @PostMapping("/{identityId}/disable")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = IdentityResponse.class)))
     public ResponseEntity<IdentityResponse> disable(
             @PathVariable String identityId
     ) {
@@ -54,6 +59,7 @@ public class AdminIdentityController {
     }
 
     @PostMapping("/{identityId}/reactivate")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = IdentityResponse.class)))
     public ResponseEntity<IdentityResponse> reactivate(
             @PathVariable String identityId
     ) {

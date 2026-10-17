@@ -13,6 +13,9 @@ import java.util.UUID;
 public interface IdentityJpaRepository
         extends JpaRepository<IdentityEntity, UUID> {
 
+    @Query(value = "select exists(select 1 from ima_identities where lower(primary_email) = lower(:email) and kind = :kind)", nativeQuery = true)
+    boolean existsEmailForKind(@Param("email") String email, @Param("kind") String kind);
+
     List<IdentityEntity> findAllByStatusOrderByCreatedAtDesc(
             IdentityStatus status
     );
@@ -36,22 +39,18 @@ public interface IdentityJpaRepository
             select person
               from PersonIdentityEntity person
              where person.cpf = :cpf
-               and person.status = :status
             """)
     Optional<PersonIdentityEntity> findPersonByCpf(
-            @Param("cpf") String cpf,
-            @Param("status") IdentityStatus status
+            @Param("cpf") String cpf
     );
 
     @Query("""
             select legalEntity
               from LegalEntityIdentityEntity legalEntity
              where legalEntity.cnpj = :cnpj
-               and legalEntity.status = :status
             """)
     Optional<LegalEntityIdentityEntity> findLegalEntityByCnpj(
-            @Param("cnpj") String cnpj,
-            @Param("status") IdentityStatus status
+            @Param("cnpj") String cnpj
     );
 
     @Query("""

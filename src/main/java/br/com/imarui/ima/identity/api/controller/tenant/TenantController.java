@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@org.springframework.security.access.prepost.PreAuthorize("hasAuthority('TENANT_READ')")
+@br.com.imarui.ima.identity.api.exception.IdentityApiErrors
+@io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/v1/tenants")
 @RequiredArgsConstructor
@@ -21,6 +24,7 @@ public class TenantController {
     private final RenameTenantUseCase renameTenantUseCase;
 
     @GetMapping("/{tenantId}")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
     public ResponseEntity<TenantResponse> findById(
             @PathVariable String tenantId
     ) {

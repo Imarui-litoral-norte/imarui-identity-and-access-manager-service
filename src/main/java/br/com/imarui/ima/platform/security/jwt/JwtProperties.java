@@ -12,6 +12,6 @@ import org.springframework.stereotype.Component;
 public class JwtProperties {
 
     private String issuer = "imarui-authentication-service";
-    private String secret = "change-this-development-secret-change-this-development-secret";
+    private String secret;
     private long accessTokenExpirationSeconds = 3600;
 }

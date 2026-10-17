@@ -1,0 +1,16 @@
+alter table ima_affiliations add constraint uk_affiliation_id_tenant unique (id, tenant_id);
+alter table ima_employee_affiliations add column tenant_id uuid;
+update ima_employee_affiliations child set tenant_id = parent.tenant_id from ima_affiliations parent where child.id = parent.id;
+alter table ima_employee_affiliations alter column tenant_id set not null;
+alter table ima_employee_affiliations add constraint fk_registration_tenant foreign key (id, tenant_id) references ima_affiliations(id, tenant_id);
+create unique index uk_tenant_registration on ima_employee_affiliations(tenant_id, registration);
+alter table ima_customer_affiliations add column tenant_id uuid;
+update ima_customer_affiliations child set tenant_id = parent.tenant_id from ima_affiliations parent where child.id = parent.id;
+alter table ima_customer_affiliations alter column tenant_id set not null;
+alter table ima_customer_affiliations add constraint fk_customer_code_tenant foreign key (id, tenant_id) references ima_affiliations(id, tenant_id);
+create unique index uk_tenant_customer_code on ima_customer_affiliations(tenant_id, customer_code);
+alter table ima_supplier_affiliations add column tenant_id uuid;
+update ima_supplier_affiliations child set tenant_id = parent.tenant_id from ima_affiliations parent where child.id = parent.id;
+alter table ima_supplier_affiliations alter column tenant_id set not null;
+alter table ima_supplier_affiliations add constraint fk_supplier_code_tenant foreign key (id, tenant_id) references ima_affiliations(id, tenant_id);
+create unique index uk_tenant_supplier_code on ima_supplier_affiliations(tenant_id, supplier_code);
