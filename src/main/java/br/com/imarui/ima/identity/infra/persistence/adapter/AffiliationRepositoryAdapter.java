@@ -23,6 +23,14 @@ public class AffiliationRepositoryAdapter implements AffiliationRepository {
 
     private final AffiliationJpaRepository jpaRepository;
     private final AffiliationPersistenceMapper mapper;
+    private final br.com.imarui.ima.identity.core.repository.IdentityRepository identities;
+    private final br.com.imarui.ima.identity.core.repository.TenantRepository tenants;
+
+    private boolean isEffective(Affiliation affiliation) {
+        return br.com.imarui.ima.identity.core.domain.policy.AffiliationValidity.isEffective(
+            affiliation, identities.findById(affiliation.getIdentityId()).orElse(null),
+            tenants.findById(affiliation.getTenantId()).orElse(null));
+    }
 
     @Override
     public Affiliation save(Affiliation affiliation) {
@@ -47,6 +55,7 @@ public class AffiliationRepositoryAdapter implements AffiliationRepository {
                 )
                 .stream()
                 .map(mapper::toDomain)
+                .filter(this::isEffective)
                 .toList();
     }
 
@@ -55,10 +64,7 @@ public class AffiliationRepositoryAdapter implements AffiliationRepository {
             AffiliationId affiliationId
     ) {
         return jpaRepository
-                .findByIdAndStatus(
-                        affiliationId.value(),
-                        AffiliationStatus.ACTIVE
-                )
+                .findById(affiliationId.value())
                 .map(mapper::toDomain);
     }
 
@@ -80,6 +86,7 @@ public class AffiliationRepositoryAdapter implements AffiliationRepository {
                 )
                 .stream()
                 .map(mapper::toDomain)
+                .filter(this::isEffective)
                 .toList();
     }
 
@@ -94,6 +101,7 @@ public class AffiliationRepositoryAdapter implements AffiliationRepository {
                 )
                 .stream()
                 .map(mapper::toDomain)
+                .filter(this::isEffective)
                 .toList();
     }
 
@@ -102,12 +110,8 @@ public class AffiliationRepositoryAdapter implements AffiliationRepository {
             TenantId tenantId,
             IdentityId identityId
     ) {
-        return jpaRepository
-                .existsByTenantIdAndIdentityIdAndStatus(
-                        tenantId.value(),
-                        identityId.value(),
-                        AffiliationStatus.ACTIVE
-                );
+        return findByTenantId(tenantId).stream()
+                .anyMatch(affiliation -> affiliation.getIdentityId().equals(identityId));
     }
 
     @Override

@@ -14,6 +14,9 @@ public class JwtSigningKeyProvider {
     private final JwtProperties jwtProperties;
 
     public SecretKey getKey() {
+        if (jwtProperties.getSecret() == null || jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("Configure JWT_SECRET with at least 32 UTF-8 bytes.");
+        }
         return Keys.hmacShaKeyFor(
                 jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8)
         );

@@ -47,7 +47,7 @@ public class IdentityApplicationEntity {
     @Column(name = "identity_kind", nullable = false, length = 30)
     private IdentityKind kind;
 
-    @Column(name = "email", nullable = false, length = 180)
+    @Column(name = "email", nullable = false, length = 254)
     private String email;
 
     @Column(name = "full_name", length = 150)

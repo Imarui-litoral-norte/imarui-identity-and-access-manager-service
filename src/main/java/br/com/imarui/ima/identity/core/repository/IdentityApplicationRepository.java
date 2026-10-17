@@ -29,4 +29,6 @@ public interface IdentityApplicationRepository {
     );
 
     boolean existsPendingByCpf(Cpf cpf);
+    boolean existsPendingByCnpj(br.com.imarui.ima.identity.core.domain.model.identity.LegalEntity.Cnpj cnpj);
+    boolean existsPendingByEmailAndKind(br.com.imarui.ima.identity.core.domain.model.identity.Email email, br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind kind);
 }

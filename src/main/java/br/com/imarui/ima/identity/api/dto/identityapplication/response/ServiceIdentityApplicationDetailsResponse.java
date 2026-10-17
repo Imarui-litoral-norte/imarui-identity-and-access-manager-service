@@ -7,7 +7,9 @@ import java.util.Objects;
 
 @Schema(name = "ServiceIdentityApplicationDetailsResponse")
 public record ServiceIdentityApplicationDetailsResponse(
+        @io.swagger.v3.oas.annotations.media.Schema(description = "Nome da identidade técnica.", example = "Integração Exemplo", accessMode = io.swagger.v3.oas.annotations.media.Schema.AccessMode.READ_ONLY, requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED)
         String name,
+        @io.swagger.v3.oas.annotations.media.Schema(description = "Descrição opcional da identidade técnica.", example = "Integração de sistemas", accessMode = io.swagger.v3.oas.annotations.media.Schema.AccessMode.READ_ONLY)
         String description
 ) implements IdentityApplicationDetailsResponse {
 

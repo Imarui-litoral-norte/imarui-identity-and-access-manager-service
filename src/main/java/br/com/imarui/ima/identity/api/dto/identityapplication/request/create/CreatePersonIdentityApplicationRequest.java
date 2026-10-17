@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
-@Schema(name = "CreatePersonIdentityApplicationRequest")
+@Schema(name = "CreatePersonIdentityApplicationRequest", description = "Solicitação PERSON com nome, CPF e e-mail obrigatórios. Nascimento e telefone são opcionais; CPF é normalizado para dígitos.")
 public record CreatePersonIdentityApplicationRequest(
 
         @NotBlank(message = "Full name is required.")

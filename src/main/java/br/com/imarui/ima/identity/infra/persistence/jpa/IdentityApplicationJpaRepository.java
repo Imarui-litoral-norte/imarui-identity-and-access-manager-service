@@ -31,6 +31,9 @@ public interface IdentityApplicationJpaRepository
             IdentityApplicationStatus status
     );
 
+    boolean existsByCnpjAndStatus(String cnpj, IdentityApplicationStatus status);
+    boolean existsByEmailIgnoreCaseAndKindAndStatus(String email, br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind kind, IdentityApplicationStatus status);
+
     boolean existsByCpfAndStatus(
             String cpf,
             IdentityApplicationStatus status

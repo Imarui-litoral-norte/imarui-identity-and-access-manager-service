@@ -15,6 +15,7 @@ public record CustomerCode(String value) {
 
         value = value.trim();
 
+        if (value.length() > 255) throw new InvalidCustomerCodeException("CustomerCode must not exceed 255 characters.");
         if (value.isBlank()) {
             throw new InvalidCustomerCodeException(
                     "CustomerCode value cannot be blank."

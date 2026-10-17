@@ -3,9 +3,9 @@ package br.com.imarui.ima.identity.core.domain.exception.identity;
 public class IdentityAlreadyDisabledException
         extends RuntimeException {
 
-  public IdentityAlreadyDisabledException(String userId) {
+  public IdentityAlreadyDisabledException(String identityId) {
     super(
-            "User with id " + userId
+            "Identity with id " + identityId
                     + " is already disabled."
     );
   }
