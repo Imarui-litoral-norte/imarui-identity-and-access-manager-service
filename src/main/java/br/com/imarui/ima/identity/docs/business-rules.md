@@ -21,7 +21,7 @@ E-mail é aparado e convertido para minúsculas. Sua unicidade considera o tipo,
 (em qualquer estado) como nas aplicações PENDING. O mesmo e-mail pode pertencer a tipos diferentes.
 CPF/CNPJ são normalizados para dígitos e validados por seus value objects; suas chaves operacionais são únicas.
 Solicitação PENDING duplicada por CPF/CNPJ é bloqueada. Rejeição libera a reserva pendente, mas não altera cadastro existente.
-Histórico não reserva e-mail, CPF ou CNPJ, permitindo um cadastro novo após self-delete.
+Histórico não reserva e-mail, CPF, CNPJ ou códigos de vínculo, permitindo novo cadastro/aprovação após self-delete, mesmo com os mesmos valores. Cada vínculo removido também possui seu próprio registro AffiliationHistory. Veja a [política de exclusão e auditoria](deletion-and-history.md).
 Limites e formatos do payload bruto e a forma canônica de resposta são publicados no OpenAPI dos DTOs.
 
 ## Tenant
@@ -43,7 +43,7 @@ Não existe DELETED, delete de Tenant ou TenantHistory neste escopo.
 Campos de um tipo não podem ser enviados para outro na seleção de aprovação. Identificadores são aparados,
 não vazios e limitados a 255 caracteres; são únicos no Tenant, incluindo relações inativas.
 Affiliation ACTIVE pode ser desativada para INACTIVE, preenchendo endedAt. Reativação limpa endedAt e preserva startedAt.
-Eventos anteriores a updatedAt e estados reconstruídos inconsistentes são rejeitados.
+Eventos anteriores a updatedAt e estados reconstruídos inconsistentes são rejeitados. INACTIVE é suspensão recuperável e mantém a reserva do código; a exclusão física por self-delete arquiva e libera essa reserva.
 
 ## Validade contextual
 

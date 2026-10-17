@@ -12,6 +12,7 @@ obrigatória de todos os consumidores. O core recebe o ator por `CurrentActor`, 
 Casos de uso delimitam transações. Locks pessimistas protegem alterações concorrentes de agregados; locks de registro e
 constraints protegem chaves naturais. Validação de existência em aplicação não substitui unicidade no banco.
 Efeitos duráveis que participam de uma mudança, como histórico e solicitação de revogação, confirmam ou revertem juntos.
+Exclusão efetiva grava a entidade de histórico correspondente e remove a linha operacional na mesma transação. Não crie status DELETED, flag deleted ou unicidade que inclua data/estado de exclusão para reter uma entidade removida na tabela principal. Históricos preservam IDs como valores de auditoria, sem FKs operacionais ou reserva de chaves naturais. Suspender/rejeitar não equivale a excluir.
 DDL é versionado por Flyway; Hibernate valida. A política operacional fica no [guia de banco](../database/README.md).
 
 ## Tempo e erros

@@ -67,7 +67,7 @@ class IdentitySelfDeleteIntegrationTest extends IdentityIntegrationSupport {
         jdbc.execute("create trigger fail_identity_history before insert on ima_identities__history for each row execute function fail_identity_history()");
         try { assertThrows(RuntimeException.class, () -> delete.execute(new SelfDeleteIdentityCommand(null))); }
         finally { jdbc.execute("drop trigger fail_identity_history on ima_identities__history"); jdbc.execute("drop function fail_identity_history()"); }
-        assertTrue(identities.findById(id).isPresent()); assertEquals(0,history.count()); assertEquals(0,revocations.count());
+        assertTrue(identities.findById(id).isPresent()); assertEquals(0,history.count()); assertEquals(0,affiliationHistory.count()); assertEquals(0,revocations.count());
     }
 
     @Test void failingOperationalDeleteRollsBackAlreadyWrittenHistory() {
@@ -78,6 +78,6 @@ class IdentitySelfDeleteIntegrationTest extends IdentityIntegrationSupport {
         try { assertThrows(RuntimeException.class, () -> delete.execute(new SelfDeleteIdentityCommand(null))); }
         finally { jdbc.execute("drop trigger fail_identity_delete on ima_identities"); jdbc.execute("drop function fail_identity_delete()"); }
         assertTrue(affiliations.findById(affiliation.getId()).isPresent());
-        assertTrue(identities.findById(id).isPresent()); assertEquals(0,history.count()); assertEquals(0,revocations.count());
+        assertTrue(identities.findById(id).isPresent()); assertEquals(0,history.count()); assertEquals(0,affiliationHistory.count()); assertEquals(0,revocations.count());
     }
 }

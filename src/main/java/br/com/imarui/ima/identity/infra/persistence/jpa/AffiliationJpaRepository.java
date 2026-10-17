@@ -15,6 +15,10 @@ public interface AffiliationJpaRepository
 
     List<AffiliationEntity> findByIdentityId(UUID identityId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select affiliation from AffiliationEntity affiliation where affiliation.identityId = :identityId order by affiliation.id")
+    List<AffiliationEntity> findByIdentityIdForUpdate(@Param("identityId") UUID identityId);
+
     List<AffiliationEntity> findAllByStatusOrderByStartedAtDesc(
             AffiliationStatus status
     );

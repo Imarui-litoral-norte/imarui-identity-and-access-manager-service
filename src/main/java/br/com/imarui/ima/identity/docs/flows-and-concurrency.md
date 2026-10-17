@@ -22,9 +22,10 @@ Reject registra somente a decisão; não provisiona dados operacionais. Resoluç
 1. CurrentActor identifica o alvo, que nunca vem de um ID enviado pelo cliente.
 2. O caso de uso bloqueia a Identity e valida motivo/tempo.
 3. Registra a solicitação durável de revogação.
-4. Persiste e flush o snapshot histórico.
-5. Remove todas as Affiliation operacionais e suas especializações, depois a hierarquia JOINED de Identity.
-6. Confirma tudo junto. Qualquer falha reverte histórico, exclusões e outbox.
+4. Bloqueia todos os vínculos da Identity por UUID, em ordem estável, incluindo INACTIVE e todos os Tenants.
+5. Persiste/flush IdentityHistoryEntity e um AffiliationHistoryEntity para cada vínculo, antes de qualquer remoção.
+6. Remove todas as Affiliation operacionais e suas especializações, depois a hierarquia JOINED de Identity.
+7. Confirma tudo junto. Qualquer falha reverte os dois históricos, exclusões e outbox.
 
 O histórico armazena UUID original, kind, estado anterior, timestamps, deletedAt, ator, motivo e JSON dos campos
 persistidos. Não possui FK para o registro removido nem unicidade de CPF/CNPJ/e-mail. Referências de auditoria de aplicações

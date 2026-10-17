@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
+@org.hibernate.annotations.Immutable
 @Table(name = "ima_identities__history")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

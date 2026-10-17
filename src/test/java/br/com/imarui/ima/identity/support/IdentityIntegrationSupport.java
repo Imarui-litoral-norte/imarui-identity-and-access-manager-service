@@ -48,6 +48,7 @@ public abstract class IdentityIntegrationSupport {
     @Autowired protected AffiliationRepository affiliations;
     @Autowired protected IdentityApplicationRepository applications;
     @Autowired protected IdentityHistoryJpaRepository history;
+    @Autowired protected AffiliationHistoryJpaRepository affiliationHistory;
     @Autowired protected AccessRevocationRequestJpaRepository revocations;
     @Autowired protected CreateIdentityApplicationUseCase create;
     @Autowired protected ApproveIdentityApplicationUseCase approve;
@@ -70,7 +71,7 @@ public abstract class IdentityIntegrationSupport {
     protected final Instant earlier = Instant.now().minusSeconds(60);
 
     @BeforeEach protected void prepare() {
-        jdbc.execute("truncate ima_identities, ima_tenants, ima_identity_applications, ima_identities__history, ima_access_revocation_requests cascade");
+        jdbc.execute("truncate ima_identities, ima_tenants, ima_identity_applications, ima_identities__history, ima_affiliations__history, ima_access_revocation_requests cascade");
         reviewer = service("reviewer@example.test"); reviewer.activate(earlier);
         reviewer = identities.save(reviewer);
         tenant = Tenant.create(TenantId.generate(), TenantCode.from("TEST"), TenantName.from("Test tenant"), earlier);

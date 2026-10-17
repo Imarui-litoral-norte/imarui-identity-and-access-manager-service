@@ -24,7 +24,7 @@ segundo da revogação são rejeitados conservadoramente; uma emissão nova deve
 
 ## Persistência histórica e lock de registro
 
-IdentityDeletion recebe Identity, ator, motivo e instante e deve executar snapshot + hard delete na transação corrente.
+IdentityDeletion recebe Identity, ator, motivo e instante e deve executar os snapshots de Identity e de todos os vínculos + hard delete na transação corrente. Cada AffiliationHistory referencia o UUID do IdentityHistory da mesma operação, sem FK operacional.
 O histórico permanece uma preocupação de infraestrutura; não é novo aggregate operacional no core.
 IdentityRegistrationLock serializa create/approve por chaves naturais normalizadas. O adapter PostgreSQL mantém locks
 até o fim da transação. Seus hashes não constituem identificadores de negócio nem dados públicos.

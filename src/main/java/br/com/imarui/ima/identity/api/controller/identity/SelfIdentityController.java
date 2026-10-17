@@ -21,7 +21,7 @@ public class SelfIdentityController {
 
     @DeleteMapping
     @ApiResponse(responseCode = "204", description = "Identity deleted")
-    @io.swagger.v3.oas.annotations.Operation(summary = "Excluir definitivamente a própria identidade", description = "Resolve o alvo exclusivamente pelo subject autenticado de uma Identity ACTIVE. Grava snapshot histórico e revogação e remove a identidade e suas afiliações operacionais na mesma transação. O motivo é opcional; quando informado, é aparado e exige 1–500 caracteres não brancos. Falha em qualquer etapa desfaz todos os efeitos. Sucesso retorna 204 sem corpo.")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Excluir definitivamente a própria identidade", description = "Resolve o alvo exclusivamente pelo subject autenticado de uma Identity ACTIVE. Grava histórico independente da Identity e de cada Affiliation (incluindo dados do tipo, ator, motivo e instante), registra revogação e remove os registros operacionais na mesma transação. O histórico não reserva e-mail, CPF/CNPJ ou códigos de vínculo e não utiliza status DELETED. O motivo é opcional; quando informado, é aparado e exige 1–500 caracteres não brancos. Falha em qualquer etapa desfaz todos os efeitos. Sucesso retorna 204 sem corpo.")
     @br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup(value = "Identidades · Exclusão própria", order = 30)
     public ResponseEntity<Void> delete(@Valid @RequestBody(required = false) DeleteRequest request) {
         deletion.execute(new SelfDeleteIdentityCommand(request == null ? null : request.reason()));

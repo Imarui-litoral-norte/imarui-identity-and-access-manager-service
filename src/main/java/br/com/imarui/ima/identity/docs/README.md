@@ -9,6 +9,7 @@ Person, LegalEntity e Service são tipos de Identity; Employee, Customer, Suppli
 | [Regras e estados](business-rules.md) | Invariantes, normalização, chaves e validade efetiva |
 | [Fluxos e concorrência](flows-and-concurrency.md) | Onboarding, lifecycle, exclusão histórica, locks e rollback |
 | [Contratos de integração](integration-contracts.md) | Ator atual, revogação, snapshot e fronteira com Authentication |
+| [Exclusão e histórico](deletion-and-history.md) | Comportamento por agregado, snapshots e unicidade |
 | [Testes por feature](testing.md) | Cenários e suites de domínio, aplicação, persistência e HTTP |
 
 O OpenAPI servido em `/docs` é a fonte dos detalhes HTTP: payloads, discriminadores, validações, exemplos, status,

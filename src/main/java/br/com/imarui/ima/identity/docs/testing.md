@@ -9,7 +9,7 @@ organizados por camada e feature. support compartilha setup/fixtures; os cenári
 | IdentityApplication | ApproveIdentityApplicationUseCaseTest, IdentityApplicationIntegrationTest, IdentityApplicationHttpContractTest | Create/approve/reject, ator, duplicidade por tipo, chaves naturais, IDs, escolha de vínculo, leituras e concorrência |
 | Tenant | TenantDomainTest, TenantHttpContractTest | Criação, consulta, nome, estados, unicidade, acesso e efeitos HTTP |
 | Affiliation | AffiliationDomainTest, AffiliationValidityTest, AffiliationIntegrationTest | Cinco tipos, identificadores por Tenant, timestamps e validade contextual sem cascatas |
-| Self-delete / history | SelfDeleteIdentityUseCaseTest, IdentitySelfDeleteIntegrationTest, IdentitySelfDeleteHttpContractTest | Alvo pelo ator, motivo, snapshots, remoção JOINED, preservação de terceiros e rollback |
+| Self-delete / history | SelfDeleteIdentityUseCaseTest, IdentitySelfDeleteIntegrationTest, AffiliationHistoryIntegrationTest, IdentitySelfDeleteHttpContractTest | Alvo pelo ator, motivo, dois históricos, três tipos × cinco vínculos, vínculos inativos/múltiplos Tenants, recadastro/aprovação repetidos com as mesmas chaves e rollback |
 | Revogação | IdentityRevocationIntegrationTest | Falha da outbox reverte lifecycle; reativação não revive token antigo |
 | OpenAPI / Swagger | IdentityOpenApiIntegrationTest, IdentitySwaggerUiIntegrationTest | Cada um dos 17 contratos, permissões, exemplos válidos, schemas, erros, Location e assets locais |
 | Fluxo composto | IdentityEndToEndTest | Solicitação → aprovação → ativação → exclusão por HTTP |

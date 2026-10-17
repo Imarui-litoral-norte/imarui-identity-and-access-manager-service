@@ -6,9 +6,9 @@ based on main `22da35f5bc2488e316fbb98d796369ee3bf4656b`.
 ## Executed acceptance
 
 `scripts/test-identity.ps1 -JavaHome <Java 17>` created a fresh disposable PostgreSQL 17.11,
-applied Flyway V1–V4, initialized the complete Spring application with Hibernate schema validation,
+applied Flyway V1–V5, initialized the complete Spring application with Hibernate schema validation,
 ran HTTP scenarios on a real server and built the executable jar through `clean verify`.
-Result: **94 tests, 0 failures, 0 errors, 0 skipped; BUILD SUCCESS**.
+Result: **118 tests, 0 failures, 0 errors, 0 skipped; BUILD SUCCESS**.
 The script removed its own test container afterwards.
 
 | Suite | Tests |
@@ -23,19 +23,20 @@ The script removed its own test container afterwards.
 | identity.api.dto.identityapplication.response.IdentityApplicationResponseTest | 3 |
 | identity.core.application.identity.IdentityLifecycleUseCaseTest | 1 |
 | identity.core.application.identity.SelfDeleteIdentityUseCaseTest | 1 |
-| identity.core.application.identityapplication.ApproveApproveIdentityApplicationUseCaseTest | 5 |
+| identity.core.application.identityapplication.ApproveIdentityApplicationUseCaseTest | 5 |
 | identity.core.domain.affiliation.AffiliationDomainTest | 7 |
 | identity.core.domain.affiliation.AffiliationValidityTest | 1 |
 | identity.core.domain.identity.IdentityDomainTest | 5 |
 | identity.core.domain.identity.IdentityLifecycleTest | 1 |
 | identity.core.domain.tenant.TenantDomainTest | 1 |
 | identity.feature.IdentityEndToEndTest | 1 |
+| identity.infra.persistence.affiliation.AffiliationHistoryIntegrationTest | 24 |
 | identity.infra.persistence.affiliation.AffiliationIntegrationTest | 7 |
 | identity.infra.persistence.identity.IdentityRevocationIntegrationTest | 3 |
 | identity.infra.persistence.identity.IdentitySelfDeleteIntegrationTest | 5 |
 | identity.infra.persistence.identityapplication.IdentityApplicationIntegrationTest | 12 |
 | platform.openapi.SwaggerOperationCustomizersTest | 3 |
-| Total | 94 |
+| Total | 118 |
 
 ## Requirement evidence
 
@@ -43,7 +44,7 @@ The script removed its own test container afterwards.
 | --- | --- | --- |
 | IIAMS-16 | Locked activate/disable/reactivate use cases persist IdentityResult | IdentityLifecycleTest; IdentityDomainTest for all kinds; HTTP lifecycle |
 | IIAMS-17 | Owner-derived self-delete, optional reason, HTTP 204, revocation | selfDeleteTakesItsTargetFromTrustedActorAndRejectsInvalidReasonBeforeWriting; httpOnboardingLifecycleErrorsAndSelfDeleteAreFunctional |
-| IIAMS-18 | Full typed snapshot and JOINED hard delete in one transaction | selfDeleteCommitsFullSnapshotRemovesJoinedRowsAndPermitsReregistration for all kinds; failingHistoryInsertRollsBackDeletionAndRevocationRequest; failingOperationalDeleteRollsBackAlreadyWrittenHistory |
+| IIAMS-18 | Full typed snapshot and JOINED hard delete in one transaction | selfDeleteCommitsFullSnapshotRemovesJoinedRowsAndPermitsReregistration for all kinds; failingHistoryInsertRollsBackDeletionAndRevocationRequest; failingOperationalDeleteRollsBackAlreadyWrittenHistory; AffiliationHistoryIntegrationTest |
 | IIAMS-19 | Approval creates correct Identity kind and selected Affiliation atomically | approvalPersistsCorrectKindAndReviewerAndCannotResolveTwice; approvalSupportsEachAffiliationSpecialization; scopedCodesAreUniqueOnlyWithinTenantAndApprovalRollsBack |
 | IIAMS-20 | Rejection persists actor, time and reason with no provisioning | rejectionIsAuditedAndDoesNotProvisionIdentity |
 | IIAMS-21 | CurrentActor port and trusted security adapter | actorFailureStopsApprovalBeforeAnyWrite; missingActorCannotResolveOrDelete |
@@ -60,9 +61,9 @@ The script removed its own test container afterwards.
 | IIAMS-32 | Core ports separate Identity from Spring Security and Authentication internals | Source search: no security/authentication imports in identity/core; full clean verify |
 | IIAMS-33 | Lifecycle, time, natural-key and subtype invariants | IdentityDomainTest and IdentityLifecycleTest |
 | IIAMS-34 | Application orchestration tested with mocked ports and real transactions | ApproveIdentityApplicationUseCaseTest; IdentityApplicationIntegrationTest |
-| IIAMS-35 | Real migrations, polymorphic persistence, snapshot, deletion and rollback | Flyway V1–V4 on fresh PostgreSQL; IdentityApplicationIntegrationTest, AffiliationIntegrationTest and IdentitySelfDeleteIntegrationTest |
+| IIAMS-35 | Real migrations, polymorphic persistence, snapshot, deletion and rollback | Flyway V1–V5 on fresh PostgreSQL; IdentityApplicationIntegrationTest, AffiliationIntegrationTest and IdentitySelfDeleteIntegrationTest |
 | IIAMS-36 | Actual HTTP contracts, variants, status, authorization and ProblemDetail | IdentityHttpContractTest, IdentityApplicationHttpContractTest, TenantHttpContractTest, IdentitySelfDeleteHttpContractTest and IdentityOpenApiIntegrationTest |
-| IIAMS-37 | Complete application bootstrap, no placeholders/legacy, fresh-schema clean verify and jar | 94 passing tests; source gate; executable jar built |
+| IIAMS-37 | Complete application bootstrap, no placeholders/legacy, fresh-schema clean verify and jar | 118 passing tests; source gate; executable jar built |
 
 Stories IIAMS-9–IIAMS-15 and Epic IIAMS-8 consolidate the completed requirements above.
 Source gate found no UnsupportedOperationException/TODO/FIXME, legacy User references,
@@ -91,3 +92,24 @@ The documentation follows the organization reviewed in Jeep Club's `develop` bra
 The final `clean verify` ran after the last Java/test change. Swagger JavaScript passed `node --check`.
 All local Markdown links were checked. Browser review confirmed feature navigation, approval request/response/error examples,
 permission display and tag filtering without browser warning/error logs. No HTTP mutation was executed through Swagger during this review.
+
+## Deletion history audit and correction
+
+Audited all four lifecycle aggregates against Jeep Club's history + physical deletion pattern. No Identity lifecycle enum
+contains DELETED and there is no operational soft-delete mapping. Tenant has disable/reactivate, not deletion;
+IdentityApplication retains its approved/rejected decision and original audit IDs. Affiliation INACTIVE remains recoverable.
+
+The audit found and corrected a gap: self-delete removed Affiliation rows without preserving their own snapshots.
+V5 now introduces AffiliationHistoryEntity/ima_affiliations__history, including original Identity/Tenant/affiliation IDs,
+type-specific identifiers, previous status, timestamps/version and actor/reason/deletion time. It correlates with IdentityHistory.
+Both history mappings are immutable. Every related affiliation is locked and archived before deleting its JOINED rows.
+The histories have no operational foreign keys or natural-key uniqueness; their technical UUID is the only unique key.
+
+AffiliationHistoryIntegrationTest adds 24 executed cases: three Identity kinds × five affiliation kinds, repeated
+re-registration/approval/deletion with the exact same natural keys; all five inactive kinds; multiple Tenants and links;
+preservation of unrelated entities; archive/delete failure rollback; and PostgreSQL index/constraint verification.
+The existing Identity delete-failure cases additionally verify that no affiliation history survives a rolled-back transaction.
+
+Final full clean verify: 118 tests, zero failures/errors/skips, fresh PostgreSQL 17.11 with V1–V5, JPA schema validation and
+executable JAR. No application database was migrated. Previously deleted affiliation data cannot be recovered from the
+old Identity-only snapshot. Details: [deletion and audit policy](../src/main/java/br/com/imarui/ima/identity/docs/deletion-and-history.md).
