@@ -45,3 +45,7 @@ app:
 logging:
   level:
     org.hibernate.orm.jdbc.error: OFF
+
+# Trusted proxy policy belongs to future IIAMS-80; never infer client IP/TLS from public headers.
+server:
+  forward-headers-strategy: none

@@ -121,18 +121,41 @@ public class AuthenticationUseCases {
 
   @Transactional
   public void logout(String raw) {
-    if (raw == null || raw.isBlank()) return;
-    var t = store.token(hash(raw), false).orElse(null);
-    if (t == null) return;
-    var owner = t.getSession().getIdentityId();
-    if (owner == null) return;
+    logout(null, null, raw);
+  }
+
+  @Transactional(noRollbackFor = AuthenticationFailure.class)
+  public void logout(UUID actor, UUID sid, String raw) {
+    boolean cookie = raw != null;
+    RefreshToken token = null;
+    if (cookie) {
+      try {
+        token = store.token(hash(raw), false).orElse(null);
+      } catch (AuthenticationFailure invalid) {
+        /* Compare before effects below. */
+      }
+    }
+    if (actor != null
+        && cookie
+        && (token == null
+            || !actor.equals(token.getSession().getIdentityId())
+            || !sid.equals(token.getSession().getPublicId()))) {
+      store.audit(actor, null, "LOGOUT_MISMATCH", "DENIED", null, clock.instant());
+      throw new AuthenticationFailure();
+    }
+    UUID owner = actor != null ? actor : token == null ? null : token.getSession().getIdentityId();
+    UUID selected = sid != null ? sid : token == null ? null : token.getSession().getPublicId();
+    if (owner == null || selected == null) return;
     identities.lock(owner);
     store.credential(owner);
-    var s = store.session(t.getSession().getPublicId(), true).orElse(null);
-    if (s == null) return;
-    s.logout(clock.instant());
-    store.save(s);
-    store.revokeTokens(s.getId());
+    var session =
+        store
+            .session(selected, true)
+            .filter(s -> owner.equals(s.getIdentityId()))
+            .orElseThrow(AuthenticationFailure::new);
+    session.logout(clock.instant());
+    store.save(session);
+    store.revokeTokens(session.getId());
     store.audit(owner, "LOGOUT", clock.instant());
   }
 
@@ -185,7 +208,7 @@ public class AuthenticationUseCases {
     var now = clock.instant();
     store.credential(owner);
     String raw = random.generate();
-    store.replaceChallenge(
+    store.addChallenge(
         new AuthenticationChallenge(
             UUID.randomUUID(),
             owner,
@@ -199,6 +222,18 @@ public class AuthenticationUseCases {
             null));
     store.audit(owner, "CHALLENGE_ISSUED", now);
     return raw;
+  }
+
+  @Transactional(noRollbackFor = AuthenticationFailure.class)
+  public String administrativeInvitation(UUID actor, UUID target, String origin) {
+    try {
+      String raw = issueChallenge(target, Purpose.ACCOUNT_ACTIVATION);
+      store.audit(actor, target, "ADMIN_INVITATION", "SUCCESS", origin, clock.instant());
+      return raw;
+    } catch (AuthenticationFailure failure) {
+      store.audit(actor, target, "ADMIN_INVITATION", "DENIED", origin, clock.instant());
+      throw failure;
+    }
   }
 
   @Transactional
@@ -216,8 +251,8 @@ public class AuthenticationUseCases {
             : !identity.active())) throw new AuthenticationFailure();
     if (c == null) c = new Credential(identity.id(), null, 0, null, true, now, now);
     store.save(c.password(passwords.hash(password), now));
-    store.consume(challenge.id(), now);
-    store.revoke(identity.id(), now);
+    store.consumePurpose(identity.id(), purpose, now);
+    store.revokeSessions(identity.id(), now);
     if (purpose == Purpose.ACCOUNT_ACTIVATION) identities.activate(identity.id());
     store.audit(
         identity.id(),

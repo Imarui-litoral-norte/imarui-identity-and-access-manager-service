@@ -119,10 +119,10 @@ public class AuthenticationController {
       @AuthenticationPrincipal Jwt jwt,
       HttpServletRequest request) {
     secure(request);
-    if (jwt != null)
-      auth.endSession(
-          UUID.fromString(jwt.getSubject()), UUID.fromString(jwt.getClaimAsString("sid")));
-    auth.logout(token);
+    auth.logout(
+        jwt == null ? null : UUID.fromString(jwt.getSubject()),
+        jwt == null ? null : UUID.fromString(jwt.getClaimAsString("sid")),
+        token);
     return ResponseEntity.noContent()
         .header(HttpHeaders.SET_COOKIE, cookie("", Duration.ZERO))
         .header(HttpHeaders.CACHE_CONTROL, "no-store")
@@ -134,8 +134,8 @@ public class AuthenticationController {
   @io.swagger.v3.oas.annotations.Operation(
       summary = "Solicitar primeiro acesso",
       description =
-          "Resposta genérica. Envia convite ao contato configurado. SERVICE sem contato recebe"
-              + " convite por operador autorizado.")
+          "Resposta genérica. Envia convite ao contato configurado. SERVICE também possui e-mail e"
+              + " recebe convite por operador autorizado.")
   public void activationRequest(@Valid @RequestBody Identification body, HttpServletRequest req) {
     secure(req);
     throttle("activation", body.identityKind() + ":" + normalize(body.identifier()), req, 5);
@@ -217,10 +217,17 @@ public class AuthenticationController {
       description =
           "Operador autorizado recebe segredo uma única vez para entrega segura a SERVICE ou"
               + " titular. Não é endpoint público de emissão.")
-  public ResponseEntity<Map<String, String>> invitation(@PathVariable UUID id) {
+  public ResponseEntity<Map<String, String>> invitation(
+      @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt, HttpServletRequest req) {
+    secure(req);
+    throttle("admin-invitation", jwt.getSubject(), req, 5);
     return ResponseEntity.ok()
         .cacheControl(CacheControl.noStore())
-        .body(Map.of("invitation", auth.issueChallenge(id, Purpose.ACCOUNT_ACTIVATION)));
+        .body(
+            Map.of(
+                "invitation",
+                auth.administrativeInvitation(
+                    UUID.fromString(jwt.getSubject()), id, req.getRemoteAddr())));
   }
 
   private ResponseEntity<Access> response(AuthenticationUseCases.Issued result) {

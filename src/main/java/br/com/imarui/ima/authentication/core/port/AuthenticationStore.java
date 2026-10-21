@@ -11,9 +11,11 @@ public interface AuthenticationStore {
 
   Optional<AuthenticationChallenge> challenge(String hash, boolean lock);
 
-  void replaceChallenge(AuthenticationChallenge c);
+  void addChallenge(AuthenticationChallenge c);
 
-  void consume(UUID challenge, Instant now);
+  void consumePurpose(UUID owner, AuthenticationChallenge.Purpose purpose, Instant now);
+
+  void revokeSessions(UUID identity, Instant cutoff);
 
   Session createSession(UUID id, Instant now);
 
@@ -32,4 +34,6 @@ public interface AuthenticationStore {
   List<Session> sessions(UUID owner);
 
   void audit(UUID id, String event, Instant now);
+
+  void audit(UUID actor, UUID target, String event, String result, String origin, Instant now);
 }

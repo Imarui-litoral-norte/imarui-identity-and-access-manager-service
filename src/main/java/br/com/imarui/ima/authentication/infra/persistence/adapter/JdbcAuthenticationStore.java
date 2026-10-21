@@ -78,13 +78,7 @@ public class JdbcAuthenticationStore implements AuthenticationStore {
         .findFirst();
   }
 
-  public void replaceChallenge(AuthenticationChallenge c) {
-    jdbc.update(
-        "update authentication_challenges set consumed_at=? where identity_id=? and purpose=? and"
-            + " consumed_at is null",
-        ts(c.createdAt()),
-        c.identityId(),
-        c.purpose().name());
+  public void addChallenge(AuthenticationChallenge c) {
     jdbc.update(
         "insert into authentication_challenges values(?,?,?,?,?,?,?)",
         c.id(),
@@ -96,11 +90,13 @@ public class JdbcAuthenticationStore implements AuthenticationStore {
         null);
   }
 
-  public void consume(UUID id, Instant now) {
+  public void consumePurpose(UUID owner, AuthenticationChallenge.Purpose purpose, Instant now) {
     jdbc.update(
-        "update authentication_challenges set consumed_at=? where id=? and consumed_at is null",
+        "update authentication_challenges set consumed_at=? where identity_id=? and purpose=? and"
+            + " consumed_at is null",
         ts(now),
-        id);
+        owner,
+        purpose.name());
   }
 
   public Session createSession(UUID id, Instant now) {
@@ -167,7 +163,7 @@ public class JdbcAuthenticationStore implements AuthenticationStore {
     tokens.revokeActiveBySessionId(session);
   }
 
-  public void revoke(UUID id, Instant cutoff) {
+  public void revokeSessions(UUID id, Instant cutoff) {
     var ids =
         jdbc.queryForList(
             "select id from authentication_sessions where identity_id=? and created_at<=? order by"
@@ -181,6 +177,10 @@ public class JdbcAuthenticationStore implements AuthenticationStore {
       sessions.save(s);
       tokens.revokeActiveBySessionId(sid);
     }
+  }
+
+  public void revoke(UUID id, Instant cutoff) {
+    revokeSessions(id, cutoff);
     jdbc.update(
         "update authentication_challenges set consumed_at=? where identity_id=? and consumed_at is"
             + " null and created_at<=?",
@@ -206,6 +206,21 @@ public class JdbcAuthenticationStore implements AuthenticationStore {
         "insert into authentication_audit(identity_id,event,occurred_at) values(?,?,?)",
         id,
         event,
+        ts(now));
+  }
+
+  public void audit(
+      UUID actor, UUID target, String event, String result, String origin, Instant now) {
+    jdbc.update(
+        "insert into"
+            + " authentication_audit(identity_id,actor_identity_id,target_identity_id,event,result,request_origin,occurred_at)"
+            + " values(?,?,?,?,?,?,?)",
+        target,
+        actor,
+        target,
+        event,
+        result,
+        origin,
         ts(now));
   }
 }
