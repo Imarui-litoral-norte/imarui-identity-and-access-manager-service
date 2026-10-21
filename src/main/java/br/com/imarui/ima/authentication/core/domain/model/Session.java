@@ -25,6 +25,13 @@ import java.time.Instant;
 public class Session {
 
     private Long id;
+    private java.util.UUID identityId;
+    private java.util.UUID publicId;
+    private Instant revokedAt;
+    public Session authenticationContext(java.util.UUID identityId,java.util.UUID publicId,Instant revokedAt){this.identityId=identityId;this.publicId=publicId;this.revokedAt=revokedAt;return this;}
+    public static Session createForIdentity(java.util.UUID identityId, Instant now){return create(Duration.ofDays(7),now).authenticationContext(java.util.Objects.requireNonNull(identityId),java.util.UUID.randomUUID(),null);}
+    public void revokeAt(Instant now){if(status==SessionStatus.ACTIVE){revoke();revokedAt=now;}}
+
     private Instant createdAt;
     private Instant expiresAt;
     private Instant loggedOutAt;

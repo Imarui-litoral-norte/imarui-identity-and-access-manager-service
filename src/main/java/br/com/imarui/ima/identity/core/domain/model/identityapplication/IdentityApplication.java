@@ -21,6 +21,8 @@ public final class IdentityApplication {
     private static final int MAX_REJECTION_REASON_LENGTH = 500;
 
     private final IdentityApplicationId id;
+    private String nickname;
+    public void assignNickname(String value) { nickname = br.com.imarui.ima.identity.core.domain.model.identity.Nickname.from(value).value(); }
     private final Email email;
     private final IdentityApplicationDetails details;
     private IdentityApplicationStatus status;
@@ -50,10 +52,8 @@ public final class IdentityApplication {
                 "id cannot be null"
         );
 
-        this.email = Objects.requireNonNull(
-                email,
-                "email cannot be null"
-        );
+        this.email = email;
+        if(email==null && !(details instanceof ServiceIdentityApplicationDetails))throw new IllegalArgumentException("Email is required.");
 
         this.details = Objects.requireNonNull(
                 details,

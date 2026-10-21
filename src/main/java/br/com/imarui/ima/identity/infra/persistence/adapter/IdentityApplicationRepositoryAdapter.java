@@ -19,6 +19,7 @@ import java.util.Optional;
 public class IdentityApplicationRepositoryAdapter
         implements IdentityApplicationRepository {
 
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
     private final IdentityApplicationJpaRepository jpaRepository;
     private final IdentityApplicationPersistenceMapper mapper;
 
@@ -102,4 +103,5 @@ public class IdentityApplicationRepositoryAdapter
                 IdentityApplicationStatus.PENDING
         );
     }
+ public boolean existsPendingNickname(String nickname,br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind kind){return Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from ima_identity_applications where identity_kind=? and nickname=? and status='PENDING')",Boolean.class,kind.name(),nickname));}
 }

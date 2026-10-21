@@ -44,6 +44,7 @@ public record CreatePersonIdentityApplicationRequest(
         )
         String phoneNumber
 
+, @NotBlank @Size(min=3,max=64) String nickname
 ) implements CreateIdentityApplicationRequest {
 
     @Override

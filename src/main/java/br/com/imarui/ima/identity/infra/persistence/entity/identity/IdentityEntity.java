@@ -26,6 +26,9 @@ import java.util.UUID;
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class IdentityEntity {
+    @Column(name="nickname", length=64)
+    private String nickname;
+    public void assignNickname(String value) { this.nickname = value; }
 
     @Id
     @Column(name = "id", nullable = false, updatable = false)

@@ -10,7 +10,10 @@ public record CreatePersonIdentityApplicationCommand(
         String email,
         LocalDate birthDate,
         String phoneNumber
+, String nickname
 ) implements CreateIdentityApplicationCommand {
+
+    public CreatePersonIdentityApplicationCommand(String fullName, String cpf, String email, LocalDate birthDate, String phoneNumber) { this(fullName, cpf, email, birthDate, phoneNumber, null); }
 
     @Override
     public IdentityKind kind() {

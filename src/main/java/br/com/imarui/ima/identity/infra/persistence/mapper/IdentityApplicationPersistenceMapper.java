@@ -26,8 +26,11 @@ import java.util.UUID;
 
 @Component
 public class IdentityApplicationPersistenceMapper {
+ public IdentityApplicationEntity toEntity(IdentityApplication value) { var entity = baseEntity(value); entity.assignNickname(value.getNickname()); return entity; }
+ public IdentityApplication toDomain(IdentityApplicationEntity entity) { var value = baseDomain(entity); if (entity.getNickname()!=null) value.assignNickname(entity.getNickname()); return value; }
 
-    public IdentityApplicationEntity toEntity(
+
+    private IdentityApplicationEntity baseEntity(
             IdentityApplication application
     ) {
         IdentityApplicationDetails details = application.getDetails();
@@ -59,7 +62,7 @@ public class IdentityApplicationPersistenceMapper {
         return new IdentityApplicationEntity(
                 application.getId().value(),
                 application.getKind(),
-                application.getEmail().value(),
+                application.getEmail()==null?null:application.getEmail().value(),
                 fullName,
                 cpf,
                 birthDate,
@@ -84,6 +87,7 @@ public class IdentityApplicationPersistenceMapper {
             IdentityApplication application,
             IdentityApplicationEntity entity
     ) {
+        entity.assignNickname(application.getNickname());
         entity.updateFrom(
                 application.getStatus(),
                 application.getReviewedAt(),
@@ -95,12 +99,12 @@ public class IdentityApplicationPersistenceMapper {
         );
     }
 
-    public IdentityApplication toDomain(
+    private IdentityApplication baseDomain(
             IdentityApplicationEntity entity
     ) {
         return IdentityApplication.reconstitute(
                 IdentityApplicationId.from(entity.getId()),
-                Email.from(entity.getEmail()),
+                entity.getEmail()==null?null:Email.from(entity.getEmail()),
                 detailsFrom(entity),
                 entity.getStatus(),
                 entity.getRequestedAt(),

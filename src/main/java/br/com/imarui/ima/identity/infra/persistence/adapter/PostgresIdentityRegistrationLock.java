@@ -18,7 +18,8 @@ public class PostgresIdentityRegistrationLock implements IdentityRegistrationLoc
     private final JdbcTemplate jdbc;
     public void acquire(IdentityApplication application) {
         var keys = new ArrayList<String>();
-        keys.add("email:" + application.getKind() + ":" + application.getEmail().value());
+        if(application.getNickname()!=null)keys.add("nickname:"+application.getKind()+":"+application.getNickname());
+        if(application.getEmail()!=null)keys.add("email:" + application.getKind() + ":" + application.getEmail().value());
         if (application.getDetails() instanceof PersonIdentityApplicationDetails person) keys.add("cpf:" + person.cpf().value());
         if (application.getDetails() instanceof LegalEntityIdentityApplicationDetails legal) keys.add("cnpj:" + legal.cnpj().value());
         keys.stream().map(this::hash).distinct().sorted().forEach(key ->

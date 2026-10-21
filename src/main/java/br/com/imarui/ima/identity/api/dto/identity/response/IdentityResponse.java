@@ -10,6 +10,7 @@ import java.util.UUID;
 public record IdentityResponse(
         @io.swagger.v3.oas.annotations.media.Schema(description = "UUID estável do recurso.", accessMode = io.swagger.v3.oas.annotations.media.Schema.AccessMode.READ_ONLY, requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED)
         UUID id,
+        String nickname,
         @io.swagger.v3.oas.annotations.media.Schema(description = "Tipo que discrimina o bloco details.", accessMode = io.swagger.v3.oas.annotations.media.Schema.AccessMode.READ_ONLY, requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED)
         IdentityKind kind,
         @io.swagger.v3.oas.annotations.media.Schema(description = "E-mail normalizado; unicidade por IdentityKind.", accessMode = io.swagger.v3.oas.annotations.media.Schema.AccessMode.READ_ONLY, requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED)
@@ -31,6 +32,7 @@ public record IdentityResponse(
     public static IdentityResponse from(IdentityResult result) {
         return new IdentityResponse(
                 result.id(),
+                result.nickname(),
                 result.kind(),
                 result.primaryEmail(),
                 result.status(),

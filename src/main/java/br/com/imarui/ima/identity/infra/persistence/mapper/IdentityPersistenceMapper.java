@@ -10,8 +10,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class IdentityPersistenceMapper {
+ public IdentityEntity toEntity(Identity value) { var entity = baseEntity(value); entity.assignNickname(value.getNickname()); return entity; }
+ public Identity toDomain(IdentityEntity entity) { var value = baseDomain(entity); if (entity.getNickname()!=null) value.assignNickname(entity.getNickname()); return value; }
 
-    public IdentityEntity toEntity(Identity identity) {
+
+    private IdentityEntity baseEntity(Identity identity) {
         if (identity instanceof PersonIdentity person) {
             return toPersonEntity(person);
         }
@@ -31,6 +34,7 @@ public class IdentityPersistenceMapper {
             Identity identity,
             IdentityEntity entity
     ) {
+        entity.assignNickname(identity.getNickname());
         if (
                 identity instanceof PersonIdentity person
                         && entity instanceof PersonIdentityEntity target
@@ -90,7 +94,7 @@ public class IdentityPersistenceMapper {
         );
     }
 
-    public Identity toDomain(IdentityEntity entity) {
+    private Identity baseDomain(IdentityEntity entity) {
         if (entity instanceof PersonIdentityEntity person) {
             return toPersonDomain(person);
         }
@@ -221,6 +225,7 @@ public class IdentityPersistenceMapper {
     private IdentityEmailEmbeddable toEmail(
             IdentityEmail email
     ) {
+        if(email==null)return null;
         return new IdentityEmailEmbeddable(
                 email.id().value(),
                 email.email().value(),
@@ -234,6 +239,7 @@ public class IdentityPersistenceMapper {
     private IdentityEmail toEmailDomain(
             IdentityEmailEmbeddable email
     ) {
+        if(email==null||email.getId()==null)return null;
         return IdentityEmail.reconstitute(
                 IdentityEmailId.from(email.getId()),
                 Email.from(email.getEmail()),

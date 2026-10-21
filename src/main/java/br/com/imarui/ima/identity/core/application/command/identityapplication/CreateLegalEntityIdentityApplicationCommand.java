@@ -7,7 +7,10 @@ public record CreateLegalEntityIdentityApplicationCommand(
         String tradeName,
         String cnpj,
         String email
+, String nickname
 ) implements CreateIdentityApplicationCommand {
+
+    public CreateLegalEntityIdentityApplicationCommand(String legalName, String tradeName, String cnpj, String email) { this(legalName, tradeName, cnpj, email, null); }
 
     @Override
     public IdentityKind kind() {

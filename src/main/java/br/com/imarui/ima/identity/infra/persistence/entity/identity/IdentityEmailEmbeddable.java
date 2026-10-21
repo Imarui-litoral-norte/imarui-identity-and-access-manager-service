@@ -14,23 +14,23 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class IdentityEmailEmbeddable {
 
-    @Column(name = "primary_email_id", nullable = false, updatable = false)
+    @Column(name = "primary_email_id", updatable = false)
     private UUID id;
 
-    @Column(name = "primary_email", nullable = false, length = 320)
+    @Column(name = "primary_email", length = 320)
     private String email;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "primary_email_type", nullable = false, length = 20)
+    @Column(name = "primary_email_type", length = 20)
     private EmailType type;
 
-    @Column(name = "primary_email_verified", nullable = false)
+    @Column(name = "primary_email_verified")
     private boolean verified;
 
     @Column(name = "primary_email_verified_at")
     private Instant verifiedAt;
 
-    @Column(name = "primary_email_created_at", nullable = false, updatable = false)
+    @Column(name = "primary_email_created_at", updatable = false)
     private Instant createdAt;
 
     public IdentityEmailEmbeddable(

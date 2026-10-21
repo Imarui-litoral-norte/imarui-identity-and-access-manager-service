@@ -27,7 +27,6 @@ public record CreateServiceIdentityApplicationRequest(
         )
         String description,
 
-        @NotBlank(message = "Email is required.")
         @Email(message = "Email has an invalid format.")
         @Size(
                 max = 254,
@@ -35,6 +34,7 @@ public record CreateServiceIdentityApplicationRequest(
         )
         String email
 
+, @NotBlank @Size(min=3,max=64) String nickname
 ) implements CreateIdentityApplicationRequest {
 
     @Override

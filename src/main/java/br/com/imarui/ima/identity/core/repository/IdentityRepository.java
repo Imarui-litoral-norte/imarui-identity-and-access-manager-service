@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IdentityRepository {
+    boolean existsNickname(String nickname,br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind kind);
 
     Identity save(Identity identity);
 

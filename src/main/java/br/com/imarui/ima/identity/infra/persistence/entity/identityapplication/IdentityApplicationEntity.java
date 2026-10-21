@@ -38,6 +38,9 @@ import java.util.UUID;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class IdentityApplicationEntity {
+    @Column(name="nickname", length=64)
+    private String nickname;
+    public void assignNickname(String value) { this.nickname = value; }
 
     @Id
     @Column(name = "id", nullable = false, updatable = false)
@@ -47,7 +50,7 @@ public class IdentityApplicationEntity {
     @Column(name = "identity_kind", nullable = false, length = 30)
     private IdentityKind kind;
 
-    @Column(name = "email", nullable = false, length = 254)
+    @Column(name = "email", length = 254)
     private String email;
 
     @Column(name = "full_name", length = 150)

@@ -19,7 +19,7 @@ public final class IdentityProvisioning {
     private IdentityProvisioning() {}
     public static Identity identity(IdentityApplication application, Instant now) {
         var id = IdentityId.generate();
-        var email = IdentityEmail.create(application.getEmail(), EmailType.PRIMARY, now);
+        var email = application.getEmail()==null?null:IdentityEmail.create(application.getEmail(), EmailType.PRIMARY, now);
         if (application.getDetails() instanceof PersonIdentityApplicationDetails p)
             return PersonIdentity.create(id, email, p.fullName(), p.cpf(), p.birthDate(), p.phoneNumber() == null ? null : IdentityPhoneNumber.create(p.phoneNumber(), now), now);
         if (application.getDetails() instanceof LegalEntityIdentityApplicationDetails p)

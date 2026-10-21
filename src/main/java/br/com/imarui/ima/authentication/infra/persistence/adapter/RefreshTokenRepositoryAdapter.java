@@ -176,4 +176,9 @@ public class RefreshTokenRepositoryAdapter
             );
         }
     }
+
+    public List<RefreshToken> findPage(int page,int size) {
+        var values=jpaRepository.findAll(org.springframework.data.domain.PageRequest.of(page,size,org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,"id"))).getContent();
+        return mapToDomains(values);
+    }
 }

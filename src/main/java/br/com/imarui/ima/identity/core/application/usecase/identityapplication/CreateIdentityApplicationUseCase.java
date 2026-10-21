@@ -47,11 +47,12 @@ public class CreateIdentityApplicationUseCase {
         Instant now = Instant.now(clock);
         IdentityApplication application = IdentityApplication.create(
                 IdentityApplicationId.generate(),
-                Email.from(command.email()),
+                command.email()==null?null:Email.from(command.email()),
                 detailsFrom(command),
                 now
         );
 
+        if (command.nickname() != null) application.assignNickname(command.nickname());
         registrationLock.acquire(application);
         conflicts.check(application, true);
         return IdentityApplicationResult.from(

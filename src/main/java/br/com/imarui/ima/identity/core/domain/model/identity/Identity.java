@@ -16,6 +16,8 @@ import java.util.Objects;
 public abstract class Identity {
 
     private final IdentityId id;
+    private String nickname;
+    public void assignNickname(String value) { nickname = br.com.imarui.ima.identity.core.domain.model.identity.Nickname.from(value).value(); }
     private IdentityEmail primaryEmail;
     private IdentityStatus status;
     private final Instant createdAt;
@@ -37,10 +39,8 @@ public abstract class Identity {
                 "id cannot be null"
         );
 
-        this.primaryEmail = Objects.requireNonNull(
-                primaryEmail,
-                "primaryEmail cannot be null"
-        );
+        this.primaryEmail = primaryEmail;
+        if(primaryEmail==null && !(this instanceof br.com.imarui.ima.identity.core.domain.model.identity.service.ServiceIdentity))throw new IllegalArgumentException("Primary email is required.");
 
         this.status = Objects.requireNonNull(
                 status,
@@ -65,6 +65,8 @@ public abstract class Identity {
 
     @NotNull
     public abstract IdentityKind getKind();
+
+    public void changeNickname(String value, Instant now) { validateEventTime(now); assignNickname(value); updatedAt = now; }
 
     public final boolean isPending() {
         return status == IdentityStatus.PENDING;

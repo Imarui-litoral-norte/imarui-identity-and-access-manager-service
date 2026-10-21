@@ -10,6 +10,7 @@ public interface RefreshTokenRepository {
     RefreshToken save(RefreshToken token);
 
     List<RefreshToken> findAll();
+    List<RefreshToken> findPage(int page,int size);
 
     Optional<RefreshToken> findById(Long id);
 

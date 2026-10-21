@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IdentityApplicationRepository {
+    boolean existsPendingNickname(String nickname,br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind kind);
 
     IdentityApplication save(IdentityApplication identityApplication);
 

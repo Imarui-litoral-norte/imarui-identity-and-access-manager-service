@@ -35,6 +35,7 @@ public class ApproveIdentityApplicationUseCase {
         if (!tenant.canProvisionIdentities()) throw new TenantUnavailableException();
         var now = clock.instant();
         var identity = identities.save(IdentityProvisioning.identity(application, now));
+        if (application.getNickname() != null) { identity.assignNickname(application.getNickname()); identity = identities.save(identity); }
         var affiliation = affiliations.save(IdentityProvisioning.affiliation(command.affiliation(), tenant.getId(), identity.getId(), now, affiliations));
         application.approve(actor, identity.getId(), tenant.getId(), affiliation.getId(), now);
         return IdentityApplicationResult.from(applications.save(application));

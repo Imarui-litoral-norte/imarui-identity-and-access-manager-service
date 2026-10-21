@@ -29,7 +29,7 @@ public final class IdentityApplicationCommandFactory {
                     person.cpf(),
                     person.email(),
                     person.birthDate(),
-                    person.phoneNumber()
+                    person.phoneNumber(), person.nickname()
             );
         }
 
@@ -38,7 +38,7 @@ public final class IdentityApplicationCommandFactory {
                     legalEntity.legalName(),
                     legalEntity.tradeName(),
                     legalEntity.cnpj(),
-                    legalEntity.email()
+                    legalEntity.email(), legalEntity.nickname()
             );
         }
 
@@ -46,7 +46,7 @@ public final class IdentityApplicationCommandFactory {
             return new CreateServiceIdentityApplicationCommand(
                     service.name(),
                     service.description(),
-                    service.email()
+                    service.email(), service.nickname()
             );
         }
 

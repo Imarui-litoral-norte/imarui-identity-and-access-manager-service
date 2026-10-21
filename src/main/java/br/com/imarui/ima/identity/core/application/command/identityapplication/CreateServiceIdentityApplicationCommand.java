@@ -6,7 +6,10 @@ public record CreateServiceIdentityApplicationCommand(
         String name,
         String description,
         String email
+, String nickname
 ) implements CreateIdentityApplicationCommand {
+
+    public CreateServiceIdentityApplicationCommand(String name, String description, String email) { this(name, description, email, null); }
 
     @Override
     public IdentityKind kind() {

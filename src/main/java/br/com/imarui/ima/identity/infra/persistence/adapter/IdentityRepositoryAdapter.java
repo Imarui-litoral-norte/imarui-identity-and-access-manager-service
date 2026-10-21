@@ -18,6 +18,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class IdentityRepositoryAdapter implements IdentityRepository {
 
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
     private final IdentityJpaRepository jpaRepository;
     private final IdentityPersistenceMapper mapper;
 
@@ -32,7 +33,7 @@ public class IdentityRepositoryAdapter implements IdentityRepository {
                 .orElseGet(() -> mapper.toEntity(identity));
 
         return mapper.toDomain(
-                jpaRepository.save(entity)
+                jpaRepository.saveAndFlush(entity)
         );
     }
 
@@ -92,4 +93,5 @@ public class IdentityRepositoryAdapter implements IdentityRepository {
                 email.value()
         );
     }
+ public boolean existsNickname(String nickname,br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind kind){return Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from ima_identities where kind=? and nickname=?)",Boolean.class,kind.name(),nickname));}
 }
