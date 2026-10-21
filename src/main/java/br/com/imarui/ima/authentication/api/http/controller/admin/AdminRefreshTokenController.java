@@ -5,7 +5,7 @@ import br.com.imarui.ima.authentication.core.application.result.admin.refresh.Ad
 import br.com.imarui.ima.authentication.core.application.service.refreshtoken.AdminRefreshTokenService;
 import br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup;
 import br.com.imarui.ima.platform.openapi.security.RequiredPermission;
-import br.com.imarui.ima.platform.web.exception.ApiErrorResponse;
+import org.springframework.http.ProblemDetail;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -47,8 +47,8 @@ public class AdminRefreshTokenController {
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = AdminRefreshTokenResponseDTO.class))
             )
     )
-    public ResponseEntity<List<AdminRefreshTokenResponseDTO>> findAll() {
-        List<AdminRefreshTokenResult> results = adminRefreshTokenService.findAll();
+    public ResponseEntity<List<AdminRefreshTokenResponseDTO>> findAll(@org.springframework.web.bind.annotation.RequestParam(defaultValue="0") @jakarta.validation.constraints.Min(0) int page, @org.springframework.web.bind.annotation.RequestParam(defaultValue="100") @jakarta.validation.constraints.Min(1) @jakarta.validation.constraints.Max(100) int size) {
+        List<AdminRefreshTokenResult> results = adminRefreshTokenService.findPage(page,size);
         return ResponseEntity.ok(AdminRefreshTokenResponseDTO.from(results));
     }
 
@@ -68,7 +68,7 @@ public class AdminRefreshTokenController {
                     @ApiResponse(
                             responseCode = "404",
                             description = "Refresh token não encontrado.",
-                            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ApiErrorResponse.class))
+                            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE, schema = @Schema(implementation = ProblemDetail.class))
                     )
             }
     )
@@ -93,12 +93,12 @@ public class AdminRefreshTokenController {
                     @ApiResponse(
                             responseCode = "404",
                             description = "Refresh token não encontrado.",
-                            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ApiErrorResponse.class))
+                            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE, schema = @Schema(implementation = ProblemDetail.class))
                     ),
                     @ApiResponse(
                             responseCode = "409",
                             description = "Refresh token já está revogado ou não pode ser revogado no estado atual.",
-                            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ApiErrorResponse.class))
+                            content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE, schema = @Schema(implementation = ProblemDetail.class))
                     )
             }
     )

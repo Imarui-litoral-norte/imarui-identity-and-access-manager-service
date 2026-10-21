@@ -9,7 +9,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class PasswordConfig {
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+    public PasswordEncoder passwordEncoder(@org.springframework.beans.factory.annotation.Value("${security.auth.bcrypt-cost:12}") int cost) {
+        if(cost<4 || cost>16)throw new IllegalStateException("BCrypt cost must be between 4 and 16.");
+        return new BCryptPasswordEncoder(cost);
     }
 }

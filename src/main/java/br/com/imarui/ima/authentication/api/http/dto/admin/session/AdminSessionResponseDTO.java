@@ -11,6 +11,9 @@ import java.util.Objects;
 public record AdminSessionResponseDTO(
         @Schema(description = "Identificador único da sessão.", example = "10", requiredMode = Schema.RequiredMode.REQUIRED)
         Long id,
+        java.util.UUID identityId,
+        java.util.UUID sid,
+        Instant revokedAt,
         @Schema(description = "Status atual da sessão.", example = "ACTIVE", requiredMode = Schema.RequiredMode.REQUIRED)
         String status,
         @Schema(description = "Data de criação da sessão.", example = "2026-06-04T17:44:38Z", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -25,6 +28,7 @@ public record AdminSessionResponseDTO(
         Objects.requireNonNull(result, "result cannot be null");
         return new AdminSessionResponseDTO(
                 result.id(),
+                result.identityId(),result.sid(),result.revokedAt(),
                 result.status(),
                 result.createdAt(),
                 result.expiresAt(),
