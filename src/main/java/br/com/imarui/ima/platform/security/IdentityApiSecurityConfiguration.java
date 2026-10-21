@@ -1,81 +1,199 @@
 package br.com.imarui.ima.platform.security;
 
+import br.com.imarui.ima.authentication.core.port.AuthenticationStore;
+import br.com.imarui.ima.authorization.api.module.IdentityAuthorities;
+import br.com.imarui.ima.identity.api.module.IdentityAuthenticationApi;
 import br.com.imarui.ima.platform.security.jwt.*;
-import br.com.imarui.ima.identity.core.domain.model.identity.*;
-import br.com.imarui.ima.identity.core.repository.*;
+import com.nimbusds.jose.*;
+import com.nimbusds.jose.jwk.source.*;
+import com.nimbusds.jose.proc.*;
+import com.nimbusds.jwt.proc.*;
+import java.time.*;
+import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.*;
-import org.springframework.http.HttpMethod;
+import org.springframework.http.*;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.core.*;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.oauth2.server.resource.authentication.*;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.http.MediaType;
+import org.springframework.security.web.*;
+import org.springframework.security.web.csrf.*;
+import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.web.cors.*;
 
-/** Resource protection contract only; token issuance/login belongs to Authentication. */
 @Configuration
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class IdentityApiSecurityConfiguration {
-    private final java.time.Clock clock;
-    private final tools.jackson.databind.json.JsonMapper json;
-    private final JwtSigningKeyProvider keys;
-    private final JwtProperties properties;
-    private final IdentityRepository identities;
-    private final AffiliationRepository affiliations;
-    private final br.com.imarui.ima.identity.infra.persistence.jpa.AccessRevocationRequestJpaRepository revocations;
+  private final Clock clock;
+  private final tools.jackson.databind.json.JsonMapper json;
+  private final JwtSigningKeyProvider keys;
+  private final JwtProperties properties;
+  private final IdentityAuthenticationApi identities;
+  private final AuthenticationStore store;
+  private final IdentityAuthorities authorities;
 
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        var decoder = NimbusJwtDecoder.withSecretKey(keys.getKey()).macAlgorithm(MacAlgorithm.HS256).build();
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefaultWithIssuer(properties.getIssuer()), jwt -> {
-            try {
-                var id = IdentityId.from(jwt.getSubject());
-                if (jwt.getIssuedAt() == null) return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token"));
-                boolean active = identities.findById(id).filter(Identity::isActive).isPresent()
-                    && !revocations.existsByScopeAndSubjectIdAndRequestedAtGreaterThanEqual("IDENTITY", id.value(), jwt.getIssuedAt());
-                var tenant = jwt.getClaimAsString("tenant_id");
-                if (tenant != null) {
-                    active = active && !revocations.existsByScopeAndSubjectIdAndRequestedAtGreaterThanEqual("TENANT", java.util.UUID.fromString(tenant), jwt.getIssuedAt())
-                        && affiliations.findByTenantId(br.com.imarui.ima.identity.core.domain.model.tenant.TenantId.from(tenant))
-                        .stream().anyMatch(affiliation -> affiliation.getIdentityId().equals(id));
-                }
-                if (active) return OAuth2TokenValidatorResult.success();
-            } catch (IllegalArgumentException exception) { /* Invalid subject/context is never accepted. */ }
-            return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Identity or tenant context is unavailable.", null));
-        }));
-        return decoder;
-    }
-    @Bean
-    public SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
-        var authorities = new JwtGrantedAuthoritiesConverter();
-        authorities.setAuthoritiesClaimName("permissions"); authorities.setAuthorityPrefix("");
-        var converter = new JwtAuthenticationConverter(); converter.setJwtGrantedAuthoritiesConverter(authorities);
-        org.springframework.security.web.AuthenticationEntryPoint unauthenticated = (request, response, exception) -> {
-            response.setHeader("WWW-Authenticate", "Bearer");
-            writeProblem(response, 401, "AUTHENTICATION_REQUIRED", "Unauthorized");
+  @org.springframework.beans.factory.annotation.Value("${security.auth.allowed-origins:}")
+  private String allowedOrigins;
+
+  @Bean
+  public JwtDecoder jwtDecoder() {
+    var processor = new DefaultJWTProcessor<com.nimbusds.jose.proc.SecurityContext>();
+    processor.setJWSTypeVerifier(new DefaultJOSEObjectTypeVerifier<>(new JOSEObjectType("at+jwt")));
+    processor.setJWSKeySelector(
+        new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, new ImmutableJWKSet<>(keys.jwks())));
+    var decoder = new NimbusJwtDecoder(processor);
+    var timestamp = new JwtTimestampValidator(Duration.ZERO);
+    timestamp.setClock(clock);
+    decoder.setJwtValidator(
+        new DelegatingOAuth2TokenValidator<>(
+            timestamp,
+            new JwtIssuerValidator(properties.getIssuer()),
+            jwt -> {
+              try {
+                if (!jwt.getAudience().contains(properties.getAudience())
+                    || jwt.getIssuedAt() == null
+                    || jwt.getExpiresAt() == null
+                    || jwt.getId() == null
+                    || jwt.getIssuedAt().isAfter(clock.instant())
+                    || Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt()).getSeconds() > 900)
+                  return invalid();
+                var id = UUID.fromString(jwt.getSubject());
+                var sid = UUID.fromString(jwt.getClaimAsString("sid"));
+                var session = store.session(sid, false).orElse(null);
+                if (session == null
+                    || !id.equals(session.getIdentityId())
+                    || !session.isValid(clock.instant())
+                    || jwt.getIssuedAt()
+                        .isBefore(
+                            session
+                                .getCreatedAt()
+                                .truncatedTo(java.time.temporal.ChronoUnit.SECONDS)))
+                  return invalid();
+                return identities.valid(
+                        id, session.getCreatedAt(), jwt.getClaimAsString("tenant_id"))
+                    ? OAuth2TokenValidatorResult.success()
+                    : invalid();
+              } catch (IllegalArgumentException e) {
+                return invalid();
+              }
+            }));
+    return decoder;
+  }
+
+  private OAuth2TokenValidatorResult invalid() {
+    return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token"));
+  }
+
+  @Bean
+  public CorsConfigurationSource corsConfigurationSource() {
+    var config = new CorsConfiguration();
+    var origins =
+        Arrays.stream(allowedOrigins.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isBlank())
+            .toList();
+    if (origins.stream().anyMatch(s -> s.contains("*")))
+      throw new IllegalStateException("Explicit CORS origins required.");
+    config.setAllowedOrigins(origins);
+    config.setAllowCredentials(true);
+    config.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
+    config.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-XSRF-TOKEN"));
+    var source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", config);
+    return source;
+  }
+
+  @Bean
+  public SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
+    org.springframework.security.web.AuthenticationEntryPoint unauthenticated =
+        (req, res, ex) -> {
+          res.setHeader("WWW-Authenticate", "Bearer");
+          writeProblem(res, 401, "AUTHENTICATION_REQUIRED", "Unauthorized");
         };
-        org.springframework.security.web.access.AccessDeniedHandler forbidden = (request, response, exception) ->
-            writeProblem(response, 403, "ACCESS_DENIED", "Forbidden");
-        return http.csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.POST, "/api/v1/identity-applications").permitAll()
-                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/docs", "/docs/", "/openapi-custom/**", "/actuator/health").permitAll()
-                .anyRequest().authenticated())
-            .oauth2ResourceServer(resource -> resource.jwt(jwt -> jwt.jwtAuthenticationConverter(converter))
-                .authenticationEntryPoint(unauthenticated).accessDeniedHandler(forbidden))
-            .exceptionHandling(errors -> errors.authenticationEntryPoint(unauthenticated).accessDeniedHandler(forbidden))
-            .build();
-    }
-    private void writeProblem(jakarta.servlet.http.HttpServletResponse response, int status, String code, String title) throws java.io.IOException {
-        var problem = org.springframework.http.ProblemDetail.forStatus(status);
-        problem.setTitle(title); problem.setProperty("code", code); problem.setProperty("timestamp", clock.instant());
-        response.setStatus(status); response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-        json.writeValue(response.getOutputStream(), problem);
-    }
+    org.springframework.security.web.access.AccessDeniedHandler forbidden =
+        (req, res, ex) -> writeProblem(res, 403, "ACCESS_DENIED", "Forbidden");
+    var converter = new JwtAuthenticationConverter();
+    converter.setJwtGrantedAuthoritiesConverter(
+        jwt ->
+            authorities.find(UUID.fromString(jwt.getSubject())).stream()
+                .map(org.springframework.security.core.authority.SimpleGrantedAuthority::new)
+                .map(a -> (org.springframework.security.core.GrantedAuthority) a)
+                .toList());
+    var csrf = new CookieCsrfTokenRepository();
+    csrf.setCookiePath("/authentication");
+    csrf.setCookieCustomizer(c -> c.secure(true).httpOnly(true).sameSite("Lax"));
+    var handler = new CsrfTokenRequestAttributeHandler();
+    RequestMatcher browserMutation =
+        req ->
+            !Set.of("GET", "HEAD", "OPTIONS", "TRACE").contains(req.getMethod())
+                && Set.of(
+                        "/authentication/login",
+                        "/authentication/refresh",
+                        "/authentication/logout")
+                    .contains(req.getRequestURI());
+    return http.cors(org.springframework.security.config.Customizer.withDefaults())
+        .csrf(
+            c ->
+                c.csrfTokenRepository(csrf)
+                    .csrfTokenRequestHandler(handler)
+                    .requireCsrfProtectionMatcher(browserMutation))
+        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(
+            a ->
+                a.requestMatchers(
+                        HttpMethod.POST,
+                        "/api/v1/identity-applications",
+                        "/authentication/login",
+                        "/authentication/refresh",
+                        "/authentication/logout",
+                        "/authentication/activation/request",
+                        "/authentication/activation/complete",
+                        "/authentication/recovery/request",
+                        "/authentication/recovery/complete")
+                    .permitAll()
+                    .requestMatchers(
+                        "/authentication/csrf",
+                        "/.well-known/jwks.json",
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/docs",
+                        "/docs/",
+                        "/openapi-custom/**",
+                        "/actuator/health")
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated())
+        .oauth2ResourceServer(
+            r ->
+                r.jwt(j -> j.jwtAuthenticationConverter(converter))
+                    .authenticationEntryPoint(unauthenticated)
+                    .accessDeniedHandler(forbidden))
+        .exceptionHandling(
+            e -> e.authenticationEntryPoint(unauthenticated).accessDeniedHandler(forbidden))
+        .headers(
+            h ->
+                h.referrerPolicy(
+                    r ->
+                        r.policy(
+                            org.springframework.security.web.header.writers
+                                .ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)))
+        .build();
+  }
+
+  private void writeProblem(
+      jakarta.servlet.http.HttpServletResponse res, int status, String code, String title)
+      throws java.io.IOException {
+    var p = ProblemDetail.forStatus(status);
+    p.setTitle(title);
+    p.setProperty("code", code);
+    p.setProperty("timestamp", clock.instant());
+    res.setStatus(status);
+    res.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+    json.writeValue(res.getOutputStream(), p);
+  }
 }

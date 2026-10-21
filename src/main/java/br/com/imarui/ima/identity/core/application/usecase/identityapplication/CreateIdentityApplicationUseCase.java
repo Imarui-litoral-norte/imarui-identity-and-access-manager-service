@@ -21,86 +21,77 @@ import br.com.imarui.ima.identity.core.domain.model.identityapplication.LegalEnt
 import br.com.imarui.ima.identity.core.domain.model.identityapplication.PersonIdentityApplicationDetails;
 import br.com.imarui.ima.identity.core.domain.model.identityapplication.ServiceIdentityApplicationDetails;
 import br.com.imarui.ima.identity.core.repository.IdentityApplicationRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class CreateIdentityApplicationUseCase {
 
-    private final Clock clock;
-    private final br.com.imarui.ima.identity.core.application.port.IdentityRegistrationLock registrationLock;
-    private final br.com.imarui.ima.identity.core.application.service.IdentityApplicationConflicts conflicts;
-    private final IdentityApplicationRepository identityApplicationRepository;
+  private final Clock clock;
+  private final br.com.imarui.ima.identity.core.application.port.IdentityRegistrationLock
+      registrationLock;
+  private final br.com.imarui.ima.identity.core.application.service.IdentityApplicationConflicts
+      conflicts;
+  private final IdentityApplicationRepository identityApplicationRepository;
 
-    @Transactional
-    public IdentityApplicationResult execute(
-            CreateIdentityApplicationCommand command
-    ) {
-        Objects.requireNonNull(command, "command cannot be null");
+  @Transactional
+  public IdentityApplicationResult execute(CreateIdentityApplicationCommand command) {
+    Objects.requireNonNull(command, "command cannot be null");
 
-        Instant now = Instant.now(clock);
-        IdentityApplication application = IdentityApplication.create(
-                IdentityApplicationId.generate(),
-                Email.from(command.email()),
-                detailsFrom(command),
-                now
-        );
+    Instant now = Instant.now(clock);
+    IdentityApplication application =
+        IdentityApplication.create(
+            IdentityApplicationId.generate(),
+            Email.from(command.email()),
+            detailsFrom(command),
+            now,
+            command.nickname());
 
-        registrationLock.acquire(application);
-        conflicts.check(application, true);
-        return IdentityApplicationResult.from(
-                identityApplicationRepository.save(application)
-        );
+    application.assignNickname(command.nickname());
+    registrationLock.acquire(application);
+    conflicts.check(application, true);
+    return IdentityApplicationResult.from(identityApplicationRepository.save(application));
+  }
+
+  private IdentityApplicationDetails detailsFrom(CreateIdentityApplicationCommand command) {
+    if (command instanceof CreatePersonIdentityApplicationCommand person) {
+      return new PersonIdentityApplicationDetails(
+          IdentityFullName.from(person.fullName()),
+          Cpf.from(person.cpf()),
+          person.birthDate(),
+          phoneNumberFrom(person.phoneNumber()));
     }
 
-    private IdentityApplicationDetails detailsFrom(
-            CreateIdentityApplicationCommand command
-    ) {
-        if (command instanceof CreatePersonIdentityApplicationCommand person) {
-            return new PersonIdentityApplicationDetails(
-                    IdentityFullName.from(person.fullName()),
-                    Cpf.from(person.cpf()),
-                    person.birthDate(),
-                    phoneNumberFrom(person.phoneNumber())
-            );
-        }
-
-        if (command instanceof CreateLegalEntityIdentityApplicationCommand legalEntity) {
-            return new LegalEntityIdentityApplicationDetails(
-                    LegalName.from(legalEntity.legalName()),
-                    tradeNameFrom(legalEntity.tradeName()),
-                    Cnpj.from(legalEntity.cnpj())
-            );
-        }
-
-        if (command instanceof CreateServiceIdentityApplicationCommand service) {
-            return new ServiceIdentityApplicationDetails(
-                    ServiceName.from(service.name()),
-                    serviceDescriptionFrom(service.description())
-            );
-        }
-
-        throw new IllegalArgumentException(
-                "Unsupported identity application command: "
-                        + command.getClass().getName()
-        );
+    if (command instanceof CreateLegalEntityIdentityApplicationCommand legalEntity) {
+      return new LegalEntityIdentityApplicationDetails(
+          LegalName.from(legalEntity.legalName()),
+          tradeNameFrom(legalEntity.tradeName()),
+          Cnpj.from(legalEntity.cnpj()));
     }
 
-    private PhoneNumber phoneNumberFrom(String value) {
-        return value == null ? null : PhoneNumber.from(value);
+    if (command instanceof CreateServiceIdentityApplicationCommand service) {
+      return new ServiceIdentityApplicationDetails(
+          ServiceName.from(service.name()), serviceDescriptionFrom(service.description()));
     }
 
-    private TradeName tradeNameFrom(String value) {
-        return value == null ? null : TradeName.from(value);
-    }
+    throw new IllegalArgumentException(
+        "Unsupported identity application command: " + command.getClass().getName());
+  }
 
-    private ServiceDescription serviceDescriptionFrom(String value) {
-        return value == null ? null : ServiceDescription.from(value);
-    }
+  private PhoneNumber phoneNumberFrom(String value) {
+    return value == null ? null : PhoneNumber.from(value);
+  }
+
+  private TradeName tradeNameFrom(String value) {
+    return value == null ? null : TradeName.from(value);
+  }
+
+  private ServiceDescription serviceDescriptionFrom(String value) {
+    return value == null ? null : ServiceDescription.from(value);
+  }
 }

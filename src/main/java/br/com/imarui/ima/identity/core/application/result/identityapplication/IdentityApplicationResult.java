@@ -10,6 +10,7 @@ import java.util.UUID;
 
 public record IdentityApplicationResult(
         UUID id,
+        String nickname,
         IdentityKind kind,
         String email,
         IdentityApplicationStatus status,
@@ -33,8 +34,9 @@ public record IdentityApplicationResult(
 
         return new IdentityApplicationResult(
                 application.getId().value(),
+                application.getNickname(),
                 application.getKind(),
-                application.getEmail().value(),
+                application.getEmail()==null?null:application.getEmail().value(),
                 application.getStatus(),
                 IdentityApplicationDetailsResult.from(
                         application.getDetails()

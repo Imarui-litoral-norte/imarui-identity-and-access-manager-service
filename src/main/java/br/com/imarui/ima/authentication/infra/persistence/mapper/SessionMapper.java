@@ -15,13 +15,14 @@ public class SessionMapper {
                 entity.getExpiresAt(),
                 entity.getLoggedOutAt(),
                 entity.getStatus()
-        );
+        ).authenticationContext(entity.getIdentityId(),entity.getPublicId(),entity.getRevokedAt());
     }
 
     public static SessionEntity toEntity(Session domain) {
         if (domain == null) return null;
         SessionEntity entity = new SessionEntity();
         entity.setId(domain.getId());
+        entity.setIdentityId(domain.getIdentityId()); entity.setPublicId(domain.getPublicId()); entity.setRevokedAt(domain.getRevokedAt());
         entity.setCreatedAt(domain.getCreatedAt());
         entity.setExpiresAt(domain.getExpiresAt());
         entity.setLoggedOutAt(domain.getLoggedOutAt());

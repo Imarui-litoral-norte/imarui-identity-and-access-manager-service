@@ -27,5 +27,5 @@ Controllers dependem de casos de uso; o domínio não conhece HTTP/JPA/Spring Se
 Identidades aprovadas iniciam PENDING e exigem ativação explícita. Affiliation inicia ACTIVE; sua utilização depende
 também de Identity e Tenant ativos. Desabilitar um Tenant muda a disponibilidade contextual, sem desativar fisicamente
 as relações. A exclusão própria remove dados operacionais e conserva histórico transacional.
-E-mail é único **por IdentityKind**. A aprovação permite escolher qualquer uma das cinco especializações de Affiliation
+E-mail é obrigatório e compartilhável inclusive dentro do mesmo IdentityKind. Nickname é obrigatório e único **por IdentityKind**. A aprovação permite escolher qualquer uma das cinco especializações de Affiliation
 com seus identificadores próprios. Essas decisões são implementadas e exercitadas por feature.

@@ -9,6 +9,12 @@ spring:
   flyway:
     enabled: true
 security:
+  auth:
+    activation-invitation-ttl: 2h
+    bcrypt-cost: 4
+    require-https: false
+    workers-enabled: false
+    allowed-origins: https://frontend.example.test
   jwt:
     secret: identity-test-signing-material-for-isolated-tests-only
     issuer: identity-test

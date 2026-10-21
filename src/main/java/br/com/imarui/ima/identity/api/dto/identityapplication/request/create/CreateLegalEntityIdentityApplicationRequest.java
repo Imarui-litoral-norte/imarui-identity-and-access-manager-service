@@ -42,6 +42,7 @@ public record CreateLegalEntityIdentityApplicationRequest(
         )
         String email
 
+, @NotBlank @Size(min=3,max=64) String nickname
 ) implements CreateIdentityApplicationRequest {
 
     @Override

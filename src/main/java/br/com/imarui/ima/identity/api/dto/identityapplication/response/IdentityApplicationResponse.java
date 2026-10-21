@@ -13,6 +13,7 @@ import java.util.UUID;
 public record IdentityApplicationResponse(
         @io.swagger.v3.oas.annotations.media.Schema(description = "UUID estável do recurso.", accessMode = io.swagger.v3.oas.annotations.media.Schema.AccessMode.READ_ONLY, requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED)
         UUID id,
+        String nickname,
         @io.swagger.v3.oas.annotations.media.Schema(description = "Tipo que discrimina o bloco details.", accessMode = io.swagger.v3.oas.annotations.media.Schema.AccessMode.READ_ONLY, requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED)
         IdentityKind type,
         @io.swagger.v3.oas.annotations.media.Schema(description = "E-mail normalizado da solicitação.", accessMode = io.swagger.v3.oas.annotations.media.Schema.AccessMode.READ_ONLY, requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED)
@@ -47,6 +48,7 @@ public record IdentityApplicationResponse(
 
         return new IdentityApplicationResponse(
                 result.id(),
+                result.nickname(),
                 result.kind(),
                 result.email(),
                 result.status(),

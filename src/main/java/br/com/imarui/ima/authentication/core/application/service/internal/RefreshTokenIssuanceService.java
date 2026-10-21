@@ -25,7 +25,7 @@ public class RefreshTokenIssuanceService {
         RefreshToken saved = refreshTokenRepository.save(RefreshToken.create(
                 session,
                 tokenHashService.hash(rawToken),
-                timeProperties.refreshTokenTtl(),
+                java.time.Duration.between(now, session.getExpiresAt()),
                 now
         ));
         return new IssuedRefreshToken(saved, rawToken);

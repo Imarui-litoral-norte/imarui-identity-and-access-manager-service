@@ -18,6 +18,10 @@ public class AdminSessionService {
 
     private final SessionRepository sessionRepository;
     private final Clock clock;
+    private final br.com.imarui.ima.authentication.core.repository.RefreshTokenRepository refreshTokens;
+
+    @Transactional(readOnly=true)
+    public List<AdminSessionResult> findPage(int page,int size){return AdminSessionResult.from(sessionRepository.findPage(page,size));}
 
     @Transactional(readOnly = true)
     public List<AdminSessionResult> findAll() {
@@ -47,6 +51,7 @@ public class AdminSessionService {
 
         session.logout(now);
 
+        refreshTokens.revokeActiveBySessionId(sessionId);
         Session savedSession =
                 sessionRepository.save(session);
 

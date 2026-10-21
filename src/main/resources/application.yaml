@@ -7,6 +7,12 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
+  mail:
+    properties:
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+
   jpa:
     open-in-view: false
 
@@ -18,13 +24,28 @@ spring:
         format_sql: false
 security:
   jwt:
-    secret: ${JWT_SECRET}
+    private-key-file: ${JWT_PRIVATE_KEY_FILE:}
+    verification-key-files: ${JWT_VERIFICATION_KEY_FILES:}
+    audience: ${JWT_AUDIENCE:imarui-iam}
     issuer: ${JWT_ISSUER:imarui-iam-service}
   auth:
-    session-ttl: ${SESSION_TTL:12h}
-    refresh-token-ttl: ${REFRESH_TOKEN_TTL:30d}
+    activation-invitation-ttl: ${ACTIVATION_INVITATION_TTL:24h}
+    allowed-origins: ${AUTH_ALLOWED_ORIGINS:}
+    cookie-same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+    require-https: ${AUTH_REQUIRE_HTTPS:true}
+    session-ttl: ${SESSION_TTL:7d}
+    refresh-token-ttl: ${REFRESH_TOKEN_TTL:7d}
     password-recovery-request-ttl: ${PASSWORD_RECOVERY_TTL:15m}
     password-change-challenge-ttl: ${PASSWORD_CHANGE_CHALLENGE_TTL:5m}
 app:
   server:
     base-url: ${APP_BASE_URL:http://localhost:8080}
+
+# SQL driver diagnostics may include personal natural-key values. Domain handlers return generic RFC9457 errors.
+logging:
+  level:
+    org.hibernate.orm.jdbc.error: OFF
+
+# Trusted proxy policy belongs to future IIAMS-80; never infer client IP/TLS from public headers.
+server:
+  forward-headers-strategy: none

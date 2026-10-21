@@ -4,7 +4,7 @@ import br.com.imarui.ima.authentication.core.application.exceptions.refreshtoken
 import br.com.imarui.ima.authentication.core.application.exceptions.refreshtoken.RefreshTokenNotFoundException;
 import br.com.imarui.ima.authentication.core.domain.exception.refreshtoken.RefreshTokenStateException;
 import br.com.imarui.ima.authentication.core.domain.exception.refreshtoken.RefreshTokenValidationException;
-import br.com.imarui.ima.platform.web.exception.ApiErrorResponse;
+import org.springframework.http.ProblemDetail;
 import br.com.imarui.ima.platform.web.exception.ApiExceptionHandler;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,11 +16,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 )
 public class RefreshTokenExceptionHandler
         extends ApiExceptionHandler {
+    public RefreshTokenExceptionHandler(java.time.Clock clock){super(clock);}
 
     @ExceptionHandler(
             RefreshTokenValidationException.class
     )
-    public ResponseEntity<ApiErrorResponse>
+    public ResponseEntity<ProblemDetail>
     handleRefreshTokenValidation(
             RefreshTokenValidationException exception
     ) {
@@ -34,7 +35,7 @@ public class RefreshTokenExceptionHandler
     @ExceptionHandler(
             RefreshTokenStateException.class
     )
-    public ResponseEntity<ApiErrorResponse>
+    public ResponseEntity<ProblemDetail>
     handleRefreshTokenState(
             RefreshTokenStateException exception
     ) {
@@ -48,7 +49,7 @@ public class RefreshTokenExceptionHandler
     @ExceptionHandler(
             RefreshTokenInvalidException.class
     )
-    public ResponseEntity<ApiErrorResponse>
+    public ResponseEntity<ProblemDetail>
     handleRefreshTokenInvalid(
             RefreshTokenInvalidException exception
     ) {
@@ -62,7 +63,7 @@ public class RefreshTokenExceptionHandler
     @ExceptionHandler(
             RefreshTokenNotFoundException.class
     )
-    public ResponseEntity<ApiErrorResponse>
+    public ResponseEntity<ProblemDetail>
     handleRefreshTokenNotFound(
             RefreshTokenNotFoundException exception
     ) {

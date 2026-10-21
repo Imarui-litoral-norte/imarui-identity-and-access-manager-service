@@ -16,6 +16,15 @@ import java.time.Duration;
 public class ApplicationTimePropertiesImpl implements ApplicationTimeProperties {
 
     @NotNull
+    private Duration activationInvitationTtl = Duration.ofHours(24);
+
+    @Override public Duration activationInvitationTtl() { return activationInvitationTtl; }
+
+    @jakarta.validation.constraints.AssertTrue(message="Challenge TTLs must be positive and at most seven days.")
+    public boolean isChallengeTtlsValid() { return validChallengeTtl(activationInvitationTtl) && validChallengeTtl(passwordRecoveryRequestTtl); }
+    private boolean validChallengeTtl(Duration value) { return value != null && !value.isNegative() && !value.isZero() && value.compareTo(Duration.ofDays(7)) <= 0; }
+
+    @NotNull
     private Duration refreshTokenTtl;
 
     @NotNull

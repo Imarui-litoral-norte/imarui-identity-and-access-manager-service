@@ -10,4 +10,5 @@ public sealed interface CreateIdentityApplicationCommand
     IdentityKind kind();
 
     String email();
+    String nickname();
 }

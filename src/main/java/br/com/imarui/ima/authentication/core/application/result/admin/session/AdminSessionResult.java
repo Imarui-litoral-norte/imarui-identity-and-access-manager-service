@@ -8,6 +8,9 @@ import java.util.Objects;
 
 public record AdminSessionResult(
         Long id,
+        java.util.UUID identityId,
+        java.util.UUID sid,
+        Instant revokedAt,
         String status,
         Instant createdAt,
         Instant expiresAt,
@@ -19,6 +22,7 @@ public record AdminSessionResult(
 
         return new AdminSessionResult(
                 session.getId(),
+                session.getIdentityId(), session.getPublicId(), session.getRevokedAt(),
                 session.getStatus().name(),
                 session.getCreatedAt(),
                 session.getExpiresAt(),

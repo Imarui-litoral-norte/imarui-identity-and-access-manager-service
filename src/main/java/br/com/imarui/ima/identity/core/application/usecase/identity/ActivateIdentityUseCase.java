@@ -15,12 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class ActivateIdentityUseCase {
     private final IdentityRepository identityRepository;
     private final Clock clock;
+    private final br.com.imarui.ima.identity.core.application.port.InitialAccessProof initialAccess;
 
 
     @Transactional
     public IdentityResult execute(ActivateIdentityCommand command) {
         var identity = identityRepository.findByIdForUpdate(command.identityId())
                 .orElseThrow(() -> new IdentityNotFoundException(command.identityId()));
+        if (!initialAccess.established(identity.getId().value())) throw new br.com.imarui.ima.identity.core.application.exception.IdentityConflictException();
         identity.activate(clock.instant());
         var saved = identityRepository.save(identity);
 

@@ -18,6 +18,10 @@ public class SessionEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(name="identity_id") private java.util.UUID identityId;
+    @Column(name="public_id") private java.util.UUID publicId;
+    @Column(name="revoked_at") private Instant revokedAt;
+
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

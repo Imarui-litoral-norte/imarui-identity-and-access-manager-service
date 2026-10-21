@@ -10,6 +10,7 @@ public interface SessionRepository {
     Session save(Session session);
 
     List<Session> findAll();
+    List<Session> findPage(int page,int size);
 
     Optional<Session> findById(Long id);
 

@@ -19,6 +19,9 @@ public class AdminRefreshTokenService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final Clock clock;
 
+    @Transactional(readOnly=true)
+    public List<AdminRefreshTokenResult> findPage(int page,int size){return AdminRefreshTokenResult.from(refreshTokenRepository.findPage(page,size));}
+
     @Transactional(readOnly = true)
     public List<AdminRefreshTokenResult> findAll() {
         List<RefreshToken> refreshTokens =

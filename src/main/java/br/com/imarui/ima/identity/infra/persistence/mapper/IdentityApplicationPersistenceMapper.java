@@ -19,167 +19,167 @@ import br.com.imarui.ima.identity.core.domain.model.identityapplication.PersonId
 import br.com.imarui.ima.identity.core.domain.model.identityapplication.ServiceIdentityApplicationDetails;
 import br.com.imarui.ima.identity.core.domain.model.tenant.TenantId;
 import br.com.imarui.ima.identity.infra.persistence.entity.identityapplication.IdentityApplicationEntity;
-import org.springframework.stereotype.Component;
-
 import java.time.LocalDate;
 import java.util.UUID;
+import org.springframework.stereotype.Component;
 
 @Component
 public class IdentityApplicationPersistenceMapper {
+  public IdentityApplicationEntity toEntity(IdentityApplication value) {
+    var entity = baseEntity(value);
+    entity.assignNickname(value.getNickname());
+    return entity;
+  }
 
-    public IdentityApplicationEntity toEntity(
-            IdentityApplication application
-    ) {
-        IdentityApplicationDetails details = application.getDetails();
+  public IdentityApplication toDomain(IdentityApplicationEntity entity) {
+    var value = baseDomain(entity);
 
-        String fullName = null;
-        String cpf = null;
-        LocalDate birthDate = null;
-        String phoneNumber = null;
-        String legalName = null;
-        String tradeName = null;
-        String cnpj = null;
-        String serviceName = null;
-        String serviceDescription = null;
+    return value;
+  }
 
-        if (details instanceof PersonIdentityApplicationDetails person) {
-            fullName = person.fullName().value();
-            cpf = person.cpf().value();
-            birthDate = person.birthDate();
-            phoneNumber = valueOf(person.phoneNumber());
-        } else if (details instanceof LegalEntityIdentityApplicationDetails legalEntity) {
-            legalName = legalEntity.legalName().value();
-            tradeName = valueOf(legalEntity.tradeName());
-            cnpj = legalEntity.cnpj().value();
-        } else if (details instanceof ServiceIdentityApplicationDetails service) {
-            serviceName = service.name().value();
-            serviceDescription = valueOf(service.description());
-        }
+  private IdentityApplicationEntity baseEntity(IdentityApplication application) {
+    IdentityApplicationDetails details = application.getDetails();
 
-        return new IdentityApplicationEntity(
-                application.getId().value(),
-                application.getKind(),
-                application.getEmail().value(),
-                fullName,
-                cpf,
-                birthDate,
-                phoneNumber,
-                legalName,
-                tradeName,
-                cnpj,
-                serviceName,
-                serviceDescription,
-                application.getStatus(),
-                application.getRequestedAt(),
-                application.getReviewedAt(),
-                valueOf(application.getReviewedBy()),
-                application.getRejectionReason(),
-                valueOf(application.getResolvedIdentityId()),
-                valueOf(application.getAssignedTenantId()),
-                valueOf(application.getResultingAffiliationId())
-        );
+    String fullName = null;
+    String cpf = null;
+    LocalDate birthDate = null;
+    String phoneNumber = null;
+    String legalName = null;
+    String tradeName = null;
+    String cnpj = null;
+    String serviceName = null;
+    String serviceDescription = null;
+
+    if (details instanceof PersonIdentityApplicationDetails person) {
+      fullName = person.fullName().value();
+      cpf = person.cpf().value();
+      birthDate = person.birthDate();
+      phoneNumber = valueOf(person.phoneNumber());
+    } else if (details instanceof LegalEntityIdentityApplicationDetails legalEntity) {
+      legalName = legalEntity.legalName().value();
+      tradeName = valueOf(legalEntity.tradeName());
+      cnpj = legalEntity.cnpj().value();
+    } else if (details instanceof ServiceIdentityApplicationDetails service) {
+      serviceName = service.name().value();
+      serviceDescription = valueOf(service.description());
     }
 
-    public void updateEntity(
-            IdentityApplication application,
-            IdentityApplicationEntity entity
-    ) {
-        entity.updateFrom(
-                application.getStatus(),
-                application.getReviewedAt(),
-                valueOf(application.getReviewedBy()),
-                application.getRejectionReason(),
-                valueOf(application.getResolvedIdentityId()),
-                valueOf(application.getAssignedTenantId()),
-                valueOf(application.getResultingAffiliationId())
-        );
-    }
+    return new IdentityApplicationEntity(
+        application.getId().value(),
+        application.getKind(),
+        application.getEmail().value(),
+        fullName,
+        cpf,
+        birthDate,
+        phoneNumber,
+        legalName,
+        tradeName,
+        cnpj,
+        serviceName,
+        serviceDescription,
+        application.getStatus(),
+        application.getRequestedAt(),
+        application.getReviewedAt(),
+        valueOf(application.getReviewedBy()),
+        application.getRejectionReason(),
+        valueOf(application.getResolvedIdentityId()),
+        valueOf(application.getAssignedTenantId()),
+        valueOf(application.getResultingAffiliationId()));
+  }
 
-    public IdentityApplication toDomain(
-            IdentityApplicationEntity entity
-    ) {
-        return IdentityApplication.reconstitute(
-                IdentityApplicationId.from(entity.getId()),
-                Email.from(entity.getEmail()),
-                detailsFrom(entity),
-                entity.getStatus(),
-                entity.getRequestedAt(),
-                entity.getReviewedAt(),
-                identityIdFrom(entity.getReviewedByIdentityId()),
-                entity.getRejectionReason(),
-                identityIdFrom(entity.getResolvedIdentityId()),
-                tenantIdFrom(entity.getAssignedTenantId()),
-                affiliationIdFrom(entity.getResultingAffiliationId())
-        );
-    }
+  public void updateEntity(IdentityApplication application, IdentityApplicationEntity entity) {
+    entity.assignNickname(application.getNickname());
+    entity.updateFrom(
+        application.getStatus(),
+        application.getReviewedAt(),
+        valueOf(application.getReviewedBy()),
+        application.getRejectionReason(),
+        valueOf(application.getResolvedIdentityId()),
+        valueOf(application.getAssignedTenantId()),
+        valueOf(application.getResultingAffiliationId()));
+  }
 
-    private IdentityApplicationDetails detailsFrom(
-            IdentityApplicationEntity entity
-    ) {
-        return switch (entity.getKind()) {
-            case PERSON -> new PersonIdentityApplicationDetails(
-                    IdentityFullName.from(entity.getFullName()),
-                    Cpf.from(entity.getCpf()),
-                    entity.getBirthDate(),
-                    phoneNumberFrom(entity.getPhoneNumber())
-            );
-            case LEGAL_ENTITY -> new LegalEntityIdentityApplicationDetails(
-                    LegalName.from(entity.getLegalName()),
-                    tradeNameFrom(entity.getTradeName()),
-                    Cnpj.from(entity.getCnpj())
-            );
-            case SERVICE -> new ServiceIdentityApplicationDetails(
-                    ServiceName.from(entity.getServiceName()),
-                    serviceDescriptionFrom(entity.getServiceDescription())
-            );
-        };
-    }
+  private IdentityApplication baseDomain(IdentityApplicationEntity entity) {
+    return IdentityApplication.reconstitute(
+        IdentityApplicationId.from(entity.getId()),
+        Email.from(entity.getEmail()),
+        detailsFrom(entity),
+        entity.getStatus(),
+        entity.getRequestedAt(),
+        entity.getReviewedAt(),
+        identityIdFrom(entity.getReviewedByIdentityId()),
+        entity.getRejectionReason(),
+        identityIdFrom(entity.getResolvedIdentityId()),
+        tenantIdFrom(entity.getAssignedTenantId()),
+        affiliationIdFrom(entity.getResultingAffiliationId()),
+        entity.getNickname());
+  }
 
-    private String valueOf(PhoneNumber value) {
-        return value == null ? null : value.value();
-    }
+  private IdentityApplicationDetails detailsFrom(IdentityApplicationEntity entity) {
+    return switch (entity.getKind()) {
+      case PERSON ->
+          new PersonIdentityApplicationDetails(
+              IdentityFullName.from(entity.getFullName()),
+              Cpf.from(entity.getCpf()),
+              entity.getBirthDate(),
+              phoneNumberFrom(entity.getPhoneNumber()));
+      case LEGAL_ENTITY ->
+          new LegalEntityIdentityApplicationDetails(
+              LegalName.from(entity.getLegalName()),
+              tradeNameFrom(entity.getTradeName()),
+              Cnpj.from(entity.getCnpj()));
+      case SERVICE ->
+          new ServiceIdentityApplicationDetails(
+              ServiceName.from(entity.getServiceName()),
+              serviceDescriptionFrom(entity.getServiceDescription()));
+    };
+  }
 
-    private String valueOf(TradeName value) {
-        return value == null ? null : value.value();
-    }
+  private String valueOf(PhoneNumber value) {
+    return value == null ? null : value.value();
+  }
 
-    private String valueOf(ServiceDescription value) {
-        return value == null ? null : value.value();
-    }
+  private String valueOf(TradeName value) {
+    return value == null ? null : value.value();
+  }
 
-    private UUID valueOf(IdentityId identityId) {
-        return identityId == null ? null : identityId.value();
-    }
+  private String valueOf(ServiceDescription value) {
+    return value == null ? null : value.value();
+  }
 
-    private UUID valueOf(TenantId tenantId) {
-        return tenantId == null ? null : tenantId.value();
-    }
+  private UUID valueOf(IdentityId identityId) {
+    return identityId == null ? null : identityId.value();
+  }
 
-    private UUID valueOf(AffiliationId affiliationId) {
-        return affiliationId == null ? null : affiliationId.value();
-    }
+  private UUID valueOf(TenantId tenantId) {
+    return tenantId == null ? null : tenantId.value();
+  }
 
-    private PhoneNumber phoneNumberFrom(String value) {
-        return value == null ? null : PhoneNumber.from(value);
-    }
+  private UUID valueOf(AffiliationId affiliationId) {
+    return affiliationId == null ? null : affiliationId.value();
+  }
 
-    private TradeName tradeNameFrom(String value) {
-        return value == null ? null : TradeName.from(value);
-    }
+  private PhoneNumber phoneNumberFrom(String value) {
+    return value == null ? null : PhoneNumber.from(value);
+  }
 
-    private ServiceDescription serviceDescriptionFrom(String value) {
-        return value == null ? null : ServiceDescription.from(value);
-    }
+  private TradeName tradeNameFrom(String value) {
+    return value == null ? null : TradeName.from(value);
+  }
 
-    private IdentityId identityIdFrom(UUID value) {
-        return value == null ? null : IdentityId.from(value);
-    }
+  private ServiceDescription serviceDescriptionFrom(String value) {
+    return value == null ? null : ServiceDescription.from(value);
+  }
 
-    private TenantId tenantIdFrom(UUID value) {
-        return value == null ? null : TenantId.from(value);
-    }
+  private IdentityId identityIdFrom(UUID value) {
+    return value == null ? null : IdentityId.from(value);
+  }
 
-    private AffiliationId affiliationIdFrom(UUID value) {
-        return value == null ? null : AffiliationId.from(value);
-    }
+  private TenantId tenantIdFrom(UUID value) {
+    return value == null ? null : TenantId.from(value);
+  }
+
+  private AffiliationId affiliationIdFrom(UUID value) {
+    return value == null ? null : AffiliationId.from(value);
+  }
 }
