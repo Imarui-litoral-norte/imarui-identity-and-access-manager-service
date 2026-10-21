@@ -7,6 +7,12 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
+  mail:
+    properties:
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+
   jpa:
     open-in-view: false
 
@@ -23,6 +29,7 @@ security:
     audience: ${JWT_AUDIENCE:imarui-iam}
     issuer: ${JWT_ISSUER:imarui-iam-service}
   auth:
+    activation-invitation-ttl: ${ACTIVATION_INVITATION_TTL:24h}
     allowed-origins: ${AUTH_ALLOWED_ORIGINS:}
     cookie-same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
     require-https: ${AUTH_REQUIRE_HTTPS:true}

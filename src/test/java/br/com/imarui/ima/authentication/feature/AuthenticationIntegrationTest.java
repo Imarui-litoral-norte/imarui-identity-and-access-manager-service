@@ -216,6 +216,13 @@ class AuthenticationIntegrationTest extends IdentityIntegrationSupport {
   void expiredChallengeAndWeakPasswordLeaveIdentityPending() {
     var i = pending(IdentityKind.SERVICE, "expired-invite");
     var invite = authentication.issueChallenge(i.getId().value(), Purpose.ACCOUNT_ACTIVATION);
+    assertEquals(
+        7200,
+        jdbc.queryForObject(
+            "select extract(epoch from (expires_at-created_at))::integer from"
+                + " authentication_challenges where identity_id=?",
+            Integer.class,
+            i.getId().value()));
     assertThrows(
         IllegalArgumentException.class,
         () -> authentication.complete(invite, "short", Purpose.ACCOUNT_ACTIVATION));

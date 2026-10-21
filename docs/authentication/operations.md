@@ -11,6 +11,7 @@
 | AUTH_ALLOWED_ORIGINS | Origens completas autorizadas; lista separada por vírgula; vazio nega CORS cross-origin |
 | AUTH_COOKIE_SAME_SITE | Lax por padrão; Strict/None conforme topologia verificada |
 | AUTH_REQUIRE_HTTPS | true por padrão; manter true em ambiente real |
+| ACTIVATION_INVITATION_TTL, PASSWORD_RECOVERY_TTL | Convites 24h e recovery 15m por padrão; positivos, no máximo sete dias |
 | security.auth.bcrypt-cost | 12 por padrão; testes isolados usam 4 para desempenho |
 | security.auth.limits.<operation> | Limites por janela de cinco minutos, buckets PostgreSQL por origem/identificador |
 | security.auth.workers-enabled | Polling de revogação/notificações; true por padrão |

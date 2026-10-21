@@ -41,14 +41,34 @@ Erros usam `application/problem+json`, status, code e timestamp: 400 contrato in
 Exemplo conceitual para futuro Spring Resource Server:
 
 ```java
-var decoder = NimbusJwtDecoder.withJwkSetUri(jwksUrl).build();
-var timestamps = new JwtTimestampValidator(Duration.ZERO);
+var decoder = NimbusJwtDecoder.withJwkSetUri(jwksUrl)
+    .jwsAlgorithm(SignatureAlgorithm.RS256)
+    .validateType(false) // tipo at+jwt é exigido pelo validador abaixo
+    .build();
+OAuth2TokenValidator<Jwt> contract = jwt -> {
+    try {
+        UUID.fromString(jwt.getSubject());
+        UUID.fromString(jwt.getClaimAsString("sid"));
+        UUID.fromString(jwt.getId());
+        if (!"at+jwt".equals(jwt.getHeaders().get("typ"))
+                || !jwt.getAudience().contains(expectedAudience)
+                || jwt.getIssuedAt() == null || jwt.getExpiresAt() == null
+                || jwt.getIssuedAt().isAfter(Instant.now())
+                || Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt()).getSeconds() > 900) {
+            return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token"));
+        }
+        return OAuth2TokenValidatorResult.success();
+    } catch (RuntimeException invalid) {
+        return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token"));
+    }
+};
 decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-    timestamps, new JwtIssuerValidator(expectedIssuer), audienceValidator));
-// audienceValidator exige audience configurada; rejeitar ausência de sub/sid/jti e TTL > 900s.
-// Somente após validação: UUID identityId = UUID.fromString(jwt.getSubject());
-// UUID sid = UUID.fromString(jwt.getClaimAsString("sid"));
-// Construir Actor local; nenhum identityId do payload substitui esse ator.
+    new JwtTimestampValidator(Duration.ZERO), new JwtIssuerValidator(expectedIssuer), contract));
+var validated = decoder.decode(bearerToken);
+UUID actorIdentityId = UUID.fromString(validated.getSubject());
+UUID actorSessionId = UUID.fromString(validated.getClaimAsString("sid"));
+// Construir Actor local com esses valores. DTOs não substituem o ator autenticado.
 ```
+
 
 O exemplo é documentação evolutiva, não SDK nem serviço externo implantado. O consumidor também deve restringir algoritmo/tipo, validar claims mínimas e negar autorização até implementar sua política de domínio.

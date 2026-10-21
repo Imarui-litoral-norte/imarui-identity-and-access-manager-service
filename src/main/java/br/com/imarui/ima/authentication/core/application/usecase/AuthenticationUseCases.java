@@ -21,6 +21,7 @@ public class AuthenticationUseCases {
   private final RefreshTokenHashService hashes;
   private final AccessTokenIssuer jwt;
   private final ChallengeDelivery delivery;
+  private final ApplicationTimeProperties timeProperties;
   private final Clock clock;
   // Startup-only dummy hash uses the configured BCrypt cost, matching real account verification.
   private String dummyHash;
@@ -193,8 +194,8 @@ public class AuthenticationUseCases {
             now,
             now.plus(
                 purpose == Purpose.ACCOUNT_ACTIVATION
-                    ? Duration.ofHours(24)
-                    : Duration.ofMinutes(15)),
+                    ? timeProperties.activationInvitationTtl()
+                    : timeProperties.passwordRecoveryRequestTtl()),
             null));
     store.audit(owner, "CHALLENGE_ISSUED", now);
     return raw;

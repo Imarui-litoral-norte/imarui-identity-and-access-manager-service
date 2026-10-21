@@ -1,14 +1,14 @@
 # Evidência de validação — IIAMS-39
 
-Execução final local em 21/10/2026, concluída às 15:20:50 America/Sao_Paulo.
+Execução final local em 21/10/2026, concluída às 15:26:13 America/Sao_Paulo.
 
 ```powershell
 .\scripts\test-identity.ps1 -JavaHome 'C:\Users\lucas.l\.jdks\ms-17.0.18'
 ```
 
-O script criou PostgreSQL 17.11 isolado, aguardou readiness, executou Maven `-B clean verify` com Java 17.0.18 e removeu o container ao final. Flyway aplicou V1–V9; Hibernate validou as entidades. Resultado: **154 testes, 0 falhas, 0 erros, 0 skips; BUILD SUCCESS**, 59,155 segundos, JAR executável gerado.
+O script criou PostgreSQL 17.11 isolado, aguardou readiness, executou Maven `-B clean verify` com Java 17.0.18 e removeu o container ao final. Flyway aplicou V1–V9; Hibernate validou as entidades. Resultado: **154 testes, 0 falhas, 0 erros, 0 skips; BUILD SUCCESS**, 59.107 s, JAR executável gerado.
 
-JAR SHA-256: `503509723f6eb897a88fd923eaa4d5e67e7b1f9226f8af9e3e92f4bb320697a3`.
+JAR SHA-256: `b0b4ac5bde6f6fcb71da5d76ff8fddf083bac0ed1390bfed98a7f92b91c6dea2`.
 
 Detalhamento parseado dos relatórios Surefire: [test-results.json](test-results.json). A execução inicial tinha 118 testes; foram preservados seus cenários, adaptando fixtures de ativação e assinatura para o fluxo real, e adicionados 36 cenários.
 
