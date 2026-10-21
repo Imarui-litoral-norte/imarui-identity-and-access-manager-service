@@ -23,7 +23,7 @@ Operações de throttle: login-origin/login-account (30), refresh-origin/refresh
 
 As durações definitivas são access 900s e sessão/refresh sete dias. As propriedades legadas de TTL foram alinhadas a 7d e o emissor antigo também limita o refresh ao restante da sessão. Não usar ddl-auto=update.
 
-Mesmo na mesma máquina/IP, habilitar HTTPS para cookies Secure. Usar TLS diretamente no Spring ou proxy confiável com encaminhamento de protocolo estritamente configurado. Não aceitar X-Forwarded-* de redes arbitrárias. A configuração Hostinger/domínio/certificado deve ser validada quando o ambiente existir; esta rodada não faz deploy.
+Mesmo na mesma máquina/IP, habilitar HTTPS para cookies Secure. Usar TLS diretamente no Spring ou TLS nativo. `server.forward-headers-strategy=none` impede interpretação de Forwarded/X-Forwarded-* enviados pelo cliente. A futura IIAMS-80 definirá proxies confiáveis e terminação TLS; não desligar AUTH_REQUIRE_HTTPS para acomodar proxy ainda não homologado. A configuração Hostinger/domínio/certificado deve ser validada quando o ambiente existir; esta rodada não faz deploy.
 
 ## Chaves
 
@@ -39,7 +39,7 @@ Restringir leitura ao processo IIAM. Para rotação, configurar nova privada e a
 
 O catálogo sincroniza somente permissions conhecidas do IIAM. ROOT recebe vínculos RolePermission persistidos, como solicitado posteriormente pelo usuário. O bootstrap não cria senha fixa, bypass HTTP ou token master.
 
-1. Preparar descritor local, fora do repositório, por exemplo `{ "kind":"SERVICE", "nickname":"initial-operator", "name":"Initial operator" }`. PERSON exige name/cpf/email; LEGAL_ENTITY exige name/cnpj/email; SERVICE admite contato ausente.
+1. Preparar descritor local, fora do repositório, por exemplo `{ "kind":"SERVICE", "nickname":"initial-operator", "name":"Initial operator", "email":"operator@example.test" }`. PERSON exige name/cpf/email; LEGAL_ENTITY exige name/cnpj/email; SERVICE também exige e-mail válido. O endereço não precisa ser exclusivo; não confere privilégio.
 2. Iniciar uma vez com `--security.bootstrap.enabled=true --security.bootstrap.input-file=<descritor> --security.bootstrap.output-file=<arquivo-novo>`.
 3. O processo cria Identity PENDING e associação ROOT em transação única e escreve convite em arquivo novo com ACL/permissão restrita ao proprietário. Não imprime segredo. Arquivo existente não é sobrescrito. Falha remove o arquivo criado e reverte a transação.
 4. Apresentar o convite ao endpoint público de ativação e definir senha. Só então a Identity fica ACTIVE e suas authorities passam a funcionar.
@@ -51,7 +51,15 @@ Se perder um convite antes da ativação, usar outra Identity operadora já auto
 
 SMTP é o adapter real fora de test/dev. O adapter legado que logava e-mail/link Jeep foi removido. Notificações locais são silenciosas; testes substituem a porta explicitamente.
 
-Jobs persistem apenas IdentityId, finalidade e metadados; tokens em claro não ficam na fila. O worker reserva o job, gera segredo em memória e confirma hash/challenge antes de enviar. Falha deixa o job reagendado em cinco minutos; retry gera novo convite e invalida o anterior. Limite de dez tentativas. Queda após envio e antes do acknowledge pode causar reenvio com novo link, mas nunca dois challenges da mesma finalidade válidos. SMTP não participa da transação de senha/Identity.
+Jobs persistem IdentityId, finalidade, estado, contador, próxima tentativa e datas finais; nunca tokens em claro. Estados: PENDING, PROCESSING, DELIVERED, FAILED e CANCELLED. O índice parcial permite somente um job PENDING/PROCESSING por Identity/finalidade; FAILED/DELIVERED não bloqueiam uma nova solicitação, respeitando rate limit.
+
+São **cinco tentativas totais**, contando a primeira. A reserva incrementa e confirma o contador antes do SMTP; uma queda pode consumir uma tentativa sem envio, mas nunca autoriza uma sexta. Backoff após cada reserva: 30s, 120s, 600s, 1800s e 3600s. Na quinta falha confirmada, FAILED é gravado imediatamente. Se houver queda na quinta reserva, o próximo processamento após o prazo marca FAILED sem chamar SMTP. Nenhum replay automático reinicia contador terminal.
+
+Cada worker mantém um advisory lock PostgreSQL de sessão em uma conexão dedicada durante reserva, envio e confirmação. A reserva/atualização usa outra conexão e row lock transacional. Assim, um envio lento não concorre com outro worker mesmo após o prazo de reserva; a queda libera o lock e o estado persistido permite retomada. Dimensionar o pool para pelo menos duas conexões por worker ativo, além das requisições normais. O SMTP possui timeouts de conexão/leitura/escrita de cinco segundos.
+
+O worker confirma o hash de um novo challenge antes de enviar e mantém o segredo somente em memória. Link A não é invalidado por emissão/envio/falha do link B. Qualquer link não expirado pode concluir; o consumo bem-sucedido invalida todos da mesma Identity/finalidade na mesma transação da senha/ativação e revogação de sessões. Finalidades diferentes são isoladas. Queda após entrega antes da confirmação pode provocar reenvio; todos os links permanecem seguros por uso único e consumo serializado pela Identity.
+
+Monitorar FAILED, tentativas, finished_at e eventos NOTIFICATION_FAILED/RETRY/DELIVERED. Para nova entrega após falha terminal, solicitar novo job pela API normal; preservar o registro anterior, sem zerar contador manualmente.
 
 Nenhuma mensagem ou exceção SMTP com conteúdo sensível é logada. Validar templates e entrega com o provedor de homologação antes de liberar notificações reais. Esta validação externa não foi executada nesta rodada.
 
@@ -63,10 +71,13 @@ Nenhuma mensagem ou exceção SMTP com conteúdo sensível é logada. Validar te
 | V7 | Credentials, challenges por hash, auditoria, rate limits, jobs de notificação e marcador de bootstrap |
 | V8 | IdentityId/SID/revokedAt na Session, encerramento de sessões legadas sem dono, índices e FKs internas de refresh/linhagem |
 | V9 | Catálogo Authorization, Role, RolePermission e concessão IdentityRole PLATFORM básica |
+| V10 | E-mail/nickname obrigatórios, remoção dos dois índices únicos de e-mail, check de nickname em Application, auditoria ator/alvo/resultado/origem, estados/índices da fila |
 
-V1–V5 não foram alteradas. Aplicar primeiramente em banco de homologação/cópia validada, com backup e inspeção dos dados; a aplicação utiliza Flyway e Hibernate validate. Nenhuma migration foi aplicada em produção.
+**V1–V9 não foram alteradas.** Sem prova suficiente de que V6–V9 jamais foram aplicadas em ambiente persistente compartilhado, foi escolhida V10 incremental, evitando reescrever checksums publicados. A inspeção disponível foi restrita ao checkout e bancos Docker isolados; nenhum ambiente compartilhado/produção foi consultado. Aplicar primeiramente em banco de homologação/cópia validada, com backup e inspeção dos dados; a aplicação utiliza Flyway e Hibernate validate. Nenhuma migration foi aplicada em produção.
 
-Linhas legadas sem nickname permanecem legíveis, mas não autenticam até regularização; novos contratos HTTP exigem nickname. Não inventar nickname de produção. Sessões legadas sem IdentityId ficam REVOKED com histórico preservado. Credential/challenge e concessões operacionais usam FK Identity com remoção em cascata para não bloquear exclusão física. Session/auditoria mantêm o UUID como valor histórico sem FK operacional.
+Não existem Identities legadas a regularizar nesta entrega. Nickname e e-mail são NOT NULL; não existe backfill nem criação de Identity/nickname artificial. Antes de aplicar V10 em qualquer ambiente futuro, executar somente nesse ambiente autorizado o preflight: contar Identities/Applications com nickname ou contato ausentes e inspecionar flyway_schema_history. O esperado é zero. Se houver dados inesperados incompletos, interromper e revisar; V10 falha transacionalmente, não corrige dados por suposição. E-mail compartilhado é permitido; CPF/CNPJ e nickname por kind mantêm seus índices únicos.
+
+Sessões antigas sem IdentityId ficam REVOKED com histórico preservado por V8. Credential/challenge e concessões operacionais usam FK Identity com cascata; Session/auditoria preservam UUIDs históricos sem FK operacional. V10 converte jobs antigos com delivered_at em DELIVERED e jobs esgotados (attempts >= 5) em FAILED, preservando inclusive contadores históricos acima de cinco. Novo processamento nunca envia uma sexta tentativa.
 
 Não reverter essas migrations apagando tabelas/dados. Em caso de falha, interromper a aplicação, preservar o banco e aplicar correção incremental ou restaurar backup testado conforme decisão operacional.
 
@@ -74,6 +85,14 @@ Não reverter essas migrations apagando tabelas/dados. Em caso de falha, interro
 
 O consumidor marca processedAt somente na mesma transação dos efeitos. Falha deixa a solicitação pendente; retry é idempotente. Revogação Identity usa cutoff e não afeta sessões criadas depois da solicitação. TENANT mantém cutoff no Identity, não encerra indiscriminadamente sessões globais e continua rejeitando contexto desativado após reativação. JWT global V1 não concede contexto Tenant.
 
-Monitorar contagem/idade de pedidos pendentes, jobs com attempts=10, eventos LOGIN_FAILED/REFRESH_REPLAY/PASSWORD_RESET e a métrica `iiam.authentication.worker.failures`. Métricas não usam nickname, documento ou tokens como tags. Limitar acesso a actuator/diagnósticos na infraestrutura.
+Monitorar contagem/idade de pedidos pendentes, jobs FAILED ou PROCESSING vencidos, eventos LOGIN_FAILED/REFRESH_REPLAY/PASSWORD_RESET e a métrica `iiam.authentication.worker.failures`. Métricas não usam nickname, documento ou tokens como tags. Limitar acesso a actuator/diagnósticos na infraestrutura.
 
 Nenhuma rotina destrutiva de retenção foi ativada. Preservar hashes de tokens rotacionados até o término absoluto da sessão para detectar replay. Limpeza posterior pode remover challenges expirados e sessões encerradas após a política de retenção definida pelo responsável; não remover cutoffs enquanto tokens/sessões anteriores puderem existir. Histórico Identity/Affiliation não é alterado por limpeza Authentication.
+
+## Convites administrativos e origem
+
+ADMIN_INVITATION registra actor_identity_id, target_identity_id, resultado SUCCESS/DENIED, occurred_at UTC e request_origin da conexão. Não há infraestrutura de correlação existente; não foi criado um cabeçalho confiável artificial. Justificativa não é exigida. Solicitações públicas geram eventos distintos. Nunca registrar resposta de convite, senha, hash de senha ou tokens em logs/reverse proxies.
+
+## Integração futura
+
+[IIAMS-80](https://logimarui.atlassian.net/browse/IIAMS-80) trata Gateway, prefixos, TLS, sanitização de forwarded headers, cookies/CSRF e supervisor. Não foi implementada nem iniciada; não bloqueia estabilização standalone. Nenhum arquivo de logimarui-core-api foi alterado.

@@ -7,7 +7,7 @@
 3. Resposta: `{ "accessToken":"<JWT>", "tokenType":"Bearer", "expiresIn":900 }`. Guardar access em memória. Refresh é somente `Set-Cookie: IIAM_REFRESH=...; Path=/authentication; Secure; HttpOnly; SameSite=Lax`.
 4. Enviar `Authorization: Bearer <access>` às APIs protegidas.
 5. `POST /authentication/refresh` diretamente no IIAM, com cookies e header CSRF. Recebe outro access e um novo cookie refresh. Não existe refresh em DTO, query string ou localStorage.
-6. `POST /authentication/logout` diretamente no IIAM, com cookie/CSRF, sem precisar de backend intermediário. Pode apresentar Bearer válido adicionalmente. Resposta 204 limpa o cookie com os mesmos atributos.
+6. `POST /authentication/logout` diretamente no IIAM, com cookie/CSRF, sem precisar de backend intermediário. Pode apresentar Bearer válido adicionalmente, desde que identifique exatamente a mesma Identity e SID do cookie. Divergência ou cookie inválido junto de Bearer resulta em 401 sem alterar nenhuma sessão/token. Resposta 204 limpa o cookie com os mesmos atributos.
 
 O frontend deve serializar renovações concorrentes, inclusive coordenando abas. Duas requisições com o mesmo refresh não recebem dois sucessores utilizáveis: replay revoga a sessão. Após 401, limpar access em memória e exigir login.
 
@@ -15,13 +15,13 @@ Os cookies são host-only: Domain deliberadamente omitido. Portas diferentes no 
 
 ## Primeiro acesso, recuperação e senha
 
-- `POST /authentication/activation/request` com `{identityKind,identifier}`: 202 genérico. Contato disponível recebe convite; ausência de conta/contato não é revelada.
+- `POST /authentication/activation/request` com `{identityKind,identifier}`: 202 genérico. E-mail é obrigatório nos três kinds e pode ser compartilhado; somente o contato da Identity resolvida recebe convite. A existência da conta não é revelada.
 - `POST /authentication/activation/complete` com `{token,password}`: 204; consome convite de ativação, persiste credencial e PENDING→ACTIVE atomicamente. Não inicia sessão automaticamente.
 - SERVICE local ou externo utiliza o mesmo endpoint público de conclusão; prova inicial é convite criptográfico de uso único entregue previamente pelo operador. Conhecer nickname/UUID não permite obter o convite.
 - Operador com `AUTHENTICATION_INVITATION_CREATE` pode chamar `POST /authentication/admin/identities/{id}/invitation`. Retorno no-store contém somente o convite recém-gerado para entrega segura. Nunca enviar essa resposta para logs de gateway.
 - `POST /authentication/recovery/request` com `{identityKind,identifier}`: 202 genérico; e-mail é canal de contato. `POST /authentication/recovery/complete` com `{token,password}`: 204 e revogação de sessões anteriores.
 - `POST /authentication/password` com Bearer e `{currentPassword,newPassword}`: exige senha atual; revoga todas as sessões, inclusive a atual.
-- Senhas: mínimo 12 caracteres e máximo 72 bytes UTF-8, respeitando BCrypt. Convite de ativação vale 24 horas; recuperação vale 15 minutos. Reemissão invalida desafios anteriores da mesma finalidade.
+- Senhas: mínimo 12 caracteres e máximo 72 bytes UTF-8, respeitando BCrypt. Convite de ativação vale 24 horas; recuperação vale 15 minutos. Emissão ou envio de um novo link preserva os anteriores não expirados. O consumo bem-sucedido de qualquer link invalida os demais da mesma Identity/finalidade, atomicamente; finalidades diferentes permanecem isoladas.
 
 ## Sessões e erros
 
@@ -72,3 +72,11 @@ UUID actorSessionId = UUID.fromString(validated.getClaimAsString("sid"));
 
 
 O exemplo é documentação evolutiva, não SDK nem serviço externo implantado. O consumidor também deve restringir algoritmo/tipo, validar claims mínimas e negar autorização até implementar sua política de domínio.
+
+## Logout com credenciais combinadas
+
+Bearer A + cookie B são aceitos somente com o mesmo `sub` e `sid`, inclusive quando A e B têm o mesmo proprietário mas sessões diferentes. A comparação antecede qualquer logout/revogação. Access-only e cookie-only são admitidos. Repetição pelo cookie já encerrado retorna 204 e limpa o cookie. Bearer de sessão já encerrada é rejeitado pelo resource server; para repetir, omitir Bearer.
+
+Bearer expirado, mesmo acompanhado de cookie válido, retorna 401 na cadeia JWT sem efeito no cookie/sessão. O cliente deve repetir omitindo o Bearer expirado e mantendo cookie + CSRF. Cookie desconhecido sozinho não seleciona outra sessão e é limpo idempotentemente; junto de Bearer é incompatível e retorna 401.
+
+O convite administrativo não exige justificativa. Registra administrador, alvo, ação, UTC, resultado e origem da conexão, sem segredos. E-mail nunca identifica login/recuperação, mesmo sendo obrigatório e compartilhável. SSO/OIDC, clientes nativos, RBAC contextual e Gateway não são dependências destes fluxos.
