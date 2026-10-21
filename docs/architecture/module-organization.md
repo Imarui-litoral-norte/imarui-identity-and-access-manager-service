@@ -5,9 +5,9 @@ Leia o [índice global](README.md). Os pacotes existentes têm responsabilidades
 | Área | Ownership atual |
 | --- | --- |
 | `identity` | Identity e especializações Person/LegalEntity/Service, Tenant, IdentityApplication e Affiliation |
-| `authentication` | Estrutura existente de sessões, refresh tokens e utilitários de credencial; login completo e consumo da outbox são evolução futura |
+| `authentication` | Credenciais, primeiro acesso, login, sessões, refresh rotativo e consumo da outbox; ver ../authentication/README.md |
 | `platform` | Composição Spring, segurança HTTP, Clock, OpenAPI e tratamento transversal de erros |
-| Authorization | Próxima área funcional; o módulo definitivo ainda não está implementado |
+| Authorization | Fundação persistente e bootstrap ROOT básico; decisão contextual PLATFORM/TENANT e gestão completa permanecem futuras |
 
 ```text
 identity/

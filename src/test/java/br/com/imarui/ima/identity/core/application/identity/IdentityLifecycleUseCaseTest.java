@@ -30,7 +30,7 @@ class IdentityLifecycleUseCaseTest {
         var clock = Clock.fixed(NOW, ZoneOffset.UTC);
         when(repository.findByIdForUpdate(identity.getId())).thenReturn(Optional.of(identity));
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        new ActivateIdentityUseCase(repository, clock).execute(new ActivateIdentityCommand(identity.getId()));
+        new ActivateIdentityUseCase(repository, clock, id -> true).execute(new ActivateIdentityCommand(identity.getId()));
         new DisableIdentityUseCase(repository, clock, revocation).execute(new DisableIdentityCommand(identity.getId()));
         new ReactivateIdentityUseCase(repository, clock).execute(new ReactivateIdentityCommand(identity.getId()));
         verify(revocation).revokeIdentity(identity.getId());

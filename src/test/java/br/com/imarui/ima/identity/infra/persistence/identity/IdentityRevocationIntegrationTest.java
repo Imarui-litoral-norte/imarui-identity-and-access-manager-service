@@ -59,9 +59,10 @@ class IdentityRevocationIntegrationTest extends IdentityIntegrationSupport {
 
     @Test void scopedTokenRemainsRevokedAfterTenantReactivation() throws Exception {
         affiliations.save(ExternalAffiliation.create(AffiliationId.generate(),tenant.getId(),reviewer.getId(),earlier));
-        var scoped=Jwts.builder().subject(reviewer.getId().toString()).issuer("identity-test").issuedAt(new Date())
-            .expiration(Date.from(Instant.now().plusSeconds(120))).claim("tenant_id",tenant.getId().toString())
-            .claim("permissions",List.of("IDENTITY_READ")).signWith(keys.getKey(),Jwts.SIG.HS256).compact();
+        var raw=token(reviewer.getId(),"IDENTITY_READ");
+        var claims=Jwts.parser().verifyWith(keys.publicKeys().get(keys.kid())).build().parseSignedClaims(raw).getPayload();
+        var scoped=Jwts.builder().claims(claims).header().keyId(keys.kid()).type("at+jwt").and()
+            .claim("tenant_id",tenant.getId().toString()).signWith(keys.getKey(),Jwts.SIG.RS256).compact();
         assertEquals(200,http("GET","/api/v1/identities/"+reviewer.getId(),null,scoped).statusCode());
         disableTenant.execute(new DisableTenantCommand(tenant.getId())); reactivateTenant.execute(new ReactivateTenantCommand(tenant.getId()));
         assertEquals(401,http("GET","/api/v1/identities/"+reviewer.getId(),null,scoped).statusCode());

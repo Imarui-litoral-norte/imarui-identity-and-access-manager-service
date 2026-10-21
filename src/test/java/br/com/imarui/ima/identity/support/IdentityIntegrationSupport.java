@@ -64,6 +64,15 @@ public abstract class IdentityIntegrationSupport {
     @Autowired protected JdbcTemplate jdbc;
     @Autowired protected JsonMapper json;
     @Autowired protected JwtSigningKeyProvider keys;
+    @Autowired protected br.com.imarui.ima.authentication.core.application.usecase.AuthenticationUseCases authentication;
+    @Autowired protected br.com.imarui.ima.authentication.core.port.AuthenticationStore authenticationStore;
+    @Autowired protected br.com.imarui.ima.authentication.core.port.AccessTokenIssuer tokenIssuer;
+    protected void firstAccess(IdentityId id){
+        new TransactionTemplate(transactions).executeWithoutResult(status->{var value=identities.findByIdForUpdate(id).orElseThrow();if(value.getNickname()==null){value.assignNickname("fixture-"+id.value());identities.save(value);}});
+        String invitation=authentication.issueChallenge(id.value(),br.com.imarui.ima.authentication.core.domain.model.AuthenticationChallenge.Purpose.ACCOUNT_ACTIVATION);
+        authentication.complete(invitation,"Fixture password 123!",br.com.imarui.ima.authentication.core.domain.model.AuthenticationChallenge.Purpose.ACCOUNT_ACTIVATION);
+    }
+
     @Autowired protected PlatformTransactionManager transactions;
     @LocalServerPort protected int port;
     protected Identity reviewer;
@@ -72,8 +81,8 @@ public abstract class IdentityIntegrationSupport {
 
     @BeforeEach protected void prepare() {
         jdbc.execute("truncate ima_identities, ima_tenants, ima_identity_applications, ima_identities__history, ima_affiliations__history, ima_access_revocation_requests cascade");
-        reviewer = service("reviewer@example.test"); reviewer.activate(earlier);
-        reviewer = identities.save(reviewer);
+        reviewer = service("reviewer@example.test"); reviewer.assignNickname("reviewer");
+        reviewer = identities.save(reviewer); firstAccess(reviewer.getId()); reviewer=identities.findById(reviewer.getId()).orElseThrow();
         tenant = Tenant.create(TenantId.generate(), TenantCode.from("TEST"), TenantName.from("Test tenant"), earlier);
         tenant.activate(earlier); tenant = tenants.save(tenant);
         actor(reviewer.getId());
@@ -109,9 +118,17 @@ public abstract class IdentityIntegrationSupport {
     }
 
     protected String token(IdentityId identity, String... permissions) {
-        return Jwts.builder().subject(identity.toString()).issuer("identity-test")
-            .issuedAt(new Date()).expiration(Date.from(Instant.now().plusSeconds(120)))
-            .claim("permissions", List.of(permissions)).signWith(keys.getKey(),Jwts.SIG.HS256).compact();
+        return new TransactionTemplate(transactions).execute(status->{
+            if(identities.findById(identity).isPresent()){
+                jdbc.update("delete from authorization_identity_roles where identity_id=?",identity.value());
+                String name="fixture-"+UUID.randomUUID();
+                Long role=jdbc.queryForObject("insert into authorization_roles(name,active) values(?,true) returning id",Long.class,name);
+                for(String permission:permissions)jdbc.update("insert into authorization_role_permissions(role_id,permission_id) select ?,id from authorization_permissions where code=?",role,permission);
+                jdbc.update("insert into authorization_identity_roles(identity_id,role_id) values(?,?)",identity.value(),role);
+            }
+            var session=authenticationStore.createSession(identity.value(),Instant.now());
+            return tokenIssuer.issue(identity.value(),session.getPublicId(),Instant.now());
+        });
     }
     protected HttpResponse<String> http(String method, String path, String body, String token) throws Exception {
         var builder=HttpRequest.newBuilder(URI.create("http://localhost:"+port+path)).header("Content-Type","application/json");

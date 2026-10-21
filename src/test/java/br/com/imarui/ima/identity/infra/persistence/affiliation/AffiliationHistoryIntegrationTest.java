@@ -37,7 +37,7 @@ class AffiliationHistoryIntegrationTest extends IdentityIntegrationSupport {
             var approved = approve.execute(approval(applicationId, type, "REUSABLE-CODE"));
             var identityId = IdentityId.from(approved.resolvedIdentityId());
             var affiliationId = AffiliationId.from(approved.resultingAffiliationId());
-            activate.execute(new ActivateIdentityCommand(identityId));
+            firstAccess(identityId);
             var before = affiliations.findById(affiliationId).orElseThrow();
             actor(identityId);
             var lowerBound = Instant.now().minusSeconds(1);
@@ -95,7 +95,7 @@ class AffiliationHistoryIntegrationTest extends IdentityIntegrationSupport {
         var applicationId = request(IdentityKind.SERVICE, "inactive@example.test");
         var approved = approve.execute(approval(applicationId, type, "INACTIVE-CODE"));
         var identityId = IdentityId.from(approved.resolvedIdentityId());
-        activate.execute(new ActivateIdentityCommand(identityId));
+        firstAccess(identityId);
         var affiliation = affiliations.findById(AffiliationId.from(approved.resultingAffiliationId())).orElseThrow();
         affiliation.deactivate(Instant.now());
         affiliations.save(affiliation);
@@ -116,7 +116,7 @@ class AffiliationHistoryIntegrationTest extends IdentityIntegrationSupport {
         var approved = approve.execute(approval(request(IdentityKind.SERVICE, "rollback@example.test"), AffiliationType.EMPLOYEE, "ROLLBACK"));
         var identityId = IdentityId.from(approved.resolvedIdentityId());
         var affiliationId = AffiliationId.from(approved.resultingAffiliationId());
-        activate.execute(new ActivateIdentityCommand(identityId));
+        firstAccess(identityId);
         actor(identityId);
         jdbc.execute("create function fail_affiliation_history() returns trigger language plpgsql as $$ begin raise exception 'simulated affiliation history failure'; end $$");
         jdbc.execute("create trigger fail_affiliation_history before insert on ima_affiliations__history for each row execute function fail_affiliation_history()");
@@ -138,7 +138,7 @@ class AffiliationHistoryIntegrationTest extends IdentityIntegrationSupport {
         var approved = approve.execute(approval(request(IdentityKind.SERVICE, "delete-failure@example.test"), AffiliationType.SUPPLIER, "ROLLBACK"));
         var identityId = IdentityId.from(approved.resolvedIdentityId());
         var affiliationId = AffiliationId.from(approved.resultingAffiliationId());
-        activate.execute(new ActivateIdentityCommand(identityId));
+        firstAccess(identityId);
         actor(identityId);
         jdbc.execute("create function fail_affiliation_delete() returns trigger language plpgsql as $$ begin raise exception 'simulated affiliation deletion failure'; end $$");
         jdbc.execute("create trigger fail_affiliation_delete before delete on ima_supplier_affiliations for each row execute function fail_affiliation_delete()");

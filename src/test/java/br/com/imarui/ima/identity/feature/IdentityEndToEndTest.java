@@ -44,14 +44,15 @@ import br.com.imarui.ima.identity.support.IdentityIntegrationSupport;
 class IdentityEndToEndTest extends IdentityIntegrationSupport {
     @Test void httpOnboardingLifecycleErrorsAndSelfDeleteAreFunctional() throws Exception {
         var admin=token(reviewer.getId(),"IDENTITY_APPLICATION_REVIEW","IDENTITY_MANAGE","IDENTITY_READ");
-        var created=http("POST","/api/v1/identity-applications","{\"type\":\"SERVICE\",\"name\":\"HTTP service\",\"email\":\"http-created@example.test\"}",null);
+        var created=http("POST","/api/v1/identity-applications","{\"type\":\"SERVICE\",\"nickname\":\"fixture-service\",\"name\":\"HTTP service\",\"email\":\"http-created@example.test\"}",null);
         assertEquals(201,created.statusCode(),created.body()); assertTrue(created.headers().firstValue("Location").isPresent());
         var applicationId=json.readTree(created.body()).path("id").asText();
         var approved=http("POST","/api/v1/admin/identity-applications/"+applicationId+"/approve","{\"tenantId\":\""+tenant.getId()+"\",\"affiliation\":{\"type\":\"EXTERNAL\"}}",admin);
         assertEquals(200,approved.statusCode(),approved.body());
         var identityId=IdentityId.from(json.readTree(approved.body()).path("resolvedIdentityId").asText());
         var activation=http("POST","/api/v1/admin/identities/"+identityId+"/activate",null,admin);
-        assertEquals(200,activation.statusCode(),activation.body());
+        assertEquals(409,activation.statusCode(),activation.body());
+        firstAccess(identityId);
         var conflict=http("POST","/api/v1/admin/identities/"+identityId+"/activate",null,admin);
         assertEquals(409,conflict.statusCode(),conflict.body()); assertTrue(conflict.headers().firstValue("Content-Type").orElse("").startsWith("application/problem+json"));
         assertEquals(404,http("GET","/api/v1/identities/"+UUID.randomUUID(),null,admin).statusCode());
