@@ -17,8 +17,7 @@ Não existe estado DELETED. Exclusão é um fluxo destrutivo separado, iniciado 
 
 ## Identificadores e normalização
 
-E-mail é aparado e convertido para minúsculas. Sua unicidade considera o tipo, tanto nas Identities operacionais
-(em qualquer estado) como nas aplicações PENDING. O mesmo e-mail pode pertencer a tipos diferentes.
+E-mail é obrigatório nos três kinds, aparado e convertido para minúsculas. Pode repetir dentro do mesmo kind e entre kinds, tanto nas Identities quanto nas aplicações. É somente contato; nunca identifica login ou recuperação. Nickname é obrigatório, normalizado e único por kind, também nas reservas PENDING.
 CPF/CNPJ são normalizados para dígitos e validados por seus value objects; suas chaves operacionais são únicas.
 Solicitação PENDING duplicada por CPF/CNPJ é bloqueada. Rejeição libera a reserva pendente, mas não altera cadastro existente.
 Histórico não reserva e-mail, CPF, CNPJ ou códigos de vínculo, permitindo novo cadastro/aprovação após self-delete, mesmo com os mesmos valores. Cada vínculo removido também possui seu próprio registro AffiliationHistory. Veja a [política de exclusão e auditoria](deletion-and-history.md).

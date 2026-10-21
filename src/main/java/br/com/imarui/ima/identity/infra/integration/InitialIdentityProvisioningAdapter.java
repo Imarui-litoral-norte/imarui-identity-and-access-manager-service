@@ -23,8 +23,7 @@ public class InitialIdentityProvisioningAdapter implements InitialIdentityProvis
   public UUID create(IdentityKind kind, String nickname, String contact, Map<String, String> d) {
     var now = clock.instant();
     var id = IdentityId.generate();
-    var email =
-        contact == null ? null : IdentityEmail.create(Email.from(contact), EmailType.PRIMARY, now);
+    var email = IdentityEmail.create(Email.from(contact), EmailType.PRIMARY, now);
     Identity identity =
         switch (kind) {
           case PERSON ->
@@ -35,12 +34,20 @@ public class InitialIdentityProvisioningAdapter implements InitialIdentityProvis
                   Cpf.from(d.get("cpf")),
                   null,
                   null,
-                  now);
+                  now,
+                  nickname);
           case LEGAL_ENTITY ->
               LegalEntityIdentity.create(
-                  id, email, LegalName.from(d.get("name")), null, Cnpj.from(d.get("cnpj")), now);
+                  id,
+                  email,
+                  LegalName.from(d.get("name")),
+                  null,
+                  Cnpj.from(d.get("cnpj")),
+                  now,
+                  nickname);
           case SERVICE ->
-              ServiceIdentity.create(id, email, ServiceName.from(d.get("name")), null, now);
+              ServiceIdentity.create(
+                  id, email, ServiceName.from(d.get("name")), null, now, nickname);
         };
     identity.assignNickname(nickname);
     return identities.save(identity).getId().value();

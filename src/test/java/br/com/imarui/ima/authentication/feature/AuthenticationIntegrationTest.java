@@ -316,21 +316,18 @@ class AuthenticationIntegrationTest extends IdentityIntegrationSupport {
   }
 
   @Test
-  void serviceWithoutContactCanUseOperatorInvite() {
-    var i =
-        br.com.imarui.ima.identity.core.domain.model.identity.service.ServiceIdentity.create(
-            IdentityId.generate(),
-            null,
-            br.com.imarui.ima.identity.core.domain.model.identity.service.ServiceName.from(
-                "No mailbox"),
-            null,
-            Instant.now());
-    i.assignNickname("no-mailbox");
-    i =
-        (br.com.imarui.ima.identity.core.domain.model.identity.service.ServiceIdentity)
-            identities.save(i);
-    complete(i);
-    assertNotNull(authentication.login(IdentityKind.SERVICE, "no-mailbox", PASSWORD));
+  void serviceRequiresContactEmail() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            br.com.imarui.ima.identity.core.domain.model.identity.service.ServiceIdentity.create(
+                IdentityId.generate(),
+                null,
+                br.com.imarui.ima.identity.core.domain.model.identity.service.ServiceName.from(
+                    "No mailbox"),
+                null,
+                Instant.now(),
+                "fixture-" + java.util.UUID.randomUUID()));
   }
 
   @Test
@@ -368,7 +365,8 @@ class AuthenticationIntegrationTest extends IdentityIntegrationSupport {
     Path output = dir.resolve("invite.json");
     Files.writeString(
         input,
-        "{\"kind\":\"SERVICE\",\"nickname\":\"root-operator\",\"name\":\"Initial operator\"}");
+        "{\"kind\":\"SERVICE\",\"nickname\":\"root-operator\",\"name\":\"Initial"
+            + " operator\",\"email\":\"root@example.test\"}");
     var provisioning = getProvisioning();
     var runner =
         new AuthenticationBootstrap(

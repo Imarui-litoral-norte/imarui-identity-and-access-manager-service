@@ -7,38 +7,25 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-@Schema(name = "CreateServiceIdentityApplicationRequest", description = "Solicitação SERVICE com nome e e-mail obrigatórios; descrição opcional.")
+@Schema(
+    name = "CreateServiceIdentityApplicationRequest",
+    description = "Solicitação SERVICE com nome e e-mail obrigatórios; descrição opcional.")
 public record CreateServiceIdentityApplicationRequest(
-
-        @NotBlank(message = "Service name is required.")
-        @Size(
-                max = 100,
-                message = "Service name must not exceed 100 characters."
-        )
+    @NotBlank(message = "Service name is required.")
+        @Size(max = 100, message = "Service name must not exceed 100 characters.")
         String name,
-
-        @Pattern(
-                regexp = ".*\\S.*",
-                message = "Service description must not be blank when informed."
-        )
-        @Size(
-                max = 500,
-                message = "Service description must not exceed 500 characters."
-        )
+    @Pattern(regexp = ".*\\S.*", message = "Service description must not be blank when informed.")
+        @Size(max = 500, message = "Service description must not exceed 500 characters.")
         String description,
-
+    @NotBlank(message = "Email is required.")
         @Email(message = "Email has an invalid format.")
-        @Size(
-                max = 254,
-                message = "Email must not exceed 254 characters."
-        )
-        String email
+        @Size(max = 254, message = "Email must not exceed 254 characters.")
+        String email,
+    @NotBlank @Size(min = 3, max = 64) String nickname)
+    implements CreateIdentityApplicationRequest {
 
-, @NotBlank @Size(min=3,max=64) String nickname
-) implements CreateIdentityApplicationRequest {
-
-    @Override
-    public IdentityKind type() {
-        return IdentityKind.SERVICE;
-    }
+  @Override
+  public IdentityKind type() {
+    return IdentityKind.SERVICE;
+  }
 }

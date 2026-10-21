@@ -70,4 +70,96 @@ class MigrationUpgradeIntegrationTest extends IdentityIntegrationSupport {
       jdbc.execute("drop schema if exists " + schema + " cascade");
     }
   }
+
+  @Test
+  void upgradesPublishedV9WithoutRewritingChecksumsOrLeavingExhaustedJobsPending()
+      throws Exception {
+    String schema = "published_" + UUID.randomUUID().toString().replace("-", "");
+    String url;
+    String user;
+    try (var metadata = source.getConnection()) {
+      url = metadata.getMetaData().getURL();
+      user = metadata.getMetaData().getUserName();
+    }
+    try (var connection = java.sql.DriverManager.getConnection(url, user, "identity_test")) {
+      Flyway.configure()
+          .dataSource(url, user, "identity_test")
+          .schemas(schema)
+          .defaultSchema(schema)
+          .target("9")
+          .load()
+          .migrate();
+      try (var sql = connection.createStatement()) {
+        sql.execute(
+            "insert into "
+                + schema
+                + ".ima_identities select * from public.ima_identities where id='"
+                + reviewer.getId().value()
+                + "'");
+        sql.execute(
+            "insert into "
+                + schema
+                + ".authentication_notification_jobs(id,identity_id,purpose,attempts,next_attempt_at)"
+                + " values('"
+                + UUID.randomUUID()
+                + "','"
+                + reviewer.getId().value()
+                + "','PASSWORD_RESET',10,current_timestamp)");
+      }
+      try (var sql = connection.createStatement()) {
+        sql.execute(
+            "insert into "
+                + schema
+                + ".authentication_notification_jobs(id,identity_id,purpose,attempts,next_attempt_at,delivered_at)"
+                + " values('"
+                + UUID.randomUUID()
+                + "','"
+                + reviewer.getId().value()
+                + "','ACCOUNT_ACTIVATION',10,current_timestamp,current_timestamp)");
+      }
+      var upgraded =
+          Flyway.configure()
+              .dataSource(url, user, "identity_test")
+              .schemas(schema)
+              .defaultSchema(schema)
+              .load();
+      upgraded.migrate();
+      upgraded.validate();
+      connection.setSchema(schema);
+      try (var sql = connection.createStatement();
+          var row =
+              sql.executeQuery(
+                  "select state,attempts,finished_at from authentication_notification_jobs where"
+                      + " delivered_at is null")) {
+        assertTrue(row.next());
+        assertEquals("FAILED", row.getString(1));
+        assertEquals(10, row.getInt(2));
+        assertNotNull(row.getTimestamp(3));
+      }
+      try (var sql = connection.createStatement();
+          var row =
+              sql.executeQuery(
+                  "select state,attempts from authentication_notification_jobs where delivered_at"
+                      + " is not null")) {
+        assertTrue(row.next());
+        assertEquals("DELIVERED", row.getString(1));
+        assertEquals(10, row.getInt(2));
+      }
+      try (var sql = connection.createStatement()) {
+        sql.execute(
+            "insert into authentication_notification_jobs(id,identity_id,purpose,next_attempt_at)"
+                + " values('"
+                + UUID.randomUUID()
+                + "','"
+                + reviewer.getId().value()
+                + "','PASSWORD_RESET',current_timestamp)");
+        try (var row = sql.executeQuery("select count(*) from authentication_notification_jobs")) {
+          row.next();
+          assertEquals(3, row.getInt(1));
+        }
+      }
+    } finally {
+      jdbc.execute("drop schema if exists " + schema + " cascade");
+    }
+  }
 }

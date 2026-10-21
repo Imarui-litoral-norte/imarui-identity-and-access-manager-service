@@ -39,7 +39,7 @@ resolvidas permanecem informativas, mesmo após a exclusão operacional.
 | Cadastro/revisão com chaves naturais sobrepostas | Advisory locks transacionais PostgreSQL, ordenados pelo hash das chaves canônicas |
 | Aprovações no mesmo Tenant | Lock do Tenant antes dos identificadores específicos |
 | Código do vínculo por Tenant | Índices únicos e FK composta entre base e especialização |
-| E-mail por tipo e aplicações PENDING | Índices únicos, incluindo predicados de estado |
+| Nickname por tipo e aplicações PENDING | Índices únicos case-insensitive, incluindo predicados de estado; e-mail sem unicidade |
 | Atualização de registros JPA | Versionamento otimista existente |
 
 Os locks de registro usam hashes; os valores pessoais não são gravados como chave de lock. Constraints continuam sendo
