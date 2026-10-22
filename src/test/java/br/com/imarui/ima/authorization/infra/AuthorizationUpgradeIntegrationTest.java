@@ -115,6 +115,35 @@ class AuthorizationUpgradeIntegrationTest extends IdentityIntegrationSupport {
     } finally { jdbc.execute("drop schema if exists "+schema+" cascade"); }
   }
 
+  @Test void populatedV20PreservesTechnicalCredentialsNoncesJurisdictionAndSecurityHistory() throws Exception {
+    String schema="auth_m2m_upgrade_"+UUID.randomUUID().toString().replace("-",""); String url=url();
+    var client=UUID.randomUUID(); var key=UUID.randomUUID(); var nonce=UUID.randomUUID(); var event=UUID.randomUUID();
+    var generator=java.security.KeyPairGenerator.getInstance("RSA"); generator.initialize(2048);
+    var publicKey=Base64.getEncoder().encodeToString(generator.generateKeyPair().getPublic().getEncoded());
+    try(var c=DriverManager.getConnection(url,"identity_test","identity_test")) {
+      flyway(url,schema,"20").migrate(); c.setSchema(schema);
+      try(var s=c.createStatement()) {
+        s.execute("insert into authorization_catalog_owners(service_code,namespace,updated_at) values('upgrade-service','upgrade-service',current_timestamp)");
+        s.execute("insert into authentication_service_clients(service_code,client_id,enabled,operations,created_at,updated_at,version) values('upgrade-service','"+client+"',false,'CATALOG_SYNC',current_timestamp,current_timestamp,4)");
+        s.execute("insert into authentication_service_keys(id,service_code,public_key,fingerprint,active,created_at,expires_at,revoked_at) values('"+key+"','upgrade-service','"+publicKey+"','"+"a".repeat(64)+"',false,current_timestamp,current_timestamp+interval '1 day',current_timestamp)");
+        s.execute("insert into authentication_service_nonces values('"+key+"','"+nonce+"',current_timestamp+interval '1 minute')");
+        s.execute("insert into authorization_service_jurisdictions values('upgrade-service','"+AuthorizationScope.PLATFORM_ID+"')");
+        s.execute("insert into authorization_security_events(id,event,service_code,resource_id,occurred_at,reason_code,correlation_id) values('"+event+"','M2M_AUTHENTICATION','upgrade-service','"+key+"',current_timestamp,'INVALID_CREDENTIAL','"+UUID.randomUUID()+"')");
+      }
+      flyway(url,schema,null).migrate(); flyway(url,schema,null).validate();
+      try(var s=c.createStatement();var rows=s.executeQuery("select c.client_id,c.enabled,c.version,c.operations,k.id,k.public_key,k.active,k.revoked_at,n.nonce,j.scope_id from authentication_service_clients c join authentication_service_keys k using(service_code) join authentication_service_nonces n on n.credential_id=k.id join authorization_service_jurisdictions j using(service_code)")) {
+        assertTrue(rows.next()); assertEquals(client,rows.getObject(1,UUID.class)); assertFalse(rows.getBoolean(2));
+        assertEquals(4,rows.getLong(3)); assertEquals("CATALOG_SYNC",rows.getString(4));
+        assertEquals(key,rows.getObject(5,UUID.class)); assertEquals(publicKey,rows.getString(6)); assertFalse(rows.getBoolean(7));
+        assertNotNull(rows.getTimestamp(8)); assertEquals(nonce,rows.getObject(9,UUID.class)); assertEquals(AuthorizationScope.PLATFORM_ID,rows.getObject(10,UUID.class));
+        assertFalse(rows.next());
+      }
+      try(var s=c.createStatement();var rows=s.executeQuery("select id,reason_code,resource_id from authorization_security_events")) {
+        assertTrue(rows.next()); assertEquals(event,rows.getObject(1,UUID.class)); assertEquals("INVALID_CREDENTIAL",rows.getString(2)); assertEquals(key.toString(),rows.getString(3));
+      }
+    } finally { jdbc.execute("drop schema if exists "+schema+" cascade"); }
+  }
+
   @Test void cleanInstallationHasOnlyTheAdministrativeScopeAndNoAutomaticAssignment() throws Exception {
     String schema="auth_fresh_"+UUID.randomUUID().toString().replace("-",""); String url=url();
     try (var c=DriverManager.getConnection(url,"identity_test","identity_test")) {
