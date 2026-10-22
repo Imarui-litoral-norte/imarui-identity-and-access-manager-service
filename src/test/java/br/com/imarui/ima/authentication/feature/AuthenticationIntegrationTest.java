@@ -351,7 +351,7 @@ class AuthenticationIntegrationTest extends IdentityIntegrationSupport {
             i.getId().value()));
     reset(mail);
     jdbc.update(
-        "update authentication_notification_jobs set next_attempt_at=current_timestamp where"
+        "update authentication_notification_jobs set next_attempt_at=current_timestamp-interval '1 second' where"
             + " identity_id=?",
         i.getId().value());
     assertTrue(delivery.processOne());

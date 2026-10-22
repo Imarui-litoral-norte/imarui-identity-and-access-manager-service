@@ -5,6 +5,12 @@ Data: 2026-10-22. Base inspecionada: `f419a501328774fefec24b6ac28070e19f972cf8`
 
 ## Estado e condição para implementação
 
+**Atualização de escopo:** o anexo posterior da Rodada 1 substituiu a exigência de
+carregar todas as 70 issues antes do código. A execução agora segue IIAMS-82–87,
+com leitura incremental e registro de limitações de acesso. Ver
+[ROUND_1_REQUIREMENTS.md](ROUND_1_REQUIREMENTS.md). Os parágrafos abaixo preservam
+o estado observado na auditoria inicial, não uma condição bloqueante do plano atual.
+
 Esta é a auditoria do código existente, anterior à implementação. Não representa entrega
 das Stories, validação de critérios de aceite ou substituição dos requisitos do Jira.
 O prompt anexado exige leitura integral de IIAMS-81, IIAMS-82–92 e IIAMS-93–150 antes
