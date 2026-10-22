@@ -1,11 +1,11 @@
 {
   "date": "2026-10-22",
-  "increment": "Scopes, catalog, owned Roles, RoleAssignments and internal evaluation; administrative mutations pending",
+  "increment": "Administrative policy mutations, Tenant resource enforcement and minimum ROOT protection; concurrency and final audit pending",
   "java": "17.0.18",
   "postgresql": "18.4 isolated native cluster",
   "command": "mvnw.cmd -B clean verify",
   "result": "BUILD SUCCESS",
-  "tests": 225.0,
+  "tests": 242.0,
   "failures": 0.0,
   "errors": 0.0,
   "skipped": 0.0,
@@ -76,6 +76,13 @@
     {
       "name": "br.com.imarui.ima.authorization.core.domain.ScopeHierarchyTest",
       "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "br.com.imarui.ima.authorization.infra.AuthorizationAdministrationIntegrationTest",
+      "tests": 17,
       "failures": 0,
       "errors": 0,
       "skipped": 0

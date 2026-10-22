@@ -6,4 +6,5 @@ import java.util.*;
 public interface IdentityAuthorizationApi {
   Set<UUID> activeIdentityIds();
   Set<UUID> activeTenantIds();
+  boolean tenantExists(UUID tenantId);
 }

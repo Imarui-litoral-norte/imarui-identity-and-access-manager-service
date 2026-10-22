@@ -1,0 +1,65 @@
+package br.com.imarui.ima.authorization.infra.persistence;
+import br.com.imarui.ima.authorization.core.domain.model.*;
+import br.com.imarui.ima.authorization.core.application.command.PolicyChangeReason;
+import br.com.imarui.ima.authorization.core.repository.AuthorizationMutationRepository;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.*;
+import org.springframework.dao.OptimisticLockingFailureException;
+import tools.jackson.databind.json.JsonMapper;
+
+@Repository
+@RequiredArgsConstructor
+@Transactional(propagation=Propagation.MANDATORY)
+public class JdbcAuthorizationMutationRepository implements AuthorizationMutationRepository {
+  private final JdbcTemplate jdbc;
+  private final JsonMapper json;
+  public void lock() { jdbc.query("select pg_advisory_xact_lock(810082)",r -> {}); }
+  public Role saveRole(Role role) {
+    if (role.id()==null) {
+      long id=jdbc.queryForObject("insert into authorization_roles(name,ownership,owner_scope_id,owner_tenant_id,active,created_at,updated_at,version) values(?,?,?,?,?,?,?,0) returning id",
+          Long.class,role.name(),role.ownership().name(),role.ownerScopeId(),role.ownerTenantId(),role.active(),Timestamp.from(role.createdAt()),Timestamp.from(role.updatedAt()));
+      return new Role(id,role.name(),role.ownership(),role.ownerScopeId(),role.ownerTenantId(),role.active(),role.createdAt(),role.updatedAt(),0);
+    }
+    changed(jdbc.update("update authorization_roles set name=?,active=?,updated_at=?,version=? where id=? and version=?",
+        role.name(),role.active(),Timestamp.from(role.updatedAt()),role.version(),role.id(),role.version()-1));
+    return role;
+  }
+  public void replacePermissions(long role,Set<String> codes) {
+    var existing=jdbc.queryForList("select p.code from authorization_role_permissions rp join authorization_permissions p on p.id=rp.permission_id where rp.role_id=?",String.class,role);
+    for (var code:existing) if (!codes.contains(code)) jdbc.update("delete from authorization_role_permissions where role_id=? and permission_id=(select id from authorization_permissions where code=?)",role,code);
+    for (var code:codes) {
+      int count=jdbc.update("insert into authorization_role_permissions(role_id,permission_id) select ?,id from authorization_permissions where code=? on conflict do nothing",role,code);
+      if (count==0 && !existing.contains(code)) throw new IllegalArgumentException("Unknown Permission.");
+    }
+  }
+  public void saveAssignment(RoleAssignment a) {
+    if (a.version()==0) jdbc.update("insert into authorization_identity_roles(id,identity_id,role_id,authorization_scope_id,active,created_at,updated_at,version) values(?,?,?,?,?,?,?,0)",
+        a.id(),a.identityId(),a.roleId(),a.scopeId(),a.active(),Timestamp.from(a.createdAt()),Timestamp.from(a.updatedAt()));
+    else changed(jdbc.update("update authorization_identity_roles set active=?,updated_at=?,version=? where id=? and version=?",
+        a.active(),Timestamp.from(a.updatedAt()),a.version(),a.id(),a.version()-1));
+  }
+  public void saveDeny(DenyRule d) {
+    if (d.version()==0) jdbc.update("insert into authorization_denies(id,permission_code,scope_id,identity_id,role_id,active,reason,created_at,updated_at,version) values(?,?,?,?,?,?,?,?,?,0)",
+        d.id(),d.permission(),d.scopeId(),d.identityId(),d.roleId(),d.active(),d.reason(),Timestamp.from(d.createdAt()),Timestamp.from(d.updatedAt()));
+    else changed(jdbc.update("update authorization_denies set active=?,reason=?,updated_at=?,version=? where id=? and version=?",
+        d.active(),d.reason(),Timestamp.from(d.updatedAt()),d.version(),d.id(),d.version()-1));
+  }
+  public void saveDelegation(PermissionDelegation d) {
+    if (d.version()==0) jdbc.update("insert into authorization_permission_delegations(id,identity_id,permission_code,scope_id,redelegable,active,reason,created_at,updated_at,version) values(?,?,?,?,?,?,?,?,?,0)",
+        d.id(),d.identityId(),d.permission(),d.scopeId(),d.redelegable(),d.active(),d.reason(),Timestamp.from(d.createdAt()),Timestamp.from(d.updatedAt()));
+    else changed(jdbc.update("update authorization_permission_delegations set active=?,redelegable=?,reason=?,updated_at=?,version=? where id=? and version=?",
+        d.active(),d.redelegable(),d.reason(),Timestamp.from(d.updatedAt()),d.version(),d.id(),d.version()-1));
+  }
+  public void audit(UUID actor,String operation,String type,String resource,UUID scope,
+      PolicyChangeReason reason,Object before,Object after,Instant now) {
+    jdbc.update("insert into authorization_audit(id,actor_identity_id,service_code,action,resource_type,resource_id,scope_id,occurred_at,reason,correlation_id,before_state,after_state) values(?,?,'iiam',?,?,?,?,?,?,?,?::jsonb,?::jsonb)",
+        UUID.randomUUID(),actor,operation,type,resource,scope,Timestamp.from(now),reason.reason(),reason.correlationId(),
+        before==null?null:json.writeValueAsString(before),after==null?null:json.writeValueAsString(after));
+  }
+  private void changed(int rows) { if (rows!=1) throw new OptimisticLockingFailureException("Policy changed concurrently."); }
+}

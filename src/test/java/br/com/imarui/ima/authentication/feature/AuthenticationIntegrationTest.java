@@ -376,6 +376,7 @@ class AuthenticationIntegrationTest extends IdentityIntegrationSupport {
             json,
             transactions,
             Clock.systemUTC(),
+            rootAuthorization,
             input.toString(),
             output.toString());
     try {
@@ -395,6 +396,7 @@ class AuthenticationIntegrationTest extends IdentityIntegrationSupport {
               json,
               transactions,
               Clock.systemUTC(),
+              rootAuthorization,
               input.toString(),
               dir.resolve("again.json").toString());
       assertThrows(IllegalStateException.class, () -> again.run(new DefaultApplicationArguments()));

@@ -27,6 +27,7 @@ public class AuthenticationBootstrap implements ApplicationRunner {
   private final tools.jackson.databind.json.JsonMapper json;
   private final TransactionTemplate tx;
   private final Clock clock;
+  private final br.com.imarui.ima.authorization.api.module.InitialRootAuthorization rootAuthorization;
   private final String input, output;
 
   public AuthenticationBootstrap(
@@ -36,6 +37,7 @@ public class AuthenticationBootstrap implements ApplicationRunner {
       tools.jackson.databind.json.JsonMapper json,
       PlatformTransactionManager manager,
       Clock clock,
+      br.com.imarui.ima.authorization.api.module.InitialRootAuthorization rootAuthorization,
       @Value("${security.bootstrap.input-file}") String input,
       @Value("${security.bootstrap.output-file}") String output) {
     this.provisioning = provisioning;
@@ -44,6 +46,7 @@ public class AuthenticationBootstrap implements ApplicationRunner {
     this.json = json;
     this.tx = new TransactionTemplate(manager);
     this.clock = clock;
+    this.rootAuthorization = rootAuthorization;
     this.input = input;
     this.output = output;
   }
@@ -84,10 +87,7 @@ public class AuthenticationBootstrap implements ApplicationRunner {
                 "insert into authentication_bootstrap values('initial-root',?,?)",
                 id,
                 java.sql.Timestamp.from(clock.instant()));
-            jdbc.update(
-                "insert into authorization_identity_roles(identity_id,role_id) select ?,id from"
-                    + " authorization_roles where name='ROOT'",
-                id);
+            rootAuthorization.assign(id);
             String invite = auth.issueChallenge(id, Purpose.ACCOUNT_ACTIVATION);
             try {
               Files.writeString(

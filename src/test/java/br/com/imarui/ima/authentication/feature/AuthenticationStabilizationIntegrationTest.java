@@ -682,6 +682,7 @@ class AuthenticationStabilizationIntegrationTest extends IdentityIntegrationSupp
             json,
             transactions,
             clock,
+            rootAuthorization,
             input.toString(),
             output.toString());
     try {

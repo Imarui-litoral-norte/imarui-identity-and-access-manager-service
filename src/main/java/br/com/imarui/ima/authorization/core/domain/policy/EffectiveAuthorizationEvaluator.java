@@ -13,7 +13,8 @@ public final class EffectiveAuthorizationEvaluator {
     if (!state.deprecatedPermissions().containsKey(permission)) return new Decision(false,Reason.UNKNOWN_PERMISSION);
     try {
       var hierarchy=new ScopeHierarchy(state.scopes());
-      if (!state.resourceAvailable(scope,hierarchy)) return new Decision(false,Reason.UNAVAILABLE_RESOURCE);
+      boolean administration=permission.startsWith("AUTHORIZATION_") || permission.equals("TENANT_MANAGE") || permission.equals("TENANT_READ");
+      if (!state.resourceAvailable(scope,hierarchy,administration)) return new Decision(false,Reason.UNAVAILABLE_RESOURCE);
       var roles=effectiveRoles(state,identity,scope,hierarchy);
       if (denied(state,identity,permission,scope,roles,hierarchy)) return new Decision(false,Reason.EXPLICIT_DENY);
       return roles.stream().anyMatch(id -> state.rolePermissions().getOrDefault(id,Set.of()).contains(permission))
@@ -28,10 +29,12 @@ public final class EffectiveAuthorizationEvaluator {
     if (!state.activeIdentities().contains(identity) || !Boolean.FALSE.equals(state.deprecatedPermissions().get(permission))) return false;
     try {
       var hierarchy=new ScopeHierarchy(state.scopes());
-      if (!state.resourceAvailable(scope,hierarchy)
-          || denied(state,identity,permission,scope,effectiveRoles(state,identity,scope,hierarchy),hierarchy)) return false;
+      // A live ancestor authority may configure an inactive descendant without activating access there.
+      // An authority whose own administrative ancestry is inactive cannot be exercised.
+      hierarchy.ancestors(scope);
+      if (denied(state,identity,permission,scope,effectiveRoles(state,identity,scope,hierarchy),hierarchy)) return false;
       return state.delegations().stream().anyMatch(d -> d.active() && d.identityId().equals(identity)
-          && d.permission().equals(permission) && hierarchy.covers(d.scopeId(),scope)
+          && d.permission().equals(permission) && hierarchy.active(d.scopeId()) && hierarchy.covers(d.scopeId(),scope)
           && (!redelegating || d.redelegable()));
     } catch (IllegalArgumentException corruptOrUnknownScope) { return false; }
   }

@@ -16,4 +16,7 @@ public class IdentityAuthorizationAdapter implements IdentityAuthorizationApi {
   public Set<UUID> activeTenantIds() {
     return Set.copyOf(jdbc.queryForList("select id from ima_tenants where status='ACTIVE'",UUID.class));
   }
+  public boolean tenantExists(UUID id) {
+    return Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from ima_tenants where id=?)",Boolean.class,id));
+  }
 }

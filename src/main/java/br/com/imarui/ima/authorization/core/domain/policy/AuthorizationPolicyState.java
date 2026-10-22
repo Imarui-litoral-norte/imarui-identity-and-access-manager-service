@@ -18,8 +18,13 @@ public record AuthorizationPolicyState(List<AuthorizationScope> scopes, Map<Long
   }
 
   public boolean resourceAvailable(UUID scope, ScopeHierarchy hierarchy) {
+    return resourceAvailable(scope,hierarchy,false);
+  }
+
+  public boolean resourceAvailable(UUID scope, ScopeHierarchy hierarchy, boolean lifecycleAdministration) {
     if (!hierarchy.active(scope)) return false;
+    if (lifecycleAdministration) return true;
     return tenantScopes.entrySet().stream().noneMatch(binding ->
-        hierarchy.covers(binding.getValue(),scope) && !activeTenants.contains(binding.getKey()));
+        binding.getValue().equals(scope) && !activeTenants.contains(binding.getKey()));
   }
 }

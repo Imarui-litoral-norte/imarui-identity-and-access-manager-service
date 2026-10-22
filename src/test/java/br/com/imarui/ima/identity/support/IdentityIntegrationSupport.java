@@ -62,6 +62,7 @@ public abstract class IdentityIntegrationSupport {
   @Autowired protected JdbcTemplate jdbc;
   @Autowired protected JsonMapper json;
   @Autowired private br.com.imarui.ima.authorization.infra.bootstrap.PermissionCatalogBootstrap authorizationBootstrap;
+  @Autowired protected br.com.imarui.ima.authorization.api.module.InitialRootAuthorization rootAuthorization;
   @Autowired protected JwtSigningKeyProvider keys;
 
   @Autowired

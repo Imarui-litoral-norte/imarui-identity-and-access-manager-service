@@ -109,3 +109,40 @@ por Permission/Scope, prevenção de self-grant/alterações compartilhadas/repa
 auditoria dessas mutações; proteção mínima ROOT/último administrador; enforcement
 dos recursos Tenant nas APIs existentes; concorrência e testes de segurança reais.
 Esses requisitos ainda não estão encerrados pelos testes de domínio acima.
+
+### Terceiro incremento validado
+
+Implementadas as mutações transacionais de Scope, Role/composição, RoleAssignment,
+DENY e delegação. O ator vem do contrato confiável de Identity. Um lock PostgreSQL
+serializa validação, leitura atual, alterações e auditoria. A análise de impacto impede
+ganhos indiretos não delegáveis, inclusive removendo uma Role com DENY, revogando DENY,
+alterando Role compartilhada e reparentando recursos. Destinatários e recursos que
+possam ser reativados também participam da análise; self-grants diretos e indiretos são negados.
+
+V15 protege a última Identity e atribuição ROOT por fronteira, a definição ROOT e a
+composição de suas Permissions. Faz o bootstrap único de autoridade explícita de
+delegação interna dos ROOT existentes. O bootstrap novo usa `InitialRootAuthorization`
+dentro da transação e prova de execução única já existente. Não registra acesso nem
+delegação para serviços externos durante sincronização de catálogo.
+
+As seis capacidades internas AUTHORIZATION_* compõem o mínimo de recuperação protegido
+no ROOT e em sua jurisdição. DENYs ordinários continuam valendo. Novas raízes independentes
+exigem um operador ROOT existente, uso e redelegação de cada capacidade de origem; a
+governança inicial é explícita e auditada, e não estende os grants PLATFORM de outros usuários.
+
+As APIs Tenant resolvem o Scope pelo binding persistido do próprio recurso. Grants locais
+funcionam sem authority global e não autorizam irmãos. Um DENY local também alcança o
+ROOT que ainda conserva uma authority administrativa global. O mesmo JWT perde acesso
+assim que a composição da Role é revogada. TENANT_READ/MANAGE permitem consultar e
+administrar o lifecycle do Tenant inativo; Permissions de negócio continuam negadas.
+O estado operacional de um Tenant não desativa automaticamente outro Tenant descendente;
+esse efeito pertence à desativação explícita do Scope.
+
+Validação: **242 testes, zero falhas, erros ou ignorados; clean verify e JAR executável**.
+Os 17 cenários novos de administração cobrem os caminhos acima, bootstrap, ownership,
+delegação não transitiva, proteção ROOT, HTTP, rollback real de falha na auditoria e
+preservação de estado após tentativa de reparenting ou edição não autorizada.
+
+Ainda falta concluir concorrência explícita, revisar hardening/contratos/documentação,
+completar a matriz individual e o handoff e verificar a branch/CI finais. O acesso formal
+às descrições individuais do Jira continua uma limitação de validação, não é presumido.

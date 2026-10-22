@@ -25,6 +25,7 @@ public class TenantController {
     private final RenameTenantUseCase renameTenantUseCase;
 
     @GetMapping("/{tenantId}")
+    @org.springframework.security.access.prepost.PreAuthorize("@tenantAuthorizationAccess.allowed('TENANT_READ', #tenantId)")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
     @io.swagger.v3.oas.annotations.Operation(summary = "Consultar tenant", description = "Consulta Tenant por UUID em qualquer estado administrativo. code é estável; name pode ser alterado no fluxo administrativo. A resposta não inclui nem altera afiliações. Exige TENANT_READ.")
     @br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup(value = "Tenants · Consulta", order = 70)
