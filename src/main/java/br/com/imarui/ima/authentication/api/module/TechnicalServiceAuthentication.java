@@ -14,6 +14,7 @@ public interface TechnicalServiceAuthentication {
   record ClientSummary(UUID id,String serviceCode,boolean enabled,Set<Operation> operations,long version) {}
   record ClientPage(List<ClientSummary> items,long total) {}
   Caller verify(String assertion,String method,String path,byte[] body);
+  Caller current(Caller authenticated);
   Client enroll(String service,Set<Operation> operations,Set<UUID> scopeRoots,String publicKey,Instant expiresAt);
   Key rotate(String service,String publicKey,Instant expiresAt);
   void revokeKey(String service,UUID key);

@@ -14,6 +14,15 @@ import org.springframework.transaction.annotation.*;
 public class JdbcSecurityAuditEvents implements SecurityAuditEvents {
   private final JdbcTemplate jdbc;
   private final Clock clock;
+  private final tools.jackson.databind.json.JsonMapper json;
+  @Transactional(propagation=Propagation.MANDATORY)
+  public void decision(UUID id,UUID actor,String service,String type,String resource,UUID scope,String permission,String reason,UUID correlation) {
+    jdbc.update("""
+        insert into authorization_security_events(id,event,actor_identity_id,service_code,resource_id,scope_id,occurred_at,reason_code,correlation_id,details)
+        values(?,'PDP_DECISION',?,?,?,?,?,?,?,?::jsonb)
+        """,id,actor,service,resource,scope,Timestamp.from(clock.instant()),reason,correlation,
+        json.writeValueAsString(java.util.Map.of("permission",permission,"resourceType",type)));
+  }
   @Transactional(propagation=Propagation.REQUIRES_NEW)
   public void record(String event,UUID actor,String service,String resource,UUID scope,String reason,UUID correlation) {
     append(event,actor,service,resource,scope,reason,correlation);

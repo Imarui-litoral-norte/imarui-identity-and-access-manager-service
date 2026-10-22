@@ -82,6 +82,39 @@ class AuthorizationUpgradeIntegrationTest extends IdentityIntegrationSupport {
     } finally { jdbc.execute("drop schema if exists "+schema+" cascade"); }
   }
 
+  @Test void legacyRootUpgradePreservesTheRoleIdAndSeedsAllExplicitRecoveryAuthority() throws Exception {
+    String schema="auth_root_upgrade_"+UUID.randomUUID().toString().replace("-",""); String url=url();
+    var identity=UUID.randomUUID(); var assignment=UUID.randomUUID();
+    try(var c=DriverManager.getConnection(url,"identity_test","identity_test")) {
+      flyway(url,schema,"10").migrate(); c.setSchema(schema);
+      try(var s=c.createStatement()) {
+        s.execute("insert into ima_identities(id,kind,primary_email_id,primary_email,primary_email_type,primary_email_verified,primary_email_created_at,status,created_at,updated_at,version,nickname) values('"+identity+"','SERVICE','"+UUID.randomUUID()+"','legacy-root@example.test','PRIMARY',true,current_timestamp,'ACTIVE',current_timestamp,current_timestamp,0,'legacy-root')");
+        s.execute("insert into ima_service_identities(id,name) values('"+identity+"','Legacy ROOT')");
+        s.execute("insert into authorization_permissions(id,code,description,module) values(87001,'IDENTITY_READ','Historical read','IDENTITY')");
+        s.execute("insert into authorization_roles(id,name,active) values(87002,'ROOT',true)");
+        s.execute("insert into authorization_role_permissions(id,role_id,permission_id) values(87003,87002,87001)");
+        s.execute("insert into authorization_identity_roles(identity_id,role_id,scope) values('"+identity+"',87002,'PLATFORM')");
+      }
+      flyway(url,schema,"17").migrate();
+      try(var s=c.createStatement();var rows=s.executeQuery("select id from authorization_identity_roles where identity_id='"+identity+"'")) {
+        assertTrue(rows.next()); assignment=rows.getObject(1,UUID.class);
+      }
+      flyway(url,schema,null).migrate(); flyway(url,schema,null).validate();
+      try(var s=c.createStatement();var rows=s.executeQuery("select role_id,authorization_scope_id from authorization_identity_roles where id='"+assignment+"'")) {
+        assertTrue(rows.next()); assertEquals(87002,rows.getLong(1)); assertEquals(AuthorizationScope.PLATFORM_ID,rows.getObject(2,UUID.class));
+      }
+      for(var code:br.com.imarui.ima.authorization.core.domain.policy.RootRecoveryEnvelope.CAPABILITIES) {
+        try(var s=c.prepareStatement("select count(*) from authorization_permission_delegations where identity_id=? and permission_code=? and scope_id=? and active and redelegable")) {
+          s.setObject(1,identity); s.setString(2,code); s.setObject(3,AuthorizationScope.PLATFORM_ID);
+          try(var r=s.executeQuery()) { assertTrue(r.next()); assertEquals(1,r.getInt(1),code); }
+        }
+      }
+      try(var s=c.createStatement();var rows=s.executeQuery("select id from authorization_role_permissions where role_id=87002 and permission_id=87001")) {
+        assertTrue(rows.next()); assertEquals(87003,rows.getLong(1));
+      }
+    } finally { jdbc.execute("drop schema if exists "+schema+" cascade"); }
+  }
+
   @Test void cleanInstallationHasOnlyTheAdministrativeScopeAndNoAutomaticAssignment() throws Exception {
     String schema="auth_fresh_"+UUID.randomUUID().toString().replace("-",""); String url=url();
     try (var c=DriverManager.getConnection(url,"identity_test","identity_test")) {

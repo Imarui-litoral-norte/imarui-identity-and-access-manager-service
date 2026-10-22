@@ -188,6 +188,8 @@ public class IdentityApiSecurityConfiguration {
                         "/openapi-custom/**",
                         "/actuator/health")
                     .permitAll()
+                    .requestMatchers("/actuator/**")
+                    .hasAuthority("AUTHORIZATION_AUDIT_READ")
                     .anyRequest()
                     .authenticated())
         .oauth2ResourceServer(

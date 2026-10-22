@@ -28,16 +28,16 @@ public class AuthorizationAdminController {
       @NotNull @Min(0) Long version,@NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}
   public record Reparent(UUID parentId,@NotNull @Min(0) Long version,@NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}
   public record RoleCreate(@NotBlank @Size(max=100) String name,@NotNull Role.Ownership ownership,UUID ownerScopeId,UUID ownerTenantId,
-      @NotNull Set<@NotBlank @Size(max=100) String> permissions,@NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}
+      @NotNull @Size(max=1000) Set<@NotBlank @Size(max=100) String> permissions,@NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}
   public record RoleRevision(@NotBlank @Size(max=100) String name,@NotNull Role.Status status,
-      @NotNull Set<@NotBlank @Size(max=100) String> permissions,@NotNull @Min(0) Long version,
+      @NotNull @Size(max=1000) Set<@NotBlank @Size(max=100) String> permissions,@NotNull @Min(0) Long version,
       @NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}
   public record Lifecycle(@NotNull Role.Status status,@NotNull @Min(0) Long version,@NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}
-  public record Permissions(@NotNull Set<@NotBlank @Size(max=100) String> permissions,@NotNull @Min(0) Long version,
+  public record Permissions(@NotNull @Size(max=1000) Set<@NotBlank @Size(max=100) String> permissions,@NotNull @Min(0) Long version,
       @NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}
   public record Assign(@NotNull UUID identityId,@NotNull @Min(1) Long roleId,@NotNull UUID scopeId,
       @NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}
-  public record Block(@NotBlank @Size(max=100) String permission,@NotNull UUID scopeId,UUID identityId,Long roleId,
+  public record Block(@NotBlank @Size(max=100) String permission,@NotNull UUID scopeId,UUID identityId,@Min(1) Long roleId,
       @NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}
   public record Delegate(@NotNull UUID identityId,@NotBlank @Size(max=100) String permission,@NotNull UUID scopeId,boolean redelegable,
       @NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}

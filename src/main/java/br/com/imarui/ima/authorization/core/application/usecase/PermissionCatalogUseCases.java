@@ -12,6 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class PermissionCatalogUseCases {
+  public static class CatalogConflict extends IllegalArgumentException {
+    public CatalogConflict(String message) { super(message); }
+  }
   private final PermissionCatalogRepository catalog;
   private final Optional<CatalogServiceAuthentication> technicalIdentity;
   private final Clock clock;
@@ -19,26 +22,27 @@ public class PermissionCatalogUseCases {
   /** Fixed definitions only; no external data and no grant side effects. */
   @Transactional
   public boolean synchronizeInternal() {
+    catalog.lock();
     return synchronize(PermissionManifest.internal());
   }
 
   /** No HTTP adapter is published in Round 1. Missing technical authentication rejects the call. */
   @Transactional
   public boolean synchronizeExternal(PermissionManifest manifest) {
-    String caller = technicalIdentity.orElseThrow(() -> new SecurityException("Technical service authentication required."))
-        .requireServiceCode();
+    var identity = technicalIdentity.orElseThrow(() -> new SecurityException("Technical service authentication required."));
+    catalog.lock();
+    String caller = identity.requireServiceCode();
     if (caller == null || !caller.equals(manifest.owner()) || caller.equals("iiam"))
       throw new SecurityException("Catalog owner does not match the authenticated service.");
     return synchronize(manifest);
   }
 
   private boolean synchronize(PermissionManifest manifest) {
-    catalog.lock();
     var owner = catalog.owner(manifest.owner()).orElseThrow(() -> new SecurityException("Catalog owner is not enrolled."));
     if (!owner.namespace().equals(manifest.namespace())) throw new SecurityException("Namespace is immutable.");
-    if (manifest.version() < owner.version()) throw new IllegalArgumentException("Catalog rollback rejected.");
+    if (manifest.version() < owner.version()) throw new CatalogConflict("Catalog rollback rejected.");
     if (manifest.version() == owner.version()) {
-      if (!manifest.digest().equals(owner.digest())) throw new IllegalArgumentException("Catalog version conflict.");
+      if (!manifest.digest().equals(owner.digest())) throw new CatalogConflict("Catalog version conflict.");
       return false;
     }
     catalog.synchronize(manifest, clock.instant());

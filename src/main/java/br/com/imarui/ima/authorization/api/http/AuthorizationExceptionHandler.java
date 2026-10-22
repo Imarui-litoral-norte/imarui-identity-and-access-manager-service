@@ -16,6 +16,14 @@ import org.springframework.web.bind.annotation.*;
 public class AuthorizationExceptionHandler {
   private final SecurityAuditEvents events;
   private final java.time.Clock clock;
+  @ExceptionHandler(br.com.imarui.ima.authentication.core.exception.TechnicalAuthenticationException.class)
+  public ProblemDetail invalidTechnical(Exception e,jakarta.servlet.http.HttpServletResponse response) {
+    response.setHeader("WWW-Authenticate","Service");
+    var auth=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+    if(auth!=null && auth.getPrincipal() instanceof br.com.imarui.ima.authentication.api.module.TechnicalServiceAuthentication.Caller caller)
+      events.record("M2M_AUTHORIZATION",null,caller.serviceCode(),caller.credentialId().toString(),null,"CREDENTIAL_REVOKED_OR_CHANGED",caller.correlationId());
+    return problem(401,"INVALID_TECHNICAL_AUTHENTICATION");
+  }
   @ExceptionHandler(SecurityException.class)
   public ProblemDetail denied(SecurityException e) {
     if(e instanceof br.com.imarui.ima.authorization.core.application.usecase.PdpUseCases.Rejected rejected)
@@ -37,7 +45,8 @@ public class AuthorizationExceptionHandler {
   public ProblemDetail missing(NoSuchElementException e) { return problem(404,"RESOURCE_NOT_FOUND"); }
   @ExceptionHandler(IllegalArgumentException.class)
   public ProblemDetail invalid(IllegalArgumentException e) { return problem(400,"INVALID_AUTHORIZATION_REQUEST"); }
-  @ExceptionHandler({IllegalStateException.class,DataIntegrityViolationException.class,OptimisticLockingFailureException.class})
+  @ExceptionHandler({IllegalStateException.class,DataIntegrityViolationException.class,OptimisticLockingFailureException.class,
+      br.com.imarui.ima.authorization.core.application.usecase.PermissionCatalogUseCases.CatalogConflict.class})
   public ProblemDetail conflict(Exception e) { return problem(409,"AUTHORIZATION_CONFLICT"); }
   @ExceptionHandler(AuthenticationRateLimiter.Limited.class)
   public ProblemDetail limited(Exception e) { return problem(429,"RATE_LIMITED"); }

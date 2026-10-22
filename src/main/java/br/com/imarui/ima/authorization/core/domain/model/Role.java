@@ -26,12 +26,16 @@ public record Role(Long id, String name, Ownership ownership, UUID ownerScopeId,
     Objects.requireNonNull(updatedAt);
     if ((id != null && id <= 0) || version < 0 || updatedAt.isBefore(createdAt))
       throw new IllegalArgumentException("Invalid Role state.");
+    requireOwnership(ownership,ownerScopeId,ownerTenantId);
+    if (name.equalsIgnoreCase("ROOT") && (ownership != Ownership.GLOBAL || !name.equals("ROOT")))
+      throw new IllegalArgumentException("ROOT is reserved to the central system.");
+  }
+  public static void requireOwnership(Ownership ownership,UUID ownerScopeId,UUID ownerTenantId) {
+    Objects.requireNonNull(ownership);
     if ((ownership == Ownership.GLOBAL && (ownerScopeId != null || ownerTenantId != null))
         || (ownership == Ownership.SCOPE && (ownerScopeId == null || ownerTenantId != null))
         || (ownership == Ownership.TENANT && (ownerScopeId == null || ownerTenantId == null)))
       throw new IllegalArgumentException("Invalid Role ownership.");
-    if (name.equalsIgnoreCase("ROOT") && (ownership != Ownership.GLOBAL || !name.equals("ROOT")))
-      throw new IllegalArgumentException("ROOT is reserved to the central system.");
   }
 
   public boolean availableAt(UUID scope, ScopeHierarchy hierarchy, Map<UUID,UUID> tenantScopes) {

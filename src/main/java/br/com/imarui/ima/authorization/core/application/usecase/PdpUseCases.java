@@ -34,6 +34,7 @@ public class PdpUseCases {
   private final SecurityAuditEvents events;
   private final MeterRegistry metrics;
   private final Clock clock;
+  private final br.com.imarui.ima.authentication.api.module.TechnicalServiceAuthentication technicalAuthentication;
 
   @Transactional(propagation=Propagation.REQUIRES_NEW,isolation=Isolation.REPEATABLE_READ,timeout=5)
   public Result decide(Request request) { return evaluate(request,prepare(request)); }
@@ -51,7 +52,7 @@ public class PdpUseCases {
   }
 
   private Context prepare(Request request) {
-    var caller=callers.require();
+    var caller=technicalAuthentication.current(callers.require());
     if(!caller.operations().contains(Operation.PDP_DECIDE) || request.correlationId()==null
         || !request.correlationId().equals(caller.correlationId())) throw new SecurityException("PDP caller/correlation mismatch.");
     var actor=humans.verify(request.actorToken(),request.identityId());
@@ -72,9 +73,14 @@ public class PdpUseCases {
       var decision=new EffectiveAuthorizationEvaluator().evaluate(state,actor.identityId(),request.permission(),scope,tree);
       var id=UUID.randomUUID(); outcome=decision.allowed()?"ALLOW":"DENY";
       // Same connection/transaction: audit failure prevents ALLOW without nested-pool starvation.
-      events.recordInTransaction("PDP_DECISION",actor.identityId(),caller.serviceCode(),id.toString(),scope,decision.reason().name(),correlation);
-      metrics.counter("iiam.pdp.decisions","reason",decision.reason().name()).increment();
-      log.info("authorization_decision decisionId={} correlationId={} outcome={} reason={}",id,correlation,outcome,decision.reason());
+      events.decision(id,actor.identityId(),caller.serviceCode(),request.resourceType(),request.resourceId(),scope,request.permission(),decision.reason().name(),correlation);
+      String committedOutcome=outcome;
+      org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+        public void afterCommit() {
+          metrics.counter("iiam.pdp.decisions","reason",decision.reason().name()).increment();
+          log.info("authorization_decision decisionId={} correlationId={} outcome={} reason={}",id,correlation,committedOutcome,decision.reason());
+        }
+      });
       // Common response omits grant/deny/Role provenance; protected diagnostics are separate.
       return new Result(id,decision.allowed(),decision.allowed()?"ALLOW":"DENY",correlation,clock.instant());
     } finally { sample.stop(metrics.timer("iiam.pdp.duration","outcome",outcome)); }

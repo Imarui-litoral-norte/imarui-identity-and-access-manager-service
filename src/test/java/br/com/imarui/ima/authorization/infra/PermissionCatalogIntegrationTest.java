@@ -87,7 +87,7 @@ class PermissionCatalogIntegrationTest extends IdentityIntegrationSupport {
 
   @Test void missingTechnicalAdapterRejectsExternalSyncAndNoExternalHttpEndpointIsExposed() throws Exception {
     var owner=owner();
-    assertThrows(SecurityException.class,() -> configured.synchronizeExternal(manifest(owner,1,entry(owner+".read"))));
+    assertThrows(SecurityException.class,() -> new TransactionTemplate(transactions).execute(s -> configured.synchronizeExternal(manifest(owner,1,entry(owner+".read")))));
     assertEquals(401,http("POST","/api/v1/authorization/catalogs/synchronize","{}",null).statusCode());
     assertEquals(404,http("POST","/api/v1/authorization/catalogs/synchronize","{}",token(reviewer.getId())).statusCode());
   }

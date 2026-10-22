@@ -25,6 +25,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
   @Autowired TechnicalClientAdministrationUseCases clients;
   @Autowired TechnicalServiceAuthentication technicalAuthentication;
+  @Autowired PdpUseCases pdp;
   @Autowired CatalogOwnerAdministrationUseCases owners;
   @Autowired RoleAdministrationUseCases roles;
   @Autowired DenyDelegationUseCases denies;
@@ -106,6 +107,29 @@ class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
     var wrong=json.writeValueAsString(new PermissionManifest("another-service","another-service",1,List.of()));
     assertEquals(403,send(CATALOG,wrong,null).statusCode());
     assertEquals(1,jdbc.queryForObject("select version from authorization_catalog_owners where service_code=?",Long.class,service));
+    var changed=json.writeValueAsString(new PermissionManifest(service,service,1,List.of(new PermissionManifest.Entry(permission(),"Changed metadata","resources",false))));
+    assertEquals(409,send(CATALOG,changed,null).statusCode());
+  }
+  @Test void catalogInspectionRequiresAuditAuthorityAndPreservesManifestRevisions() throws Exception {
+    assertEquals(200,send(CATALOG,manifest(1),null).statusCode());
+    String base="/api/v1/authorization/admin/catalog/owners/"+service;
+    String rootToken=token(reviewer);
+    var owner=http("GET",base,null,rootToken); assertEquals(200,owner.statusCode(),owner.body());
+    assertEquals(service,json.readTree(owner.body()).path("serviceCode").asText());
+    var revisions=http("GET",base+"/revisions",null,rootToken); assertEquals(200,revisions.statusCode(),revisions.body());
+    assertEquals(1,json.readTree(revisions.body()).path("total").asInt());
+    var revision=http("GET",base+"/revisions/1",null,rootToken); assertEquals(200,revision.statusCode(),revision.body());
+    assertEquals(permission(),json.readTree(revision.body()).path("permissions").get(0).path("code").asText());
+    assertEquals(403,http("GET",base,null,token(user())).statusCode());
+    assertEquals(404,http("GET",base+"/revisions/999",null,rootToken).statusCode());
+  }
+  @Test void technicalJsonRequiresUtf8AndRejectsContentEncodingBeforeConsumingProof() throws Exception {
+    var body=manifest(1); var assertion=proof(CATALOG,body);
+    var response=HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://localhost:"+port+CATALOG))
+        .header("Content-Type","application/json;charset=ISO-8859-1").header("Authorization","Service "+assertion)
+        .POST(HttpRequest.BodyPublishers.ofString(body)).build(),HttpResponse.BodyHandlers.ofString());
+    assertEquals(415,response.statusCode(),response.body());
+    assertEquals(200,send(CATALOG,body,assertion).statusCode());
   }
   @Test void replayAndBodyMethodPathTamperingAreRejected() throws Exception {
     var body=manifest(1); var assertion=proof(CATALOG,body);
@@ -262,5 +286,25 @@ class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
     roles.assign(user.getId().value(),regional.id(),a.id(),REASON); assertEquals(200,send(PDP,body,null).statusCode());
     hierarchy.revise(resource.id(),resource.name(),resource.status(),c.id(),REASON);
     assertEquals(403,send(PDP,body,null).statusCode());
+  }
+  @Test void authenticatedProofCannotUseAuthorityRevokedBeforeTheDecisionSnapshot() throws Exception {
+    var user=granted(); var jwt=token(user); var body=request(user,jwt,scope());
+    var proof=technicalAuthentication.verify(proof(PDP,body),"POST",PDP,body.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    clients.revoke(service,keyId,REASON);
+    var context=org.springframework.security.core.context.SecurityContextHolder.getContext();
+    var previous=context.getAuthentication();
+    context.setAuthentication(org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(proof,null,List.of()));
+    try {
+      var command=new br.com.imarui.ima.authorization.core.application.usecase.PdpUseCases.Request(jwt,user.getId().value(),permission(),"TENANT",tenant.getId().value().toString(),scope(),UUID.fromString(json.readTree(body).path("correlationId").asText()));
+      assertThrows(br.com.imarui.ima.authentication.core.exception.TechnicalAuthenticationException.class,() -> pdp.decide(command));
+    } finally { context.setAuthentication(previous); }
+  }
+  @Test void technicalMetadataIsProtectedAndNeverReturnsKeyMaterial() throws Exception {
+    var response=http("GET","/api/v1/authorization/admin/service-clients/"+service,null,token(reviewer));
+    assertEquals(200,response.statusCode(),response.body());
+    assertFalse(response.body().contains(Base64.getEncoder().encodeToString(pair.getPublic().getEncoded())));
+    assertTrue(response.body().contains(keyId.toString()));
+    assertEquals(200,http("GET","/api/v1/authorization/admin/service-clients?size=2",null,token(reviewer)).statusCode());
+    assertEquals(403,http("GET","/api/v1/authorization/admin/service-clients/"+service,null,token(user())).statusCode());
   }
 }

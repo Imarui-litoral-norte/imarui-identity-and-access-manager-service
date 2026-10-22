@@ -141,6 +141,8 @@ class AuthorizationRootRecoveryIntegrationTest extends IdentityIntegrationSuppor
   @Test void independentlyScopedRootCanTransferItsOwnRealmWithoutObtainingPlatformAuthority() throws Exception {
     var recipient=user(); var next=user();
     var realm=hierarchy.create("REALM_"+UUID.randomUUID().toString().replace("-","").toUpperCase(),"Independent realm",null,REASON);
+    var inactive=hierarchy.create("INACTIVE_"+UUID.randomUUID().toString().replace("-","").toUpperCase(),"Inactive resource branch",realm.id(),REASON);
+    hierarchy.revise(inactive.id(),inactive.name(),AuthorizationScope.Status.DISABLED,realm.id(),REASON);
     var response=http("POST",PATH,json.writeValueAsString(new RootRecoveryController.Initiate(recipient.getId().value(),realm.id(),PASSWORD,"Realm governance",UUID.randomUUID())),liveToken(reviewer));
     assertEquals(200,response.statusCode(),response.body()); var id=json.readTree(response.body()).path("id").asText();
     var first=http("POST",PATH+"/"+id+"/confirm",confirmBody(PASSWORD),liveToken(recipient));

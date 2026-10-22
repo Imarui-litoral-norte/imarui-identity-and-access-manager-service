@@ -109,6 +109,7 @@ public class ScopeAdministrationUseCases {
     return state.scopes().stream().filter(s -> s.id().equals(id)).findFirst().orElseThrow(() -> new NoSuchElementException("Scope not found."));
   }
   private UUID managementBoundary(AuthorizationPolicyState state,UUID id) {
+    scope(state,id);
     var hierarchy=new ScopeHierarchy(state.scopes());
     return hierarchy.ancestors(id).stream().filter(s -> hierarchy.active(s.id())).map(AuthorizationScope::id)
         .findFirst().orElse(AuthorizationScope.PLATFORM_ID);

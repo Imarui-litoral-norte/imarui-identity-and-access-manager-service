@@ -42,11 +42,20 @@ public class ServiceApiSecurityConfiguration {
           // Bound unauthenticated work across instances; no user-supplied forwarded address is trusted.
           limits.check("m2m-source",req.getRemoteAddr(),6000);
           if(!"POST".equals(req.getMethod()) || req.getQueryString()!=null) throw new SecurityException("Invalid service operation.");
-          var body=req.getInputStream().readNBytes(65537);
-          if(body.length>65536) { problem(res,413,"REQUEST_TOO_LARGE",correlation); return; }
           String header=req.getHeader(HttpHeaders.AUTHORIZATION);
           if(header==null || !header.startsWith("Service ") || Collections.list(req.getHeaders(HttpHeaders.AUTHORIZATION)).size()!=1)
             throw new TechnicalAuthenticationException();
+          try {
+            var content=MediaType.parseMediaType(req.getContentType()==null?"":req.getContentType());
+            if(!content.getType().equals("application") || !content.getSubtype().equals("json")
+                || content.getCharset()!=null && !content.getCharset().equals(java.nio.charset.StandardCharsets.UTF_8)
+                || req.getHeader("Content-Encoding")!=null && !req.getHeader("Content-Encoding").equalsIgnoreCase("identity")) {
+              problem(res,415,"UTF8_JSON_REQUIRED",correlation); return;
+            }
+          } catch(IllegalArgumentException unsupported) { problem(res,415,"UTF8_JSON_REQUIRED",correlation); return; }
+          if(req.getContentLengthLong()>65536) { problem(res,413,"REQUEST_TOO_LARGE",correlation); return; }
+          var body=req.getInputStream().readNBytes(65537);
+          if(body.length>65536) { problem(res,413,"REQUEST_TOO_LARGE",correlation); return; }
           caller=authentication.verify(header.substring(8),req.getMethod(),req.getRequestURI(),body);
           correlation=caller.correlationId();
           limits.check("m2m-client",caller.clientId().toString(),3000);

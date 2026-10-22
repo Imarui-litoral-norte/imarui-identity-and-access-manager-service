@@ -61,9 +61,11 @@ public class AuthorizationMutationGuard {
     if (centralPermission(permission) && !evaluator.evaluate(state,actor,"AUTHORIZATION_DELEGATION_MANAGE",AuthorizationScope.PLATFORM_ID,hierarchy).allowed()) {
       boolean realmRoot=state.assignments().stream().anyMatch(a -> a.active() && a.identityId().equals(actor)
           && hierarchy.active(a.scopeId()) && hierarchy.covers(a.scopeId(),scope)
-          && state.roles().get(a.roleId()).active() && state.roles().get(a.roleId()).name().equals("ROOT"));
+          && state.roles().get(a.roleId()).active() && state.roles().get(a.roleId()).name().equals("ROOT")
+          && evaluator.evaluate(state,actor,"AUTHORIZATION_DELEGATION_MANAGE",a.scopeId(),hierarchy).allowed());
       if(!realmRoot) throw new SecurityException("Central or explicit ROOT-realm governance required.");
-      require(state,actor,"AUTHORIZATION_DELEGATION_MANAGE",scope,hierarchy);
+      if(!evaluator.mayDelegate(state,actor,"AUTHORIZATION_DELEGATION_MANAGE",scope,false,hierarchy))
+        throw new SecurityException("Explicit current ROOT-realm delegation governance required.");
     }
   }
 

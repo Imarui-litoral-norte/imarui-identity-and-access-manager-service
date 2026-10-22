@@ -23,7 +23,7 @@ public class JdbcSecurityAuditRepository implements SecurityAuditRepository {
           reason,correlation_id,before_state::text as before_json,after_state::text as after_json
         from authorization_audit where (scope_id in (:scopes) or :global and scope_id is null)
         union all
-        select id,event,actor_identity_id,service_code,'SECURITY_EVENT',resource_id,scope_id,occurred_at,
+        select id,event,actor_identity_id,service_code,coalesce(details->>'resourceType','SECURITY_EVENT'),resource_id,scope_id,occurred_at,
           reason_code,correlation_id,null,details::text
         from authorization_security_events where (scope_id in (:scopes) or :global and scope_id is null)
         """;

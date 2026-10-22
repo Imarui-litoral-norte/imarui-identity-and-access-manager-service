@@ -56,6 +56,7 @@ public final class AuthorizationPepClient {
       if(bytes.length>65536) return deny(Failure.INTEGRATION_ERROR,correlation);
       String assertion=proof(bytes,correlation);
       var response=http.send(HttpRequest.newBuilder(endpoint).timeout(timeout).header("Content-Type","application/json")
+          .header("Cache-Control","no-store")
           .header("Authorization","Service "+assertion).POST(HttpRequest.BodyPublishers.ofByteArray(bytes)).build(),HttpResponse.BodyHandlers.ofString());
       int status=response.statusCode();
       if(status==401) return deny(Failure.UNAUTHENTICATED,correlation);

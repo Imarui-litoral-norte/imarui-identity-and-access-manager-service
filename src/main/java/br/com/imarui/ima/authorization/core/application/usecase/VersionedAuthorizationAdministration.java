@@ -70,6 +70,7 @@ public class VersionedAuthorizationAdministration {
   }
   private br.com.imarui.ima.authorization.core.application.service.AuthorizationMutationGuard.Context scopeContext(UUID id,PolicyChangeReason reason) {
     var context=guard.begin("AUTHORIZATION_SCOPE_MANAGE",s -> {
+      if(s.scopes().stream().noneMatch(scope -> scope.id().equals(id))) throw new NoSuchElementException("Scope not found.");
       var tree=new br.com.imarui.ima.authorization.core.domain.policy.ScopeHierarchy(s.scopes());
       return tree.ancestors(id).stream().filter(a -> tree.active(a.id())).map(AuthorizationScope::id).findFirst().orElse(AuthorizationScope.PLATFORM_ID);
     },reason);

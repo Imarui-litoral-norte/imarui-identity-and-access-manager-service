@@ -1,6 +1,7 @@
 package br.com.imarui.ima.authorization.api.http;
 
 import br.com.imarui.ima.authentication.api.module.TechnicalServiceAuthentication;
+import br.com.imarui.ima.authentication.api.module.TechnicalServiceAuthentication.Operation;
 import br.com.imarui.ima.authorization.core.application.command.PolicyChangeReason;
 import br.com.imarui.ima.authorization.core.application.usecase.TechnicalClientAdministrationUseCases;
 import jakarta.validation.Valid;
@@ -15,10 +16,10 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class TechnicalClientController {
   public record Enroll(@NotBlank @Pattern(regexp="[a-z][a-z0-9-]{1,49}") String service,
-      @NotEmpty Set<TechnicalServiceAuthentication.Operation> operations,@NotEmpty Set<UUID> scopeRoots,
+      @NotEmpty Set<@NotNull Operation> operations,@NotEmpty @Size(max=100) Set<@NotNull UUID> scopeRoots,
       @NotBlank @Size(max=4096) String publicKey,@NotNull Instant expiresAt,@NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}
-  public record Configure(boolean enabled,@NotEmpty Set<TechnicalServiceAuthentication.Operation> operations,
-      @NotEmpty Set<UUID> scopeRoots,@NotNull @Min(0) Long version,@NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}
+  public record Configure(boolean enabled,@NotEmpty Set<@NotNull Operation> operations,
+      @NotEmpty @Size(max=100) Set<@NotNull UUID> scopeRoots,@NotNull @Min(0) Long version,@NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}
   public record KeyRequest(@NotBlank @Size(max=4096) String publicKey,@NotNull Instant expiresAt,
       @NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}
   public record Reason(@NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}

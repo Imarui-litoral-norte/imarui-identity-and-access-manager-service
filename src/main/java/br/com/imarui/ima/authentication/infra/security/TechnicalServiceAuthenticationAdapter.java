@@ -77,6 +77,22 @@ public class TechnicalServiceAuthenticationAdapter implements TechnicalServiceAu
     rotate(service,publicKey,expiresAt);
     return client(service);
   }
+  @Transactional(propagation=Propagation.MANDATORY)
+  public Caller current(Caller authenticated) {
+    var now=clock.instant();
+    var caller=jdbc.query("""
+        select s.client_id,s.service_code,s.operations,
+          array(select j.scope_id from authorization_service_jurisdictions j where j.service_code=s.service_code) as roots
+        from authentication_service_keys k join authentication_service_clients s on s.service_code=k.service_code
+        where k.id=? and k.active and k.expires_at>? and s.enabled
+        """,(r,n) -> new Caller(r.getObject(1,UUID.class),r.getString(2),authenticated.credentialId(),decode(r.getString(3)),
+            Arrays.stream((Object[])r.getArray(4).getArray()).map(UUID.class::cast).collect(java.util.stream.Collectors.toUnmodifiableSet()),
+            authenticated.correlationId()),authenticated.credentialId(),Timestamp.from(now)).stream().findFirst()
+        .orElseThrow(TechnicalAuthenticationException::new);
+    if(!caller.clientId().equals(authenticated.clientId()) || !caller.serviceCode().equals(authenticated.serviceCode()))
+      throw new TechnicalAuthenticationException();
+    return caller;
+  }
 
   @Transactional(propagation=Propagation.MANDATORY)
   public Key rotate(String service,String publicKey,Instant expiresAt) {

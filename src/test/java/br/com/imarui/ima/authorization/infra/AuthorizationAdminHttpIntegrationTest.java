@@ -116,6 +116,7 @@ class AuthorizationAdminHttpIntegrationTest extends IdentityIntegrationSupport {
     assertTrue(document.path("paths").has(API+"/roles/{id}/permissions"));
     assertTrue(document.path("paths").has("/api/v1/authorization/service/decisions"));
     assertTrue(response.body().contains("ARCHIVED"));
+    java.nio.file.Files.writeString(java.nio.file.Path.of("target","authorization-openapi.json"),response.body());
   }
   @Test void securityAuditIsPaginatedScopedAndImmutableIncludingDeletedScopeHistory() throws Exception {
     var manager=localAdmin(); var managerJwt=liveToken(manager); var rootJwt=liveToken(reviewer);

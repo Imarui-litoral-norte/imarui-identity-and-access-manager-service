@@ -23,6 +23,8 @@ public class RoleAdministrationUseCases {
   public Role create(String name,Role.Ownership ownership,UUID ownerScope,UUID ownerTenant,
       Set<String> permissions,PolicyChangeReason reason) {
     Objects.requireNonNull(ownership); permissions=Set.copyOf(permissions);
+    Role.requireOwnership(ownership,ownerScope,ownerTenant);
+    if(permissions.size()>1000) throw new IllegalArgumentException("A Role may contain at most 1000 Permissions.");
     UUID jurisdiction=ownership==Role.Ownership.GLOBAL?AuthorizationScope.PLATFORM_ID:ownerScope;
     var context=guard.begin("AUTHORIZATION_ROLE_MANAGE",jurisdiction,reason);
     if (reservedRootName(name)) throw new SecurityException("ROOT is provisioned only by the protected bootstrap.");
@@ -45,6 +47,7 @@ public class RoleAdministrationUseCases {
   public Role revise(long roleId,String name,Role.Status status,Set<String> permissions,PolicyChangeReason reason) {
     Objects.requireNonNull(status);
     permissions=Set.copyOf(permissions);
+    if(permissions.size()>1000) throw new IllegalArgumentException("A Role may contain at most 1000 Permissions.");
     var context=guard.begin("AUTHORIZATION_ROLE_MANAGE",s -> jurisdiction(role(s,roleId)),reason);
     var previous=role(context.before(),roleId);
     if (previous.name().equals("ROOT") || reservedRootName(name))
