@@ -19,11 +19,15 @@ public class AuthorizationCatalogAdapter implements AuthorizationCatalog {
         (r, n) ->
             Permission.reconstitute(
                 r.getLong("id"),
-                PermissionCode.valueOf(r.getString("code")),
+                r.getString("code"),
                 r.getString("description"),
-                ModuleCode.valueOf(r.getString("module")),
+                r.getString("module"),
+                r.getString("service_code"),
+                r.getString("namespace"),
+                r.getLong("catalog_version"),
+                r.getBoolean("deprecated"),
                 r.getTimestamp("created_at").toInstant(),
-                r.getTimestamp("created_at").toInstant()));
+                r.getTimestamp("updated_at").toInstant()));
   }
 
   public Optional<Role> role(long id) {

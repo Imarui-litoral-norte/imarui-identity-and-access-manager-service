@@ -24,7 +24,8 @@ public record PermissionDefinition(PermissionCode code, String description, Modu
                     c.name().replace('_', ' '),
                     c.name().startsWith("AUTHENTICATION")
                         ? ModuleCode.AUTHENTICATION
-                        : ModuleCode.IDENTITY))
+                        : c.name().startsWith("AUTHORIZATION")
+                            ? ModuleCode.AUTHORIZATION : ModuleCode.IDENTITY))
         .toArray(PermissionDefinition[]::new);
   }
 }
