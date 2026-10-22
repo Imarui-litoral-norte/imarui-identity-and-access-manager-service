@@ -1,0 +1,366 @@
+{
+  "date": "2026-10-22",
+  "command": "mvnw.cmd -B clean verify",
+  "result": "BUILD SUCCESS",
+  "java": "17.0.18",
+  "postgresql": "18.4 (isolated local cluster)",
+  "tests": 320.0,
+  "failures": 0.0,
+  "errors": 0.0,
+  "skipped": 0.0,
+  "baselineRound1Tests": 262,
+  "suites": [
+    {
+      "name": "br.com.imarui.ima.authentication.AuthenticationServiceApplicationTests",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 13.018
+    },
+    {
+      "name": "br.com.imarui.ima.authentication.core.AuthenticationDomainTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.024
+    },
+    {
+      "name": "br.com.imarui.ima.authentication.core.JwtKeyRotationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.872
+    },
+    {
+      "name": "br.com.imarui.ima.authentication.core.SmtpChallengeMailTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.102
+    },
+    {
+      "name": "br.com.imarui.ima.authentication.feature.AuthenticationIntegrationTest",
+      "tests": 27,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 14.971
+    },
+    {
+      "name": "br.com.imarui.ima.authentication.feature.AuthenticationStabilizationIntegrationTest",
+      "tests": 35,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 7.988
+    },
+    {
+      "name": "br.com.imarui.ima.authentication.feature.MigrationUpgradeIntegrationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 5.664
+    },
+    {
+      "name": "br.com.imarui.ima.authorization.core.application.RootEligibilityTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.228
+    },
+    {
+      "name": "br.com.imarui.ima.authorization.core.AuthorizationPepClientTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.243
+    },
+    {
+      "name": "br.com.imarui.ima.authorization.core.domain.EffectiveAuthorizationEvaluatorTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.012
+    },
+    {
+      "name": "br.com.imarui.ima.authorization.core.domain.PermissionManifestTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.006
+    },
+    {
+      "name": "br.com.imarui.ima.authorization.core.domain.ScopeHierarchyTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.004
+    },
+    {
+      "name": "br.com.imarui.ima.authorization.infra.AuthorizationAdminHttpIntegrationTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 5.94
+    },
+    {
+      "name": "br.com.imarui.ima.authorization.infra.AuthorizationAdministrationIntegrationTest",
+      "tests": 39,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 15.188
+    },
+    {
+      "name": "br.com.imarui.ima.authorization.infra.AuthorizationPerformanceIntegrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 1.785
+    },
+    {
+      "name": "br.com.imarui.ima.authorization.infra.AuthorizationRootRecoveryIntegrationTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 5.06
+    },
+    {
+      "name": "br.com.imarui.ima.authorization.infra.AuthorizationServiceIntegrationTest",
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 7.862
+    },
+    {
+      "name": "br.com.imarui.ima.authorization.infra.AuthorizationUpgradeIntegrationTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 6.063
+    },
+    {
+      "name": "br.com.imarui.ima.authorization.infra.PermissionCatalogIntegrationTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 1.323
+    },
+    {
+      "name": "br.com.imarui.ima.authorization.infra.ScopePersistenceIntegrationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.719
+    },
+    {
+      "name": "br.com.imarui.ima.identity.api.contract.identity.IdentityHttpContractTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.882
+    },
+    {
+      "name": "br.com.imarui.ima.identity.api.contract.identity.IdentitySelfDeleteHttpContractTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.311
+    },
+    {
+      "name": "br.com.imarui.ima.identity.api.contract.identityapplication.IdentityApplicationHttpContractTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 2.409
+    },
+    {
+      "name": "br.com.imarui.ima.identity.api.contract.openapi.IdentityOpenApiIntegrationTest",
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 4.243
+    },
+    {
+      "name": "br.com.imarui.ima.identity.api.contract.openapi.IdentitySwaggerUiIntegrationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.441
+    },
+    {
+      "name": "br.com.imarui.ima.identity.api.contract.tenant.TenantHttpContractTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.916
+    },
+    {
+      "name": "br.com.imarui.ima.identity.api.dto.identityapplication.response.IdentityApplicationResponseTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.004
+    },
+    {
+      "name": "br.com.imarui.ima.identity.core.application.identity.IdentityLifecycleUseCaseTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.194
+    },
+    {
+      "name": "br.com.imarui.ima.identity.core.application.identity.SelfDeleteIdentityUseCaseTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.194
+    },
+    {
+      "name": "br.com.imarui.ima.identity.core.application.identityapplication.ApproveIdentityApplicationUseCaseTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.404
+    },
+    {
+      "name": "br.com.imarui.ima.identity.core.domain.affiliation.AffiliationDomainTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.014
+    },
+    {
+      "name": "br.com.imarui.ima.identity.core.domain.affiliation.AffiliationValidityTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.0
+    },
+    {
+      "name": "br.com.imarui.ima.identity.core.domain.identity.IdentityDomainTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.008
+    },
+    {
+      "name": "br.com.imarui.ima.identity.core.domain.identity.IdentityLifecycleTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.002
+    },
+    {
+      "name": "br.com.imarui.ima.identity.core.domain.tenant.TenantDomainTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.004
+    },
+    {
+      "name": "br.com.imarui.ima.identity.feature.IdentityEndToEndTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.522
+    },
+    {
+      "name": "br.com.imarui.ima.identity.infra.persistence.affiliation.AffiliationHistoryIntegrationTest",
+      "tests": 24,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 5.86
+    },
+    {
+      "name": "br.com.imarui.ima.identity.infra.persistence.affiliation.AffiliationIntegrationTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 1.391
+    },
+    {
+      "name": "br.com.imarui.ima.identity.infra.persistence.identity.IdentityRevocationIntegrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.76
+    },
+    {
+      "name": "br.com.imarui.ima.identity.infra.persistence.identity.IdentitySelfDeleteIntegrationTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 1.008
+    },
+    {
+      "name": "br.com.imarui.ima.identity.infra.persistence.identityapplication.IdentityApplicationIntegrationTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 2.506
+    },
+    {
+      "name": "br.com.imarui.ima.platform.openapi.SwaggerOperationCustomizersTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 0.004
+    }
+  ],
+  "codeCommit": "88354397b595c39d6c92c1b1cb739c5231b37410",
+  "ci": {
+    "result": "success",
+    "runId": 39872457050,
+    "failures": 0,
+    "skipped": 0,
+    "tests": 320,
+    "url": "https://github.com/Imarui-litoral-norte/imarui-identity-and-access-manager-service/actions/runs/39872457050",
+    "errors": 0,
+    "postgresql": "17.11"
+  },
+  "openapi": {
+    "paths": 73,
+    "localReferences": 633,
+    "unresolvedReferences": 0
+  }
+}

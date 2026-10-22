@@ -1,5 +1,9 @@
 # Rodada 1 — requisitos consolidados e estado de execução
 
+> Documento histórico. A continuidade e a conferência das descrições Jira antes indisponíveis
+> estão no [relatório da Rodada 2](ROUND_2_FINAL_REPORT.md). Não interpretar pendências deste
+> checkpoint como descrição do código final.
+
 Fonte desta rodada: anexo **IIAM Authorization | Rodada 1 de 2**, recebido em 2026-10-22.
 Este plano substitui a execução integral do Epic em uma única rodada. O objetivo atual
 é IIAMS-82–87 e IIAMS-93–123, com publicação da branch e `ROUND_1_HANDOFF.md`.

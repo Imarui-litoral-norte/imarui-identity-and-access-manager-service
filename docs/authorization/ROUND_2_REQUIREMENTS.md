@@ -88,3 +88,18 @@ avaliação com árvore preparada p95 0,0035 ms; uma edição compartilhada 887,
 Não é SLA/benchmark de produção. Mantidos snapshot amplo e lock 810082; sem cache entre chamadas.
 V22/V23 foram aplicadas e ficam imutáveis. V23 corrige a primeira autoridade ROOT das
 capacidades introduzidas entre migração legada e bootstrap, sem ressuscitar delegações revogadas.
+
+## Checkpoint IIAMS-92 / regressão integral
+
+`mvnw.cmd -B clean verify` final: 320 testes em 42 suites, 0 falhas, 0 erros e 0 ignorados,
+Java 17.0.18 / PostgreSQL 18.4 isolado; JAR gerado. O primeiro checkpoint integral tinha
+319 testes; foi acrescentado upgrade V20 populado para verificar preservação de client,
+chave revogada, nonce, jurisdição e evento de segurança. Ambos os builds passaram.
+
+Contrato OpenAPI exportado do HTTP testado: 73 paths, 633 referências locais resolvidas,
+sem referências pendentes. V24 protege criação/reativação de assignment com Role ACTIVE.
+Credencial e operação técnica são revalidadas dentro do snapshot PDP e após lock do catálogo.
+As 11 Stories e 58 subtarefas foram recuperadas no Legacy e têm matriz de evidências no
+[relatório final](ROUND_2_FINAL_REPORT.md), que também contém resultado de CI e ressalvas.
+Documentados arquitetura, integração PEP, auditoria, operação, rollback transacional e recuperação.
+Nenhum Gateway, merge ou deploy. O histórico e o Draft PR #3 são preservados.

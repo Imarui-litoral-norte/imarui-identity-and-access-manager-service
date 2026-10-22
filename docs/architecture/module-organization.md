@@ -5,9 +5,9 @@ Leia o [índice global](README.md). Os pacotes existentes têm responsabilidades
 | Área | Ownership atual |
 | --- | --- |
 | `identity` | Identity e especializações Person/LegalEntity/Service, Tenant, IdentityApplication e Affiliation |
-| `authentication` | Credenciais, primeiro acesso, login, sessões, refresh rotativo e consumo da outbox; ver ../authentication/README.md |
+| `authentication` | Credenciais humanas/técnicas, primeiro acesso, login, sessões, refresh rotativo, reautenticação administrativa e consumo da outbox; ver ../authentication/README.md |
 | `platform` | Composição Spring, segurança HTTP, Clock, OpenAPI e tratamento transversal de erros |
-| `authorization` | Núcleo Hierarchical Scoped RBAC: Scopes, catálogo federado, ownership de Roles, assignments, DENY, delegação, avaliação interna e proteção mínima ROOT; ver [handoff da Rodada 1](../authorization/ROUND_1_HANDOFF.md). PDP/M2M e superfície administrativa externa completos pertencem à Rodada 2 |
+| `authorization` | Hierarchical Scoped RBAC: Scopes, catálogo federado, ownership/lifecycle de Roles, assignments, DENY, delegação, PDP, APIs administrativas, recuperação ROOT e auditoria; ver [arquitetura](../authorization/ARCHITECTURE.md), [consumidores](../authorization/CONSUMER_GUIDE.md) e [relatório final](../authorization/ROUND_2_FINAL_REPORT.md) |
 
 ```text
 identity/

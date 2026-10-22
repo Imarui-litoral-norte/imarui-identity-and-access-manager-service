@@ -126,3 +126,11 @@ contratos válidos de Identity/Authentication. IdentityRole foi removido; RoleAs
 é o único modelo de atribuição. Não há grant de catálogo externo por startup nem
 interpretação de nomes legados normalizados como ROOT. A guarda Tenant resolve o Scope
 do recurso e usa o mesmo avaliador. Nenhum código do Gateway foi alterado.
+
+## Continuidade da Rodada 2
+
+A auditoria acima foi preservada como baseline; não houve evidência que justificasse refazê-la.
+O [relatório final](ROUND_2_FINAL_REPORT.md) registra a conclusão de PDP/M2M, APIs administrativas,
+recuperação ROOT, auditoria, lifecycle, unicidade DENY, migrations adicionais e revalidação de
+Identity/Authentication. V1–V17 não foram alteradas. O algoritmo da fundação continua único;
+nenhum conceito legado de active Scope de sessão ou bypass irrestrito de ROOT foi reintroduzido.

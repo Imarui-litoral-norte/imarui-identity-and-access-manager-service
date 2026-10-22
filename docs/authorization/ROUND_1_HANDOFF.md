@@ -1,5 +1,11 @@
 # Authorization IIAM — handoff da Rodada 1
 
+> Registro histórico preservado. A Rodada 2 continua esta implementação e substitui os itens
+> pendentes abaixo; consultar o [relatório final](ROUND_2_FINAL_REPORT.md) e a
+> [arquitetura vigente](ARCHITECTURE.md). O Rovo Legacy voltou a responder na Rodada 2:
+> as 11 Stories e 58 subtarefas foram recuperadas, inclusive os critérios antes indisponíveis.
+> Os 262 testes e as limitações descritas aqui correspondem ao checkpoint da Rodada 1.
+
 Data: 2026-10-22. Branch: `feat/iiams-81-authorization-foundation`.
 Base de integração: `main`, inicialmente `f419a501328774fefec24b6ac28070e19f972cf8`.
 
