@@ -52,8 +52,10 @@ public class AuthorizationMutationGuard {
   }
 
   public boolean rootIdentity(AuthorizationPolicyState state,UUID identity) {
+    var hierarchy=new ScopeHierarchy(state.scopes());
     return state.assignments().stream().anyMatch(a -> a.active() && a.identityId().equals(identity)
-        && state.roles().containsKey(a.roleId()) && state.roles().get(a.roleId()).name().equals("ROOT"));
+        && state.roles().containsKey(a.roleId()) && state.roles().get(a.roleId()).active()
+        && state.roles().get(a.roleId()).name().equals("ROOT") && hierarchy.active(a.scopeId()));
   }
 
   /** Check all impacted grants, including currently inactive recipients/resources that could reactivate. */
@@ -62,12 +64,14 @@ public class AuthorizationMutationGuard {
     assertRecovery(after);
     var beforePotential=potential(context.before());
     var afterPotential=potential(after);
+    var beforeHierarchy=new ScopeHierarchy(beforePotential.scopes());
+    var afterHierarchy=new ScopeHierarchy(afterPotential.scopes());
     var recipients=new HashSet<>(beforePotential.activeIdentities());
     recipients.addAll(afterPotential.activeIdentities());
     for (UUID recipient:recipients) for (UUID scope:affectedScopes) for (String permission:permissions) {
       UUID origin=originsForNewScopes.getOrDefault(scope,scope);
-      if (evaluator.evaluate(afterPotential,recipient,permission,scope).allowed()
-          && !evaluator.evaluate(beforePotential,recipient,permission,origin).allowed()) {
+      if (evaluator.evaluate(afterPotential,recipient,permission,scope,afterHierarchy).allowed()
+          && !evaluator.evaluate(beforePotential,recipient,permission,origin,beforeHierarchy).allowed()) {
         if (recipient.equals(context.actor())) throw new SecurityException("Self-grant or indirect self-escalation rejected.");
         delegate(context.before(),context.actor(),permission,origin,false);
       }
@@ -80,15 +84,17 @@ public class AuthorizationMutationGuard {
     var eligible=new HashSet<>(state.activeIdentities()); roots.forEach(a -> eligible.add(a.identityId()));
     var recovery=new AuthorizationPolicyState(state.scopes(),state.roles(),state.rolePermissions(),state.assignments(),
         state.denies(),state.delegations(),state.deprecatedPermissions(),state.tenantScopes(),eligible,state.activeTenants());
+    var currentHierarchy=new ScopeHierarchy(recovery.scopes());
     for (var root:roots) for (var code:Set.of("AUTHORIZATION_SCOPE_MANAGE","AUTHORIZATION_ROLE_MANAGE",
         "AUTHORIZATION_ASSIGNMENT_MANAGE","AUTHORIZATION_DENY_MANAGE","AUTHORIZATION_DELEGATION_MANAGE","AUTHORIZATION_CATALOG_MANAGE"))
-      if (!evaluator.evaluate(recovery,root.identityId(),code,root.scopeId()).allowed())
+      if (!evaluator.evaluate(recovery,root.identityId(),code,root.scopeId(),currentHierarchy).allowed())
         throw new SecurityException("Protected administrative recovery would be lost.");
     var future=potential(recovery);
-    for (var root:roots) for (var scope:descendants(state,root.scopeId()))
+    var futureHierarchy=new ScopeHierarchy(future.scopes());
+    for (var root:roots) for (var scope:currentHierarchy.descendants(root.scopeId()))
       for (var code:Set.of("AUTHORIZATION_SCOPE_MANAGE","AUTHORIZATION_ROLE_MANAGE","AUTHORIZATION_ASSIGNMENT_MANAGE",
           "AUTHORIZATION_DENY_MANAGE","AUTHORIZATION_DELEGATION_MANAGE","AUTHORIZATION_CATALOG_MANAGE"))
-        if (!evaluator.evaluate(future,root.identityId(),code,scope).allowed())
+        if (!evaluator.evaluate(future,root.identityId(),code,scope.id(),futureHierarchy).allowed())
           throw new SecurityException("A descendant recovery boundary would become inaccessible.");
   }
 

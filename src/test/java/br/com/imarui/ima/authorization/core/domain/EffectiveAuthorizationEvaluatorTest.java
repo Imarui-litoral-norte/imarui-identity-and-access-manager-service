@@ -113,4 +113,28 @@ class EffectiveAuthorizationEvaluatorTest {
     assertFalse(p.allowed(UUID.randomUUID())); assertFalse(evaluator.evaluate(p.state(),null,READ,local.id()).allowed());
     assertFalse(evaluator.evaluate(p.state(),actor,"unknown",local.id()).allowed());
   }
+
+  @Test void operationalTenantStateIsIndependentOfItsAdministrativeScopeAndDescendantTenants() {
+    var p=new Policy(); p.assign(1,root.id());
+    var parentTenant=UUID.randomUUID();
+    var state=p.state();
+    var independent=new AuthorizationPolicyState(state.scopes(),state.roles(),state.rolePermissions(),state.assignments(),
+        state.denies(),state.delegations(),state.deprecatedPermissions(),Map.of(tenant,local.id(),parentTenant,region.id()),
+        state.activeIdentities(),Set.of(tenant));
+    assertTrue(evaluator.evaluate(independent,actor,READ,local.id()).allowed());
+    assertFalse(evaluator.evaluate(independent,actor,READ,region.id()).allowed());
+  }
+
+  @Test void inactiveTenantLifecycleCanBeAdministeredButAnInactiveDelegationSourceCannotBeUsed() {
+    var p=new Policy(); p.assign(1,root.id()); p.tenants=Set.of();
+    p.permissions.put(1L,Set.of(READ,"TENANT_MANAGE")); p.catalog=Map.of(READ,false,"TENANT_MANAGE",false);
+    assertTrue(evaluator.evaluate(p.state(),actor,"TENANT_MANAGE",local.id()).allowed());
+    assertFalse(p.allowed(local.id()));
+    p.delegations.add(new PermissionDelegation(UUID.randomUUID(),actor,READ,root.id(),true,true,"Approved",NOW,NOW,0));
+    p.scopes=List.of(root,region.revise("Region",AuthorizationScope.Status.DISABLED,root.id(),NOW),local,sibling,other);
+    assertTrue(evaluator.mayDelegate(p.state(),actor,READ,local.id(),false));
+    p.delegations.clear();
+    p.delegations.add(new PermissionDelegation(UUID.randomUUID(),actor,READ,region.id(),true,true,"Approved",NOW,NOW,0));
+    assertFalse(evaluator.mayDelegate(p.state(),actor,READ,local.id(),false));
+  }
 }

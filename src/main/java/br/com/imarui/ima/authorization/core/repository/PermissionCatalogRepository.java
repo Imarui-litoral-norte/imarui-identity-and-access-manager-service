@@ -8,5 +8,6 @@ public interface PermissionCatalogRepository {
   record Owner(String code, String namespace, long version, String digest) {}
   void lock();
   Optional<Owner> owner(String code);
+  void enroll(String code,String namespace,Instant now);
   void synchronize(PermissionManifest manifest, Instant now);
 }

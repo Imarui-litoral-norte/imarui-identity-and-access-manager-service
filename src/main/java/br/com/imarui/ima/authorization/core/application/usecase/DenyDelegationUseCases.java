@@ -18,6 +18,7 @@ public class DenyDelegationUseCases {
   private final AuthorizationMutationGuard guard;
   private final AuthorizationMutationRepository mutations;
   private final AuthorizationPolicyRepository policies;
+  private final AuthorizationCatalog catalog;
   private final Clock clock;
 
   public DenyRule deny(String permission,UUID scope,UUID identity,Long role,PolicyChangeReason reason) {
@@ -78,6 +79,30 @@ public class DenyDelegationUseCases {
         previous.redelegable(),false,reason.reason(),previous.createdAt(),now,previous.version()+1);
     mutations.saveDelegation(changed);
     mutations.audit(context.actor(),"PERMISSION_DELEGATION_REVOKED","PERMISSION_DELEGATION",id.toString(),previous.scopeId(),reason,previous,changed,now);
+  }
+
+  /** Explicit central first-authority approval; registration alone cannot invoke or perform this operation. */
+  public PermissionDelegation bootstrapCatalogAuthority(String permission,UUID rootScope,PolicyChangeReason reason) {
+    var context=guard.begin("AUTHORIZATION_DELEGATION_MANAGE",rootScope,reason);
+    guard.require(context.before(),context.actor(),"AUTHORIZATION_CATALOG_MANAGE",AuthorizationScope.PLATFORM_ID);
+    if (!guard.rootIdentity(context.before(),context.actor())) throw new SecurityException("Initial catalog authority requires an existing ROOT operator.");
+    var tree=new br.com.imarui.ima.authorization.core.domain.policy.ScopeHierarchy(context.before().scopes());
+    if (tree.ancestors(rootScope).size()!=1) throw new IllegalArgumentException("Initial authority must use an administered root boundary.");
+    var definition=catalog.permissions().stream().filter(p -> p.getCode().equals(permission)).findFirst()
+        .orElseThrow(() -> new NoSuchElementException("Permission not found."));
+    if (definition.getServiceCode().equals("iiam") || definition.isDeprecated())
+      throw new SecurityException("Internal and deprecated permissions cannot use catalog authority bootstrap.");
+    if (context.before().delegations().stream().anyMatch(d -> d.permission().equals(permission) && tree.covers(rootScope,d.scopeId())))
+      throw new SecurityException("Initial authority already existed; ordinary redelegation or controlled recovery is required.");
+    var decision=new br.com.imarui.ima.authorization.core.domain.policy.EffectiveAuthorizationEvaluator()
+        .evaluate(context.before(),context.actor(),permission,rootScope);
+    if (decision.reason()==br.com.imarui.ima.authorization.core.domain.policy.EffectiveAuthorizationEvaluator.Reason.EXPLICIT_DENY)
+      throw new SecurityException("A DENY cannot be bypassed by initial governance approval.");
+    var now=clock.instant();
+    var delegation=new PermissionDelegation(UUID.randomUUID(),context.actor(),permission,rootScope,true,true,reason.reason(),now,now,0);
+    mutations.saveDelegation(delegation);
+    mutations.audit(context.actor(),"CATALOG_AUTHORITY_BOOTSTRAPPED","PERMISSION_DELEGATION",delegation.id().toString(),rootScope,reason,null,delegation,now);
+    return delegation;
   }
 
   private void known(AuthorizationPolicyState state,String code) {

@@ -2,7 +2,7 @@ name: Verify IIAM
 on:
   pull_request:
   push:
-    branches: [main, feat/iiams-39-authentication-jeep-migration]
+    branches: [main, feat/iiams-39-authentication-jeep-migration, feat/iiams-81-authorization-foundation]
 permissions:
   contents: read
 jobs:

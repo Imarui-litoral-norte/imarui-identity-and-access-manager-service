@@ -8,11 +8,15 @@ public final class EffectiveAuthorizationEvaluator {
   public record Decision(boolean allowed, Reason reason) {}
 
   public Decision evaluate(AuthorizationPolicyState state, UUID identity, String permission, UUID scope) {
+    try { return evaluate(state,identity,permission,scope,new ScopeHierarchy(state.scopes())); }
+    catch (IllegalArgumentException corruptHierarchy) { return new Decision(false,Reason.UNAVAILABLE_RESOURCE); }
+  }
+
+  public Decision evaluate(AuthorizationPolicyState state, UUID identity, String permission, UUID scope,ScopeHierarchy hierarchy) {
     if (identity==null || permission==null || scope==null) return new Decision(false,Reason.UNAVAILABLE_RESOURCE);
     if (!state.activeIdentities().contains(identity)) return new Decision(false,Reason.INACTIVE_IDENTITY);
     if (!state.deprecatedPermissions().containsKey(permission)) return new Decision(false,Reason.UNKNOWN_PERMISSION);
     try {
-      var hierarchy=new ScopeHierarchy(state.scopes());
       boolean administration=permission.startsWith("AUTHORIZATION_") || permission.equals("TENANT_MANAGE") || permission.equals("TENANT_READ");
       if (!state.resourceAvailable(scope,hierarchy,administration)) return new Decision(false,Reason.UNAVAILABLE_RESOURCE);
       var roles=effectiveRoles(state,identity,scope,hierarchy);

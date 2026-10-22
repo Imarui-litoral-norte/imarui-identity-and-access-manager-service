@@ -25,7 +25,8 @@ public class RoleAdministrationUseCases {
     Objects.requireNonNull(ownership); permissions=Set.copyOf(permissions);
     UUID jurisdiction=ownership==Role.Ownership.GLOBAL?AuthorizationScope.PLATFORM_ID:ownerScope;
     var context=guard.begin("AUTHORIZATION_ROLE_MANAGE",jurisdiction,reason);
-    if (name!=null && name.equalsIgnoreCase("ROOT")) throw new SecurityException("ROOT is provisioned only by the protected bootstrap.");
+    if (reservedRootName(name)) throw new SecurityException("ROOT is provisioned only by the protected bootstrap.");
+    if (name!=null) name=name.strip();
     if (ownership==Role.Ownership.TENANT && !Objects.equals(context.before().tenantScopes().get(ownerTenant),ownerScope))
       throw new SecurityException("Role owner is not the Tenant's bound Scope.");
     for (var code:permissions) guard.delegate(context.before(),context.actor(),code,jurisdiction,false);
@@ -41,8 +42,9 @@ public class RoleAdministrationUseCases {
     permissions=Set.copyOf(permissions);
     var context=guard.begin("AUTHORIZATION_ROLE_MANAGE",s -> jurisdiction(role(s,roleId)),reason);
     var previous=role(context.before(),roleId);
-    if (previous.name().equals("ROOT") || name!=null && name.equalsIgnoreCase("ROOT"))
+    if (previous.name().equals("ROOT") || reservedRootName(name))
       throw new SecurityException("ROOT composition and identity are protected.");
+    if (name!=null) name=name.strip();
     var oldPermissions=context.before().rolePermissions().getOrDefault(roleId,Set.of());
     var additions=new HashSet<>(permissions); additions.removeAll(oldPermissions);
     if (!additions.isEmpty() && context.before().assignments().stream().anyMatch(a ->
@@ -121,6 +123,7 @@ public class RoleAdministrationUseCases {
     var role=state.roles().get(id); if (role==null) throw new NoSuchElementException("Role not found."); return role;
   }
   private UUID jurisdiction(Role role) { return role.ownership()==Role.Ownership.GLOBAL?AuthorizationScope.PLATFORM_ID:role.ownerScopeId(); }
+  private boolean reservedRootName(String name) { return name!=null && name.strip().equalsIgnoreCase("ROOT"); }
   private RoleAssignment assignment(AuthorizationPolicyState state,UUID id) {
     return state.assignments().stream().filter(a -> a.id().equals(id)).findFirst().orElseThrow(() -> new NoSuchElementException("RoleAssignment not found."));
   }

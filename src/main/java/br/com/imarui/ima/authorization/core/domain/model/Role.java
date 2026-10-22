@@ -11,7 +11,8 @@ public record Role(Long id, String name, Ownership ownership, UUID ownerScopeId,
   public Role {
     if (name == null || name.isBlank() || name.length() > 100)
       throw new IllegalArgumentException("Invalid role name.");
-    name = name.trim();
+    // Reconstitution preserves the persisted label exactly. Normalizing legacy labels here
+    // could turn an ordinary " ROOT " row into the protected ROOT security identity.
     Objects.requireNonNull(ownership);
     Objects.requireNonNull(createdAt);
     Objects.requireNonNull(updatedAt);

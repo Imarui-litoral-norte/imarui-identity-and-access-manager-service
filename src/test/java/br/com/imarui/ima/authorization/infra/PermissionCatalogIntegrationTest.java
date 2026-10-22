@@ -55,7 +55,7 @@ class PermissionCatalogIntegrationTest extends IdentityIntegrationSupport {
     var owner=owner(); var code=owner+".read";
     sync(owner,manifest(owner,1,entry(code)));
     long id=jdbc.queryForObject("select id from authorization_permissions where code=?",Long.class,code);
-    long role=jdbc.queryForObject("insert into authorization_roles(name,active) values(?,true) returning id",Long.class,"catalog-"+owner);
+    long role=jdbc.queryForObject("insert into authorization_roles(name,ownership,active) values(?,'GLOBAL',true) returning id",Long.class,"catalog-"+owner);
     jdbc.update("insert into authorization_role_permissions(role_id,permission_id) values(?,?)",role,id);
     sync(owner,manifest(owner,2));
     assertTrue(jdbc.queryForObject("select deprecated from authorization_permissions where id=?",Boolean.class,id));
@@ -77,7 +77,7 @@ class PermissionCatalogIntegrationTest extends IdentityIntegrationSupport {
 
   @Test void codeCollisionRollsBackEarlierEntriesAndLeavesOwnerVersionUntouched() {
     var owner=owner(); var collision=owner+".collision";
-    jdbc.update("insert into authorization_permissions(code,description,module,updated_at) values(?,'Legacy collision','IDENTITY',current_timestamp)",collision);
+    jdbc.update("insert into authorization_permissions(code,description,module,service_code,namespace,catalog_version,updated_at) values(?,'Legacy collision','IDENTITY','iiam','iiam',1,current_timestamp)",collision);
     var invalid=manifest(owner,1,entry(owner+".aaa"),entry(collision));
     assertThrows(SecurityException.class,() -> sync(owner,invalid));
     assertEquals(0,jdbc.queryForObject("select count(*) from authorization_permissions where code=?",Integer.class,owner+".aaa"));
@@ -100,5 +100,22 @@ class PermissionCatalogIntegrationTest extends IdentityIntegrationSupport {
     });
     assertEquals(0,jdbc.queryForObject("select count(*) from authorization_role_permissions rp join authorization_roles r on r.id=rp.role_id join authorization_permissions p on p.id=rp.permission_id where r.name='ROOT' and p.code=?",Integer.class,code));
     assertEquals(1,jdbc.queryForObject("select count(*) from authorization_catalog_revisions where service_code='iiam'",Integer.class));
+  }
+
+  @Test void conflictingConcurrentManifestsHaveOneWinnerAndKeepOnlyOneValidRevision() throws Exception {
+    var owner=owner(); var code=owner+".read"; var barrier=new java.util.concurrent.CyclicBarrier(2);
+    var pool=java.util.concurrent.Executors.newFixedThreadPool(2);
+    java.util.function.Function<String,java.util.concurrent.Callable<Boolean>> update=description -> () -> {
+      barrier.await(10,java.util.concurrent.TimeUnit.SECONDS);
+      try { return sync(owner,manifest(owner,1,new PermissionManifest.Entry(code,description,"journey",false))); }
+      catch (IllegalArgumentException conflict) { return false; }
+    };
+    try {
+      var a=pool.submit(update.apply("Manifest A")); var b=pool.submit(update.apply("Manifest B"));
+      assertNotEquals(a.get(20,java.util.concurrent.TimeUnit.SECONDS),b.get(20,java.util.concurrent.TimeUnit.SECONDS));
+      assertEquals(1,jdbc.queryForObject("select count(*) from authorization_catalog_revisions where service_code=?",Integer.class,owner));
+      assertEquals(1,jdbc.queryForObject("select version from authorization_catalog_owners where service_code=?",Long.class,owner));
+      assertTrue(Set.of("Manifest A","Manifest B").contains(jdbc.queryForObject("select description from authorization_permissions where code=?",String.class,code)));
+    } finally { pool.shutdownNow(); }
   }
 }

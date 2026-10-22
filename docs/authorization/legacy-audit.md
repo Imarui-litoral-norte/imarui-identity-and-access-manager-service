@@ -116,3 +116,13 @@ não evidência de implementação do Epic.
 Gateway IIAMS-80, produção, merge e deploy permanecem fora desta execução.
 
 Evidência da validação inicial e limitações do ambiente: [baseline-validation.md](baseline-validation.md).
+
+## Resultado da reconciliação na Rodada 1
+
+A classificação final, implementação, migrations V11–V17, evidências e limites estão
+no [ROUND_1_HANDOFF.md](ROUND_1_HANDOFF.md). O núcleo substitui a associação e o algoritmo
+PLATFORM legados, preserva seus IDs e grants na fronteira explícita e reutiliza os
+contratos válidos de Identity/Authentication. IdentityRole foi removido; RoleAssignment
+é o único modelo de atribuição. Não há grant de catálogo externo por startup nem
+interpretação de nomes legados normalizados como ROOT. A guarda Tenant resolve o Scope
+do recurso e usa o mesmo avaliador. Nenhum código do Gateway foi alterado.

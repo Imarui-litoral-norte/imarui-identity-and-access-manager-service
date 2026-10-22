@@ -61,11 +61,23 @@ public class ScopeAdministrationUseCases {
     var hierarchy=new ScopeHierarchy(context.before().scopes()); hierarchy.validateParent(id,parent);
     if (!Objects.equals(previous.parentId(),parent)) {
       guard.require(context.before(),context.actor(),"AUTHORIZATION_SCOPE_MANAGE",parent==null?AuthorizationScope.PLATFORM_ID:parent);
+      if (parent==null && context.before().assignments().stream().noneMatch(a -> a.active() && a.scopeId().equals(id)
+          && context.before().roles().containsKey(a.roleId()) && context.before().roles().get(a.roleId()).name().equals("ROOT")))
+        throw new IllegalArgumentException("Detaching a Scope would remove its recovery governance; create an administered root first.");
     }
     var now=clock.instant(); var changed=previous.revise(name,status,parent,now);
     scopes.save(changed);
     var after=policies.current();
-    guard.assertGains(context,after,guard.descendants(after,id),after.deprecatedPermissions().keySet(),Map.of());
+    var afterHierarchy=new ScopeHierarchy(after.scopes());
+    var movedScopes=guard.descendants(after,id);
+    for (var assignment:context.before().assignments()) {
+      if (!assignment.active() || !movedScopes.contains(assignment.scopeId())) continue;
+      var role=context.before().roles().get(assignment.roleId());
+      if (role!=null && role.availableAt(assignment.scopeId(),hierarchy,context.before().tenantScopes())
+          && !role.availableAt(assignment.scopeId(),afterHierarchy,after.tenantScopes()))
+        throw new IllegalArgumentException("Scope move would invalidate an existing direct RoleAssignment.");
+    }
+    guard.assertGains(context,after,movedScopes,after.deprecatedPermissions().keySet(),Map.of());
     mutations.audit(context.actor(),"SCOPE_REVISED","AUTHORIZATION_SCOPE",id.toString(),id,reason,previous,changed,now);
     return changed;
   }

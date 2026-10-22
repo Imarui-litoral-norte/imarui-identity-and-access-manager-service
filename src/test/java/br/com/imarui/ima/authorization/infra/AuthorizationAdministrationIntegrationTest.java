@@ -10,6 +10,8 @@ import br.com.imarui.ima.identity.core.domain.model.tenant.*;
 import br.com.imarui.ima.identity.support.IdentityIntegrationSupport;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.*;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -21,6 +23,9 @@ class AuthorizationAdministrationIntegrationTest extends IdentityIntegrationSupp
   @Autowired DenyDelegationUseCases rules;
   @Autowired EffectiveAuthorizationUseCases decisions;
   @Autowired ScopeRepository scopes;
+  @Autowired CatalogOwnerAdministrationUseCases catalogOwners;
+  @Autowired br.com.imarui.ima.authorization.core.repository.PermissionCatalogRepository catalogRepository;
+  @Autowired java.time.Clock clock;
   private static final UUID PLATFORM=AuthorizationScope.PLATFORM_ID;
   private static final PolicyChangeReason REASON=new PolicyChangeReason("Authorized policy maintenance",UUID.fromString("00000000-0000-0000-0000-000000000081"));
 
@@ -42,9 +47,23 @@ class AuthorizationAdministrationIntegrationTest extends IdentityIntegrationSupp
   private void operator(Identity target,UUID scope,Set<String> capabilities) { grant(target,global(capabilities),scope); }
   private String accessToken(Identity identity) {
     return new TransactionTemplate(transactions).execute(s -> {
-      var session=authenticationStore.createSession(identity.getId().value(),Instant.now());
-      return tokenIssuer.issue(identity.getId().value(),session.getPublicId(),Instant.now());
+      var now=clock.instant();
+      var session=authenticationStore.createSession(identity.getId().value(),now);
+      return tokenIssuer.issue(identity.getId().value(),session.getPublicId(),now);
     });
+  }
+  private <T> T as(Identity identity,Callable<T> action) throws Exception {
+    actor(identity.getId()); try { return action.call(); } finally { SecurityContextHolder.clearContext(); }
+  }
+  private String externalPermission() {
+    String owner="service-"+UUID.randomUUID().toString().replace("-","");
+    assertTrue(catalogOwners.enroll(owner,owner,REASON)); assertFalse(catalogOwners.enroll(owner,owner,REASON));
+    String code=owner+".resource.read";
+    var manifest=new PermissionManifest(owner,owner,1,List.of(new PermissionManifest.Entry(code,"External read","external",false)));
+    var caller=(br.com.imarui.ima.authorization.core.application.port.CatalogServiceAuthentication)() -> owner;
+    var synchronization=new PermissionCatalogUseCases(catalogRepository,Optional.of(caller),clock);
+    new TransactionTemplate(transactions).executeWithoutResult(s -> synchronization.synchronizeExternal(manifest));
+    return code;
   }
 
   @Test void scopedGrantInheritsWithoutAffiliationAndNeverReachesSiblingsOrAncestors() {
@@ -223,5 +242,230 @@ class AuthorizationAdministrationIntegrationTest extends IdentityIntegrationSupp
       assertThrows(org.springframework.dao.DataAccessException.class,() -> roles.create(name,Role.Ownership.GLOBAL,null,null,Set.of("IDENTITY_READ"),new PolicyChangeReason("simulate persistence failure",null)));
       assertEquals(0,jdbc.queryForObject("select count(*) from authorization_roles where name=?",Integer.class,name));
     } finally { jdbc.execute("drop trigger "+trigger+" on authorization_audit"); jdbc.execute("drop function "+function+"()"); }
+  }
+
+  @Test void reparentingPreservesDirectScopedAssignmentsOrRejectsTheMoveAtomically() {
+    var target=user(); var local=scopes.find(scope()).orElseThrow();
+    var shared=roles.create("Owner-bound role",Role.Ownership.SCOPE,PLATFORM,null,Set.of("IDENTITY_READ"),REASON);
+    var assignment=grant(target,shared,local.id());
+    var independent=hierarchy.create(unique("ROOT"),"Other root",null,REASON);
+    assertThrows(IllegalArgumentException.class,() -> hierarchy.revise(local.id(),local.name(),local.status(),independent.id(),REASON));
+    assertEquals(PLATFORM,scopes.find(local.id()).orElseThrow().parentId());
+    assertTrue(allowed(target,"IDENTITY_READ",local.id()));
+    assertTrue(jdbc.queryForObject("select active from authorization_identity_roles where id=?",Boolean.class,assignment.id()));
+  }
+
+  @Test void concurrentRoleCreationHasOneWinnerAndNoDuplicateOwnerName() throws Exception {
+    var pool=Executors.newFixedThreadPool(2); var barrier=new CyclicBarrier(2); var name=unique("ConcurrentRole");
+    Callable<Boolean> create=() -> as(reviewer,() -> {
+      barrier.await(10,TimeUnit.SECONDS);
+      try { roles.create(name,Role.Ownership.TENANT,scope(),tenant.getId().value(),Set.of("IDENTITY_READ"),REASON); return true; }
+      catch (DataIntegrityViolationException duplicate) { return false; }
+    });
+    try {
+      var a=pool.submit(create); var b=pool.submit(create);
+      assertNotEquals(a.get(20,TimeUnit.SECONDS),b.get(20,TimeUnit.SECONDS));
+      assertEquals(1,jdbc.queryForObject("select count(*) from authorization_roles where name=? and owner_tenant_id=?",Integer.class,name,tenant.getId().value()));
+    } finally { pool.shutdownNow(); }
+  }
+
+  @Test void concurrentReparentingCannotCreateACycle() throws Exception {
+    var a=hierarchy.create(unique("A"),"A",PLATFORM,REASON); var b=hierarchy.create(unique("B"),"B",PLATFORM,REASON);
+    var pool=Executors.newFixedThreadPool(2); var barrier=new CyclicBarrier(2);
+    try {
+      var first=pool.submit(() -> as(reviewer,() -> {
+        barrier.await(10,TimeUnit.SECONDS);
+        try { hierarchy.revise(a.id(),a.name(),a.status(),b.id(),REASON); return true; }
+        catch (IllegalArgumentException cycle) { return false; }
+      }));
+      var second=pool.submit(() -> as(reviewer,() -> {
+        barrier.await(10,TimeUnit.SECONDS);
+        try { hierarchy.revise(b.id(),b.name(),b.status(),a.id(),REASON); return true; }
+        catch (IllegalArgumentException cycle) { return false; }
+      }));
+      assertNotEquals(first.get(20,TimeUnit.SECONDS),second.get(20,TimeUnit.SECONDS));
+      assertDoesNotThrow(() -> new br.com.imarui.ima.authorization.core.domain.policy.ScopeHierarchy(scopes.all()));
+    } finally { pool.shutdownNow(); }
+  }
+
+  @Test void aGrantWaitingForADelegationRevocationRevalidatesAfterTheCommit() throws Exception {
+    var manager=user(); var target=user();
+    operator(manager,scope(),Set.of("AUTHORIZATION_ASSIGNMENT_MANAGE"));
+    var delegation=rules.delegate(manager.getId().value(),"IDENTITY_READ",scope(),false,REASON);
+    var role=global(Set.of("IDENTITY_READ"));
+    var revokedButUncommitted=new CountDownLatch(1); var release=new CountDownLatch(1); var attempted=new CountDownLatch(1);
+    var pool=Executors.newFixedThreadPool(2);
+    try {
+      var revoke=pool.submit(() -> as(reviewer,() -> new TransactionTemplate(transactions).execute(s -> {
+        rules.revokeDelegation(delegation.id(),REASON); revokedButUncommitted.countDown();
+        try { if (!release.await(10,TimeUnit.SECONDS)) throw new IllegalStateException("Test coordination timed out."); }
+        catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new IllegalStateException(e); }
+        return true;
+      })));
+      assertTrue(revokedButUncommitted.await(10,TimeUnit.SECONDS));
+      var grant=pool.submit(() -> as(manager,() -> {
+        attempted.countDown();
+        try { roles.assign(target.getId().value(),role.id(),scope(),REASON); return false; }
+        catch (SecurityException denied) { return true; }
+      }));
+      assertTrue(attempted.await(10,TimeUnit.SECONDS));
+      assertThrows(TimeoutException.class,() -> grant.get(150,TimeUnit.MILLISECONDS));
+      release.countDown(); assertTrue(revoke.get(20,TimeUnit.SECONDS)); assertTrue(grant.get(20,TimeUnit.SECONDS));
+      assertFalse(allowed(target,"IDENTITY_READ",scope()));
+    } finally { release.countDown(); pool.shutdownNow(); }
+  }
+
+  @Test void twoConcurrentDisablesCannotRemoveBothRecoveryAdministrators() throws Exception {
+    var otherRoot=user();
+    jdbc.update("insert into authorization_identity_roles(identity_id,role_id,authorization_scope_id) select ?,id,? from authorization_roles where name='ROOT'",otherRoot.getId().value(),PLATFORM);
+    var pool=Executors.newFixedThreadPool(2); var barrier=new CyclicBarrier(2);
+    java.util.function.Function<Identity,Callable<Boolean>> disabling=identity -> () -> {
+      barrier.await(10,TimeUnit.SECONDS);
+      try { jdbc.update("update ima_identities set status='DISABLED' where id=?",identity.getId().value()); return true; }
+      catch (DataIntegrityViolationException protectedAdministrator) { return false; }
+    };
+    try {
+      var first=pool.submit(disabling.apply(reviewer)); var second=pool.submit(disabling.apply(otherRoot));
+      assertNotEquals(first.get(20,TimeUnit.SECONDS),second.get(20,TimeUnit.SECONDS));
+      var remaining=jdbc.queryForList("select distinct i.id from ima_identities i join authorization_identity_roles a on a.identity_id=i.id join authorization_roles r on r.id=a.role_id where i.status='ACTIVE' and a.active and r.active and r.name='ROOT'",UUID.class);
+      assertEquals(1,remaining.size()); assertTrue(decisions.evaluate(remaining.get(0),"AUTHORIZATION_SCOPE_MANAGE",PLATFORM).allowed());
+    } finally { pool.shutdownNow(); }
+  }
+
+  @Test void initialExternalCatalogAuthorityIsAnExplicitApprovalAndStillDoesNotGrantUsage() {
+    var target=user(); var code=externalPermission();
+    assertFalse(allowed(reviewer,code,scope()));
+    assertEquals(0,jdbc.queryForObject("select count(*) from authorization_permission_delegations where permission_code=?",Integer.class,code));
+    assertThrows(SecurityException.class,() -> roles.create("Unapproved external grant",Role.Ownership.SCOPE,scope(),null,Set.of(code),REASON));
+    rules.bootstrapCatalogAuthority(code,PLATFORM,REASON);
+    assertFalse(allowed(reviewer,code,scope()));
+    var role=roles.create("Approved external grant",Role.Ownership.SCOPE,scope(),null,Set.of(code),REASON);
+    grant(target,role,scope()); assertTrue(allowed(target,code,scope())); assertFalse(allowed(reviewer,code,scope()));
+  }
+
+  @Test void catalogAdministrationAloneCannotCreateInitialDelegationAuthority() {
+    var code=externalPermission(); var manager=user();
+    operator(manager,PLATFORM,Set.of("AUTHORIZATION_CATALOG_MANAGE","AUTHORIZATION_DELEGATION_MANAGE"));
+    actor(manager.getId());
+    assertThrows(SecurityException.class,() -> rules.bootstrapCatalogAuthority(code,PLATFORM,REASON));
+    assertEquals(0,jdbc.queryForObject("select count(*) from authorization_permission_delegations where permission_code=?",Integer.class,code));
+  }
+
+  @Test void initialAuthorityCannotBypassADenyOrResurrectARevokedAuthority() {
+    var code=externalPermission();
+    var deny=rules.deny(code,PLATFORM,reviewer.getId().value(),null,REASON);
+    assertThrows(SecurityException.class,() -> rules.bootstrapCatalogAuthority(code,PLATFORM,REASON));
+    // No previous ALLOW exists, so removing this DENY creates no access or self-grant.
+    rules.revokeDeny(deny.id(),REASON);
+    var initial=rules.bootstrapCatalogAuthority(code,PLATFORM,REASON);
+    assertThrows(SecurityException.class,() -> rules.bootstrapCatalogAuthority(code,PLATFORM,REASON));
+    jdbc.update("update authorization_permission_delegations set active=false where id=?",initial.id());
+    assertThrows(SecurityException.class,() -> rules.bootstrapCatalogAuthority(code,PLATFORM,REASON));
+  }
+
+  @Test void externalAuthorityIsApprovedSeparatelyForEachIndependentRoot() {
+    var code=externalPermission(); rules.bootstrapCatalogAuthority(code,PLATFORM,REASON);
+    var independent=hierarchy.create(unique("ROOT"),"Independent root",null,REASON);
+    assertThrows(SecurityException.class,() -> roles.create("Unapproved independent grant",Role.Ownership.SCOPE,independent.id(),null,Set.of(code),REASON));
+    rules.bootstrapCatalogAuthority(code,independent.id(),REASON);
+    assertNotNull(roles.create("Approved independent grant",Role.Ownership.SCOPE,independent.id(),null,Set.of(code),REASON).id());
+    assertFalse(allowed(reviewer,code,independent.id()));
+  }
+
+  @Test void detachingAScopeWithoutRecoveryGovernanceIsRejectedWithoutChangingItsUuid() {
+    var existing=scopes.find(scope()).orElseThrow();
+    assertThrows(IllegalArgumentException.class,() -> hierarchy.revise(existing.id(),existing.name(),existing.status(),null,REASON));
+    assertEquals(existing,scopes.find(existing.id()).orElseThrow());
+  }
+
+  @Test void identityDeletionArchivesAuthorizationRowsWithTheIdentityHistoryCorrelation() {
+    var target=user(); var role=global(Set.of("IDENTITY_READ"));
+    var assignment=grant(target,role,scope());
+    var deny=rules.deny("TENANT_READ",scope(),target.getId().value(),null,REASON);
+    var delegation=rules.delegate(target.getId().value(),"IDENTITY_READ",scope(),false,REASON);
+    actor(target.getId());
+    delete.execute(new br.com.imarui.ima.identity.core.application.command.identity.SelfDeleteIdentityCommand("Self requested removal"));
+    assertTrue(identities.findById(target.getId()).isEmpty());
+    var historyId=jdbc.queryForObject("select id from ima_identities__history where original_identity_id=?",UUID.class,target.getId().value());
+    assertEquals(3,jdbc.queryForObject("select count(*) from authorization_audit where action='AUTHORIZATION_ROW_REMOVED' and correlation_id=? and actor_identity_id=?",Integer.class,historyId,target.getId().value()));
+    for (var id:List.of(assignment.id(),deny.id(),delegation.id()))
+      assertEquals(1,jdbc.queryForObject("select count(*) from authorization_audit where action='AUTHORIZATION_ROW_REMOVED' and resource_id=? and correlation_id=? and before_state is not null and after_state is null",Integer.class,id.toString(),historyId));
+  }
+
+  @Test void rootCreationAndDefinitionAreProtectedAndHttpDisableReturnsConflictWithoutRevocation() throws Exception {
+    var target=user(); long rootRole=jdbc.queryForObject("select id from authorization_roles where name='ROOT'",Long.class);
+    assertThrows(SecurityException.class,() -> roles.assign(target.getId().value(),rootRole,PLATFORM,REASON));
+    assertThrows(SecurityException.class,() -> roles.create("ROOT",Role.Ownership.GLOBAL,null,null,Set.of(),REASON));
+    assertThrows(SecurityException.class,() -> roles.revise(rootRole,"ROOT",false,Set.of(),REASON));
+    var token=accessToken(reviewer);
+    long revocations=jdbc.queryForObject("select count(*) from ima_access_revocation_requests where subject_id=?",Long.class,reviewer.getId().value());
+    var response=http("POST","/api/v1/admin/identities/"+reviewer.getId().value()+"/disable",null,token);
+    assertEquals(409,response.statusCode()); assertFalse(response.body().contains("authorization_identity_roles"));
+    assertTrue(identities.findById(reviewer.getId()).orElseThrow().isActive());
+    assertEquals(revocations,jdbc.queryForObject("select count(*) from ima_access_revocation_requests where subject_id=?",Long.class,reviewer.getId().value()));
+    assertEquals(200,http("GET","/api/v1/tenants/"+tenant.getId().value(),null,token).statusCode());
+  }
+
+  @Test void ancestorRoleDenyAppliesWhereTheScopeOwnedRoleBecomesEffective() {
+    var target=user(); var region=hierarchy.create(unique("REGION"),"Region",PLATFORM,REASON);
+    var shared=roles.create("Region capability",Role.Ownership.SCOPE,region.id(),null,Set.of("IDENTITY_READ"),REASON);
+    grant(target,shared,region.id()); assertTrue(allowed(target,"IDENTITY_READ",region.id()));
+    rules.deny("IDENTITY_READ",PLATFORM,null,shared.id(),REASON);
+    assertFalse(allowed(target,"IDENTITY_READ",region.id()));
+    assertFalse(allowed(target,"IDENTITY_READ",PLATFORM));
+  }
+
+  @Test void databaseCannotInventAPlatformAssignmentOrAnInternalOwnerForAnIncompleteWrite() {
+    var target=user(); var role=global(Set.of("IDENTITY_READ"));
+    assertThrows(DataIntegrityViolationException.class,() -> jdbc.update("insert into authorization_identity_roles(identity_id,role_id) values(?,?)",target.getId().value(),role.id()));
+    assertThrows(DataIntegrityViolationException.class,() -> jdbc.update("insert into authorization_roles(name,active) values(?,true)",unique("MissingOwner")));
+    assertThrows(DataIntegrityViolationException.class,() -> jdbc.update("insert into authorization_permissions(code,description,module,updated_at) values(?,'No owner','EXTERNAL',current_timestamp)",unique("MissingOwner")));
+    assertEquals(0,jdbc.queryForObject("select count(*) from authorization_identity_roles where identity_id=?",Integer.class,target.getId().value()));
+  }
+
+  @Test void aReadCommittedCallerNeverCombinesRoleStateFromDifferentCommittedPolicyRevisions() throws Exception {
+    var target=user(); var role=global(Set.of()); grant(target,role,scope());
+    var pool=Executors.newFixedThreadPool(2); var barrier=new CyclicBarrier(2);
+    try {
+      var writer=pool.submit(() -> {
+        barrier.await(10,TimeUnit.SECONDS);
+        for (int i=0;i<60;i++) {
+          new TransactionTemplate(transactions).executeWithoutResult(s -> {
+            jdbc.update("update authorization_roles set active=false,updated_at=clock_timestamp(),version=version+1 where id=?",role.id());
+            jdbc.update("insert into authorization_role_permissions(role_id,permission_id) select ?,id from authorization_permissions where code='IDENTITY_READ' on conflict do nothing",role.id());
+          });
+          new TransactionTemplate(transactions).executeWithoutResult(s -> {
+            jdbc.update("delete from authorization_role_permissions where role_id=?",role.id());
+            jdbc.update("update authorization_roles set active=true,updated_at=clock_timestamp(),version=version+1 where id=?",role.id());
+          });
+        }
+        return true;
+      });
+      var reader=pool.submit(() -> {
+        var outer=new TransactionTemplate(transactions);
+        outer.setIsolationLevel(org.springframework.transaction.TransactionDefinition.ISOLATION_READ_COMMITTED);
+        return outer.execute(s -> {
+          try { barrier.await(10,TimeUnit.SECONDS); }
+          catch (Exception e) { throw new IllegalStateException(e); }
+          for (int i=0;i<100;i++) assertFalse(allowed(target,"IDENTITY_READ",scope()));
+          return true;
+        });
+      });
+      assertTrue(writer.get(30,TimeUnit.SECONDS)); assertTrue(reader.get(30,TimeUnit.SECONDS));
+    } finally { pool.shutdownNow(); }
+  }
+
+  @Test void aLegacyRootLikeLabelDoesNotCreateARootIdentityDuringReconstitution() {
+    var code=externalPermission(); var manager=user();
+    long legacy=jdbc.queryForObject("insert into authorization_roles(name,ownership,active) values(' ROOT ','GLOBAL',true) returning id",Long.class);
+    for (var capability:Set.of("AUTHORIZATION_SCOPE_MANAGE","AUTHORIZATION_CATALOG_MANAGE","AUTHORIZATION_DELEGATION_MANAGE"))
+      jdbc.update("insert into authorization_role_permissions(role_id,permission_id) select ?,id from authorization_permissions where code=?",legacy,capability);
+    roles.assign(manager.getId().value(),legacy,PLATFORM,REASON);
+    actor(manager.getId());
+    assertThrows(SecurityException.class,() -> rules.bootstrapCatalogAuthority(code,PLATFORM,REASON));
+    assertThrows(SecurityException.class,() -> hierarchy.create(unique("FORBIDDEN"),"Independent",null,REASON));
+    actor(reviewer.getId());
+    assertThrows(SecurityException.class,() -> roles.create(" ROOT ",Role.Ownership.GLOBAL,null,null,Set.of(),REASON));
+    assertEquals(" ROOT ",jdbc.queryForObject("select name from authorization_roles where id=?",String.class,legacy));
   }
 }

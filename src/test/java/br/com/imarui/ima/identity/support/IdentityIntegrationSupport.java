@@ -61,6 +61,7 @@ public abstract class IdentityIntegrationSupport {
   @Autowired protected ReactivateTenantUseCase reactivateTenant;
   @Autowired protected JdbcTemplate jdbc;
   @Autowired protected JsonMapper json;
+  @Autowired protected Clock fixtureClock;
   @Autowired private br.com.imarui.ima.authorization.infra.bootstrap.PermissionCatalogBootstrap authorizationBootstrap;
   @Autowired protected br.com.imarui.ima.authorization.api.module.InitialRootAuthorization rootAuthorization;
   @Autowired protected JwtSigningKeyProvider keys;
@@ -216,7 +217,7 @@ public abstract class IdentityIntegrationSupport {
                 String name = "fixture-" + UUID.randomUUID();
                 Long role =
                     jdbc.queryForObject(
-                        "insert into authorization_roles(name,active) values(?,true) returning id",
+                        "insert into authorization_roles(name,ownership,active) values(?,'GLOBAL',true) returning id",
                         Long.class,
                         name);
                 for (String permission : permissions)
@@ -226,12 +227,14 @@ public abstract class IdentityIntegrationSupport {
                       role,
                       permission);
                 jdbc.update(
-                    "insert into authorization_identity_roles(identity_id,role_id) values(?,?)",
+                    "insert into authorization_identity_roles(identity_id,role_id,authorization_scope_id) values(?,?,?)",
                     identity.value(),
-                    role);
+                    role,
+                    br.com.imarui.ima.authorization.core.domain.model.AuthorizationScope.PLATFORM_ID);
               }
-              var session = authenticationStore.createSession(identity.value(), Instant.now());
-              return tokenIssuer.issue(identity.value(), session.getPublicId(), Instant.now());
+              var now=fixtureClock.instant();
+              var session = authenticationStore.createSession(identity.value(), now);
+              return tokenIssuer.issue(identity.value(), session.getPublicId(), now);
             });
   }
 

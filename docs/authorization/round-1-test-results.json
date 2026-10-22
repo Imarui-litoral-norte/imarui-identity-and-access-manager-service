@@ -1,11 +1,13 @@
 {
   "date": "2026-10-22",
-  "increment": "Administrative policy mutations, Tenant resource enforcement and minimum ROOT protection; concurrency and final audit pending",
+  "scope": "IIAMS-82-87 implementation from Round 1 attachment; individual Jira acceptance remains unverified",
   "java": "17.0.18",
   "postgresql": "18.4 isolated native cluster",
   "command": "mvnw.cmd -B clean verify",
   "result": "BUILD SUCCESS",
-  "tests": 242.0,
+  "baselineTests": 191,
+  "tests": 262.0,
+  "addedTests": 71.0,
   "failures": 0.0,
   "errors": 0.0,
   "skipped": 0.0,
@@ -60,8 +62,15 @@
       "skipped": 0
     },
     {
+      "name": "br.com.imarui.ima.authorization.core.application.RootEligibilityTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
       "name": "br.com.imarui.ima.authorization.core.domain.EffectiveAuthorizationEvaluatorTest",
-      "tests": 14,
+      "tests": 16,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -82,7 +91,7 @@
     },
     {
       "name": "br.com.imarui.ima.authorization.infra.AuthorizationAdministrationIntegrationTest",
-      "tests": 17,
+      "tests": 33,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -96,7 +105,7 @@
     },
     {
       "name": "br.com.imarui.ima.authorization.infra.PermissionCatalogIntegrationTest",
-      "tests": 6,
+      "tests": 7,
       "failures": 0,
       "errors": 0,
       "skipped": 0

@@ -26,6 +26,10 @@ public class JdbcPermissionCatalogRepository implements PermissionCatalogReposit
             r.getLong("version"),r.getString("digest")), code).stream().findFirst();
   }
 
+  public void enroll(String code,String namespace,Instant now) {
+    jdbc.update("insert into authorization_catalog_owners(service_code,namespace,updated_at) values(?,?,?)",code,namespace,Timestamp.from(now));
+  }
+
   public void synchronize(PermissionManifest manifest, Instant now) {
     // A failed collision must roll back the whole manifest, including prior entries and deprecation.
     for (var entry : manifest.permissions()) {

@@ -146,3 +146,18 @@ preservação de estado após tentativa de reparenting ou edição não autoriza
 Ainda falta concluir concorrência explícita, revisar hardening/contratos/documentação,
 completar a matriz individual e o handoff e verificar a branch/CI finais. O acesso formal
 às descrições individuais do Jira continua uma limitação de validação, não é presumido.
+
+### Fechamento técnico da Rodada 1
+
+Concluídos os testes concorrentes de catálogo, unicidade, árvore, revogação de delegação,
+último ROOT e consistência de revisão chamada por transação com isolamento inferior.
+Inscrição de owner/namespace e aprovação inicial granular de autoridade externa são
+operações distintas, explícitas e protegidas. V16 preserva a remoção por cascata no audit;
+V17 exige fronteira e owner em novas escritas. Rótulos legados não promovem Identities a ROOT.
+
+Execução final local: **262 testes, 71 adicionais, zero falhas/erros/ignorados**, clean verify
+com JAR executável. O baseline de 191 casos foi preservado. A fixture de JWT usa o mesmo
+Clock/precisão do fluxo real; nenhuma comparação de revogação de produção foi relaxada.
+As migrations V1–V10 continuam idênticas à base. O código e as decisões atuais, matriz
+das 31 subtarefas com limite formal explícito, findings e instruções da segunda rodada
+estão no [ROUND_1_HANDOFF.md](ROUND_1_HANDOFF.md).
