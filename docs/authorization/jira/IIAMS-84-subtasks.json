@@ -1,0 +1,27 @@
+[
+  {
+    "key": "IIAMS-104",
+    "title": "Evoluir Role para ownership GLOBAL/SCOPE/TENANT",
+    "description": "## Entrega específica\n\nModelar owner/type/ID e unicidade por proprietário, invariantes, migração da Role anterior e bootstrap ROOT, com testes.\n\n## Requisitos de segurança e negócio\n\n* Modalidades Role GLOBAL, SCOPE, TENANT com owner explícito e IDs estáveis; ROOT protegida.\n* Global reutilizável; Scope disponível à sua subárvore; Tenant somente empresa proprietária. Disponibilidade ≠ RoleAssignment.\n* Administrador de Tenant não altera Role de Scope ancestral; atualização autorizada de Role compartilhada propaga-se a todos assignments já existentes sem bypass de DENY.\n\n## Critérios de aceite\n\n* Testes positivos/negativos de propriedade, duplicação local de nome, disponibilização, atribuição indevida, alteração compartilhada e rollback.\n* Flyway/indices, auditoria, contratos e CI. Vinculação: IIAMS-84/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-105",
+    "title": "Implementar regras de disponibilidade de Role na hierarquia",
+    "description": "## Entrega específica\n\nDisponibilidade distinta da atribuição; globais multi-scope, Scope somente descendentes, Tenant somente próprio; bloquear irmãos, ancestrais e Scope inativo.\n\n## Requisitos de segurança e negócio\n\n* Modalidades Role GLOBAL, SCOPE, TENANT com owner explícito e IDs estáveis; ROOT protegida.\n* Global reutilizável; Scope disponível à sua subárvore; Tenant somente empresa proprietária. Disponibilidade ≠ RoleAssignment.\n* Administrador de Tenant não altera Role de Scope ancestral; atualização autorizada de Role compartilhada propaga-se a todos assignments já existentes sem bypass de DENY.\n\n## Critérios de aceite\n\n* Testes positivos/negativos de propriedade, duplicação local de nome, disponibilização, atribuição indevida, alteração compartilhada e rollback.\n* Flyway/indices, auditoria, contratos e CI. Vinculação: IIAMS-84/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-106",
+    "title": "Criar casos de uso de administração de Roles por proprietário",
+    "description": "## Entrega específica\n\nCRUD/lifecycle de Role, composição de Permission e policy de owner; impedir alteração cruzada; transações e auditoria.\n\n## Requisitos de segurança e negócio\n\n* Modalidades Role GLOBAL, SCOPE, TENANT com owner explícito e IDs estáveis; ROOT protegida.\n* Global reutilizável; Scope disponível à sua subárvore; Tenant somente empresa proprietária. Disponibilidade ≠ RoleAssignment.\n* Administrador de Tenant não altera Role de Scope ancestral; atualização autorizada de Role compartilhada propaga-se a todos assignments já existentes sem bypass de DENY.\n\n## Critérios de aceite\n\n* Testes positivos/negativos de propriedade, duplicação local de nome, disponibilização, atribuição indevida, alteração compartilhada e rollback.\n* Flyway/indices, auditoria, contratos e CI. Vinculação: IIAMS-84/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-107",
+    "title": "Propagar mudanças de Role compartilhada a assignments existentes",
+    "description": "## Entrega específica\n\nGarantir efeito imediato no PDP após commit, sem clonar Roles, alterar atribuições indevidamente ou ignorar DENYs; invalidar caches/versionar dados.\n\n## Requisitos de segurança e negócio\n\n* Modalidades Role GLOBAL, SCOPE, TENANT com owner explícito e IDs estáveis; ROOT protegida.\n* Global reutilizável; Scope disponível à sua subárvore; Tenant somente empresa proprietária. Disponibilidade ≠ RoleAssignment.\n* Administrador de Tenant não altera Role de Scope ancestral; atualização autorizada de Role compartilhada propaga-se a todos assignments já existentes sem bypass de DENY.\n\n## Critérios de aceite\n\n* Testes positivos/negativos de propriedade, duplicação local de nome, disponibilização, atribuição indevida, alteração compartilhada e rollback.\n* Flyway/indices, auditoria, contratos e CI. Vinculação: IIAMS-84/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-108",
+    "title": "Testar isolamento de proprietário, composição e lifecycle",
+    "description": "## Entrega específica\n\nCasos de duas empresas com mesmo nome de Role, herança, alteração por admin indevido, depreciação de Permissions, concorrência e rollback.\n\n## Requisitos de segurança e negócio\n\n* Modalidades Role GLOBAL, SCOPE, TENANT com owner explícito e IDs estáveis; ROOT protegida.\n* Global reutilizável; Scope disponível à sua subárvore; Tenant somente empresa proprietária. Disponibilidade ≠ RoleAssignment.\n* Administrador de Tenant não altera Role de Scope ancestral; atualização autorizada de Role compartilhada propaga-se a todos assignments já existentes sem bypass de DENY.\n\n## Critérios de aceite\n\n* Testes positivos/negativos de propriedade, duplicação local de nome, disponibilização, atribuição indevida, alteração compartilhada e rollback.\n* Flyway/indices, auditoria, contratos e CI. Vinculação: IIAMS-84/IIAMS-81.\n\n"
+  }
+]

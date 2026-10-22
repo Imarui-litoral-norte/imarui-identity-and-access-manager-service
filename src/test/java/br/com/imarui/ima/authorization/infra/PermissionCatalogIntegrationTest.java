@@ -95,11 +95,12 @@ class PermissionCatalogIntegrationTest extends IdentityIntegrationSupport {
   @Test void repeatedInternalBootstrapDoesNotGrantExternalCatalogEntriesToRoot() {
     var owner=owner(); var code=owner+".read";
     sync(owner,manifest(owner,1,entry(code)));
+    int revisions=jdbc.queryForObject("select count(*) from authorization_catalog_revisions where service_code='iiam'",Integer.class);
     new TransactionTemplate(transactions).executeWithoutResult(s -> {
       bootstrap.run(new DefaultApplicationArguments()); bootstrap.run(new DefaultApplicationArguments());
     });
     assertEquals(0,jdbc.queryForObject("select count(*) from authorization_role_permissions rp join authorization_roles r on r.id=rp.role_id join authorization_permissions p on p.id=rp.permission_id where r.name='ROOT' and p.code=?",Integer.class,code));
-    assertEquals(1,jdbc.queryForObject("select count(*) from authorization_catalog_revisions where service_code='iiam'",Integer.class));
+    assertEquals(revisions,jdbc.queryForObject("select count(*) from authorization_catalog_revisions where service_code='iiam'",Integer.class));
   }
 
   @Test void conflictingConcurrentManifestsHaveOneWinnerAndKeepOnlyOneValidRevision() throws Exception {

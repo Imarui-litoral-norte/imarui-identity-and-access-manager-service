@@ -29,3 +29,19 @@ V18/V19 foram aplicadas no cluster isolado e ficam imutáveis a partir deste che
 Arquivamento exige revogar assignments ativos; Role com qualquer assignment operacional (mesmo revogado)
 não pode ser fisicamente excluída. Exclusão permitida para Role arquivada sem assignments, preservando
 composição, DENYs e estado em authorization_roles__history; falhas revertem tudo.
+
+## Checkpoint IIAMS-88 / F-05
+
+18 testes de catálogo e HTTP M2M/PDP aprovados, sem falhas/erros/skips. Prova RSA por requisição
+RS256, typ próprio, issuer/subject vinculados ao serviço, audience distinta, validade até 60 segundos,
+jti UUID consumido no PostgreSQL, binding método/caminho/hash do corpo; chaves públicas revogáveis,
+com rotação sobreposta e validade máxima de 90 dias. Nenhuma chave privada é gerada/recebida no IIAM.
+
+O PDP verifica o JWT humano pelo decoder stateful existente, compara seu subject ao Actor e resolve
+Tenant→Scope no binding persistido (ou recurso externo explicitamente cadastrado), verificando
+jurisdição técnica e owner da Permission. Resposta comum não revela Roles/DENYs. Falha de auditoria
+retorna indisponibilidade, nunca ALLOW. V20 foi aplicada e fica imutável neste checkpoint.
+
+Manifesto interno passou à versão 2 pelos três novos códigos administrativos. V20 faz upgrade explícito
+das delegações internas dos ROOT existentes; manifests externos continuam sem conceder direitos.
+Ainda serão concluídos o contrato consumidor/timeout, diagnósticos e hardening/observabilidade.

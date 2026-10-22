@@ -1,0 +1,43 @@
+package br.com.imarui.ima.authorization.api.http;
+
+import br.com.imarui.ima.authorization.api.module.SecurityAuditEvents;
+import br.com.imarui.ima.authentication.infra.security.AuthenticationRateLimiter;
+import java.util.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.dao.*;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+
+@RestControllerAdvice(basePackages="br.com.imarui.ima.authorization.api.http")
+@Order(Ordered.HIGHEST_PRECEDENCE)
+@RequiredArgsConstructor
+public class AuthorizationExceptionHandler {
+  private final SecurityAuditEvents events;
+  @ExceptionHandler(SecurityException.class)
+  public ProblemDetail denied(SecurityException e) {
+    events.record("AUTHORIZATION_REJECTED",actor(),null,null,null,"ACCESS_DENIED",UUID.randomUUID());
+    return problem(403,"ACCESS_DENIED");
+  }
+  @ExceptionHandler({org.springframework.security.core.AuthenticationException.class,org.springframework.security.oauth2.jwt.JwtException.class})
+  public ProblemDetail invalidActor(Exception e) { return problem(401,"INVALID_ACTOR_CONTEXT"); }
+  @ExceptionHandler(NoSuchElementException.class)
+  public ProblemDetail missing(NoSuchElementException e) { return problem(404,"RESOURCE_NOT_FOUND"); }
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ProblemDetail invalid(IllegalArgumentException e) { return problem(400,"INVALID_AUTHORIZATION_REQUEST"); }
+  @ExceptionHandler({IllegalStateException.class,DataIntegrityViolationException.class,OptimisticLockingFailureException.class})
+  public ProblemDetail conflict(Exception e) { return problem(409,"AUTHORIZATION_CONFLICT"); }
+  @ExceptionHandler(AuthenticationRateLimiter.Limited.class)
+  public ProblemDetail limited(Exception e) { return problem(429,"RATE_LIMITED"); }
+  @ExceptionHandler({DataAccessException.class,org.springframework.transaction.TransactionException.class})
+  public ProblemDetail unavailable(Exception e) { return problem(503,"AUTHORIZATION_UNAVAILABLE"); }
+  private UUID actor() {
+    var auth=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+    try { return auth==null?null:UUID.fromString(auth.getName()); } catch(IllegalArgumentException e) { return null; }
+  }
+  private ProblemDetail problem(int status,String code) {
+    var problem=ProblemDetail.forStatus(status); problem.setProperty("code",code); problem.setProperty("correlationId",UUID.randomUUID());
+    return problem;
+  }
+}

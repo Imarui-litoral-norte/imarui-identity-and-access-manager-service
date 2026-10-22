@@ -54,7 +54,7 @@ public record PermissionManifest(String owner, String namespace, long version, L
   }
 
   public static PermissionManifest internal() {
-    return new PermissionManifest("iiam", "iiam", 1, Arrays.stream(PermissionDefinition.values())
+    return new PermissionManifest("iiam", "iiam", 2, Arrays.stream(PermissionDefinition.values())
         .map(d -> new Entry(d.code().name(), d.description(), d.module().name(), false)).toList());
   }
 }
