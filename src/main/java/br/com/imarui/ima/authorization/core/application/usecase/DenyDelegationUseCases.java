@@ -61,7 +61,7 @@ public class DenyDelegationUseCases {
     if (context.actor().equals(recipient)) throw new SecurityException("Self-delegation is forbidden.");
     known(context.before(),permission);
     // Passing grant authority to another subject is itself a redelegation, even when the recipient may not pass it on.
-    for (var target:guard.descendants(context.before(),scope)) guard.delegate(context.before(),context.actor(),permission,target,true);
+    for (var target:guard.descendants(context.before(),scope)) guard.delegate(context.before(),context.actor(),permission,target,true,context.hierarchy());
     var existing=context.before().delegations().stream().filter(d -> d.active() && d.identityId().equals(recipient)
         && d.permission().equals(permission) && d.scopeId().equals(scope)).findFirst().orElse(null);
     if (existing!=null && existing.redelegable()==redelegable) return existing;

@@ -25,6 +25,9 @@ public class TechnicalClientController {
   public record Resource(@NotBlank String type,@NotBlank @Size(max=150) String resourceId,@NotNull UUID scopeId,
       @NotBlank @Size(max=500) String reason,@NotNull UUID correlationId) {}
   private final TechnicalClientAdministrationUseCases clients;
+  @GetMapping("/{service}") public TechnicalServiceAuthentication.Client inspect(@PathVariable String service) { return clients.inspect(service); }
+  @GetMapping public br.com.imarui.ima.authorization.core.application.usecase.AuthorizationQueries.Page<TechnicalServiceAuthentication.ClientSummary> list(
+      @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) { return clients.list(page,size); }
 
   @PostMapping
   public TechnicalServiceAuthentication.Client enroll(@Valid @RequestBody Enroll r) {

@@ -1,0 +1,33 @@
+{
+  "scenario" : "isolated PostgreSQL; 300 additional identities, 60 scopes, 40 roles, 900 shared assignments",
+  "counts" : {
+    "scopes" : 2365,
+    "assignments" : 901,
+    "permissions" : 172,
+    "identities" : 301,
+    "roles" : 41
+  },
+  "snapshot_ms" : {
+    "p50" : 10.8272,
+    "max" : 15.8572,
+    "p95" : 12.4119
+  },
+  "hierarchy_ms" : {
+    "p50" : 0.3666,
+    "max" : 0.7403,
+    "p95" : 0.5342
+  },
+  "evaluation_ms" : {
+    "p50" : 0.003,
+    "max" : 0.0445,
+    "p95" : 0.0035
+  },
+  "shared_role_mutation_ms" : 887.035,
+  "samples" : {
+    "hierarchy" : 30,
+    "snapshot" : 30,
+    "mutation" : 1,
+    "evaluation" : 100
+  },
+  "limitation" : "single host, bounded synthetic scenario; no production throughput/SLA claim; full snapshot and global mutation lock retained"
+}

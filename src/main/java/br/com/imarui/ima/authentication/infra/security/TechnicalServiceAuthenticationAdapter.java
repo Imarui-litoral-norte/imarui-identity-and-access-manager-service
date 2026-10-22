@@ -25,36 +25,42 @@ public class TechnicalServiceAuthenticationAdapter implements TechnicalServiceAu
   private final Clock clock;
   private final JwtProperties properties;
 
-  @Transactional(propagation=Propagation.REQUIRES_NEW)
+  private record ProofKey(String publicKey,String service,UUID clientId,Set<Operation> operations,Set<UUID> roots) {}
+
+  @Transactional(propagation=Propagation.REQUIRES_NEW,timeout=5)
   public Caller verify(String assertion,String method,String path,byte[] body) {
     try {
       if (assertion==null || assertion.length()>12000 || body.length>65536) throw new TechnicalAuthenticationException();
       var jwt=SignedJWT.parse(assertion); var h=jwt.getHeader(); var c=jwt.getJWTClaimsSet(); var now=clock.instant();
       if (!JWSAlgorithm.RS256.equals(h.getAlgorithm()) || !new JOSEObjectType("iiam-service+jwt").equals(h.getType())
-          || h.getJWK()!=null || h.getJWKURL()!=null || h.getCriticalParams()!=null) throw new TechnicalAuthenticationException();
+          || h.getJWK()!=null || h.getJWKURL()!=null || h.getCriticalParams()!=null || h.getKeyID()==null) throw new TechnicalAuthenticationException();
       var credential=UUID.fromString(h.getKeyID());
       var rows=jdbc.query("""
-          select k.public_key,k.service_code,s.client_id from authentication_service_keys k
+          select k.public_key,k.service_code,s.client_id,s.operations,
+            array(select j.scope_id from authorization_service_jurisdictions j where j.service_code=s.service_code) as roots
+          from authentication_service_keys k
           join authentication_service_clients s on s.service_code=k.service_code
           where k.id=? and k.active and k.expires_at>? and s.enabled
-          """,(r,n) -> new Object[]{r.getString(1),r.getString(2),r.getObject(3,UUID.class)},credential,Timestamp.from(now));
+          """,(r,n) -> new ProofKey(r.getString(1),r.getString(2),r.getObject(3,UUID.class),decode(r.getString(4)),
+              Arrays.stream((Object[])r.getArray(5).getArray()).map(UUID.class::cast).collect(java.util.stream.Collectors.toUnmodifiableSet())),
+          credential,Timestamp.from(now));
       if(rows.size()!=1) throw new TechnicalAuthenticationException();
-      var key=publicKey((String)rows.get(0)[0]); String service=(String)rows.get(0)[1];
+      var proofKey=rows.get(0); var key=publicKey(proofKey.publicKey()); String service=proofKey.service();
       if(!jwt.verify(new RSASSAVerifier(key)) || !service.equals(c.getSubject()) || !service.equals(c.getIssuer())
           || !List.of(properties.getAudience()+":services").equals(c.getAudience())
           || c.getIssueTime()==null || c.getExpirationTime()==null
-          || c.getIssueTime().toInstant().isAfter(now) || !c.getExpirationTime().toInstant().isAfter(now)
+          || c.getIssueTime().toInstant().isAfter(now.plusSeconds(5)) || !c.getExpirationTime().toInstant().isAfter(now)
           || Duration.between(c.getIssueTime().toInstant(),c.getExpirationTime().toInstant()).getSeconds()>60
           || c.getIssueTime().toInstant().isBefore(now.minusSeconds(60))
           || c.getNotBeforeTime()!=null && c.getNotBeforeTime().toInstant().isAfter(now)
           || !method.equals(c.getStringClaim("htm")) || !path.equals(c.getStringClaim("htu"))
           || !digest(body).equals(c.getStringClaim("body_sha256"))) throw new TechnicalAuthenticationException();
-      var nonce=UUID.fromString(c.getJWTID());
+      if(c.getJWTID()==null || c.getStringClaim("correlation_id")==null) throw new TechnicalAuthenticationException();
+      var nonce=UUID.fromString(c.getJWTID()); var correlation=UUID.fromString(c.getStringClaim("correlation_id"));
       jdbc.update("delete from authentication_service_nonces where expires_at<=?",Timestamp.from(now));
       if(jdbc.update("insert into authentication_service_nonces(credential_id,nonce,expires_at) values(?,?,?) on conflict do nothing",
           credential,nonce,Timestamp.from(c.getExpirationTime().toInstant()))!=1) throw new TechnicalAuthenticationException();
-      var client=client(service);
-      return new Caller(client.id(),service,credential,client.operations(),client.scopeRoots());
+      return new Caller(proofKey.clientId(),service,credential,proofKey.operations(),proofKey.roots(),correlation);
     } catch (TechnicalAuthenticationException e) { throw e; }
       catch (java.text.ParseException | GeneralSecurityException | JOSEException | IllegalArgumentException e) {
         throw new TechnicalAuthenticationException();
@@ -116,8 +122,15 @@ public class TechnicalServiceAuthenticationAdapter implements TechnicalServiceAu
 
   private void validate(String service,Set<Operation> operations,Set<UUID> scopes) {
     if(service==null || !service.matches("[a-z][a-z0-9-]{1,49}") || service.equals("iiam")
-        || operations==null || operations.isEmpty() || scopes==null || scopes.isEmpty() || scopes.size()>100)
+        || operations==null || operations.isEmpty() || operations.stream().anyMatch(Objects::isNull)
+        || scopes==null || scopes.isEmpty() || scopes.size()>100 || scopes.stream().anyMatch(Objects::isNull))
       throw new IllegalArgumentException("Invalid technical client policy.");
+  }
+  @Transactional(readOnly=true)
+  public ClientPage clients(int offset,int size) {
+    return new ClientPage(jdbc.query("select client_id,service_code,enabled,operations,version from authentication_service_clients order by service_code limit ? offset ?",
+        (r,n) -> new ClientSummary(r.getObject(1,UUID.class),r.getString(2),r.getBoolean(3),decode(r.getString(4)),r.getLong(5)),size,offset),
+        jdbc.queryForObject("select count(*) from authentication_service_clients",Long.class));
   }
   private String encode(Set<Operation> operations) { return operations.stream().map(Enum::name).sorted().collect(java.util.stream.Collectors.joining(",")); }
   private Set<Operation> decode(String operations) { return Set.copyOf(Arrays.stream(operations.split(",")).map(Operation::valueOf).toList()); }

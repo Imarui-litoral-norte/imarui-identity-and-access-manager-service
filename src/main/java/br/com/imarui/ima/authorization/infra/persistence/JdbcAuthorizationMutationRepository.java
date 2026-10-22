@@ -18,6 +18,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class JdbcAuthorizationMutationRepository implements AuthorizationMutationRepository {
   private final JdbcTemplate jdbc;
   private final JsonMapper json;
+  private final io.micrometer.core.instrument.MeterRegistry metrics;
   public void lock() { jdbc.query("select pg_advisory_xact_lock(810082)",r -> {}); }
   public Role saveRole(Role role) {
     if (role.id()==null) {
@@ -75,6 +76,7 @@ public class JdbcAuthorizationMutationRepository implements AuthorizationMutatio
   }
   public void audit(UUID actor,String operation,String type,String resource,UUID scope,
       PolicyChangeReason reason,Object before,Object after,Instant now) {
+    metrics.counter("iiam.authorization.mutation.attempts","action",operation).increment();
     jdbc.update("insert into authorization_audit(id,actor_identity_id,service_code,action,resource_type,resource_id,scope_id,occurred_at,reason,correlation_id,before_state,after_state) values(?,?,'iiam',?,?,?,?,?,?,?,?::jsonb,?::jsonb)",
         UUID.randomUUID(),actor,operation,type,resource,scope,Timestamp.from(now),reason.reason(),reason.correlationId(),
         before==null?null:json.writeValueAsString(before),after==null?null:json.writeValueAsString(after));

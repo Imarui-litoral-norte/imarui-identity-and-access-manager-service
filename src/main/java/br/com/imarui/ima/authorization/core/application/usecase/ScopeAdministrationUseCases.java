@@ -34,8 +34,8 @@ public class ScopeAdministrationUseCases {
       var root=context.before().roles().values().stream().filter(r -> r.name().equals("ROOT")).findFirst().orElseThrow();
       var rights=context.before().rolePermissions().getOrDefault(root.id(),Set.of());
       for (var permission:rights) {
-        guard.require(context.before(),context.actor(),permission,AuthorizationScope.PLATFORM_ID);
-        guard.delegate(context.before(),context.actor(),permission,AuthorizationScope.PLATFORM_ID,true);
+        guard.require(context.before(),context.actor(),permission,AuthorizationScope.PLATFORM_ID,context.hierarchy());
+        guard.delegate(context.before(),context.actor(),permission,AuthorizationScope.PLATFORM_ID,true,context.hierarchy());
       }
       scopes.save(scope);
       var initialAssignment=new RoleAssignment(UUID.randomUUID(),context.actor(),root.id(),scope.id(),true,now,now,0);
@@ -79,6 +79,13 @@ public class ScopeAdministrationUseCases {
     }
     guard.assertGains(context,after,movedScopes,after.deprecatedPermissions().keySet(),Map.of());
     mutations.audit(context.actor(),"SCOPE_REVISED","AUTHORIZATION_SCOPE",id.toString(),id,reason,previous,changed,now);
+    if(!Objects.equals(previous.parentId(),changed.parentId())) {
+      mutations.audit(context.actor(),"SCOPE_REPARENTED","AUTHORIZATION_SCOPE",id.toString(),id,reason,previous,
+          Map.of("scope",changed,"affectedScopeIds",movedScopes,"directAssignments",
+            context.before().assignments().stream().filter(a -> movedScopes.contains(a.scopeId())).count()),now);
+      org.slf4j.LoggerFactory.getLogger(ScopeAdministrationUseCases.class)
+          .warn("authorization_scope_reparented correlationId={} affectedScopes={}",reason.correlationId(),movedScopes.size());
+    }
     return changed;
   }
 

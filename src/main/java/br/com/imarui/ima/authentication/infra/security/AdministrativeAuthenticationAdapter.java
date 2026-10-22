@@ -23,7 +23,8 @@ public class AdministrativeAuthenticationAdapter implements AdministrativeAuthen
   public void reauthenticate(UUID identity,String password) {
     var account=identities.lock(identity).orElseThrow(AuthenticationFailure::new);
     var credential=store.credential(identity).orElse(null); var now=clock.instant();
-    boolean matches=passwords.matches(password,credential==null?dummy:credential.passwordHash());
+    boolean matches=password!=null && password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length<=72
+        && passwords.matches(password,credential==null?dummy:credential.passwordHash());
     if(!account.active() || credential==null || !credential.allowed(now) || !matches) {
       if(credential!=null && account.active() && credential.allowed(now) && !matches) store.save(credential.failed(now));
       store.audit(identity,"ADMINISTRATIVE_REAUTHENTICATION_FAILED",now);

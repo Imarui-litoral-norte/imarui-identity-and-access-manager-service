@@ -18,6 +18,7 @@ class AuthorizationRootRecoveryIntegrationTest extends IdentityIntegrationSuppor
   @Autowired DenyDelegationUseCases denies;
   @Autowired EffectiveAuthorizationUseCases decisions;
   @Autowired ScopeRepository scopes;
+  @Autowired ScopeAdministrationUseCases hierarchy;
   private static final String PATH="/api/v1/authorization/admin/root/transfers";
   private static final String PASSWORD="Fixture password 123!";
   private static final UUID PLATFORM=AuthorizationScope.PLATFORM_ID;
@@ -123,5 +124,33 @@ class AuthorizationRootRecoveryIntegrationTest extends IdentityIntegrationSuppor
     denies.deny("TENANT_READ",scope,reviewer.getId().value(),null,REASON);
     assertEquals(403,http("GET","/api/v1/tenants/"+tenant.getId().value(),null,liveToken(reviewer)).statusCode());
     assertThrows(SecurityException.class,() -> denies.deny("AUTHORIZATION_ROOT_RECOVERY",scope,reviewer.getId().value(),null,REASON));
+    assertThrows(SecurityException.class,() -> denies.deny("AUTHENTICATION_SERVICE_MANAGE",scope,reviewer.getId().value(),null,REASON));
+    assertThrows(SecurityException.class,() -> denies.deny("AUTHORIZATION_AUDIT_READ",scope,reviewer.getId().value(),null,REASON));
+  }
+  @Test void legitimateRecoveryPreservesCommonDenyInsteadOfBypassingItForTheNewRoot() throws Exception {
+    var recipient=user(); var scope=scopes.tenantScope(tenant.getId().value()).orElseThrow();
+    denies.deny("TENANT_READ",scope,reviewer.getId().value(),null,REASON);
+    var id=approval(recipient,liveToken(reviewer)); var recipientJwt=liveToken(recipient);
+    assertEquals(200,http("GET",PATH+"/"+id,null,recipientJwt).statusCode());
+    var result=http("POST",PATH+"/"+id+"/confirm",confirmBody(PASSWORD),recipientJwt);
+    assertEquals(200,result.statusCode(),result.body());
+    assertTrue(decisions.evaluate(recipient.getId().value(),"AUTHORIZATION_ROOT_RECOVERY",PLATFORM).allowed());
+    assertFalse(decisions.evaluate(recipient.getId().value(),"TENANT_READ",scope).allowed());
+    assertEquals(1,jdbc.queryForObject("select count(*) from authorization_audit where action='ROOT_CONSTRAINT_PRESERVED' and scope_id=?",Integer.class,scope));
+  }
+  @Test void independentlyScopedRootCanTransferItsOwnRealmWithoutObtainingPlatformAuthority() throws Exception {
+    var recipient=user(); var next=user();
+    var realm=hierarchy.create("REALM_"+UUID.randomUUID().toString().replace("-","").toUpperCase(),"Independent realm",null,REASON);
+    var response=http("POST",PATH,json.writeValueAsString(new RootRecoveryController.Initiate(recipient.getId().value(),realm.id(),PASSWORD,"Realm governance",UUID.randomUUID())),liveToken(reviewer));
+    assertEquals(200,response.statusCode(),response.body()); var id=json.readTree(response.body()).path("id").asText();
+    var first=http("POST",PATH+"/"+id+"/confirm",confirmBody(PASSWORD),liveToken(recipient));
+    assertEquals(200,first.statusCode(),first.body());
+    assertFalse(decisions.evaluate(recipient.getId().value(),"AUTHORIZATION_ROLE_MANAGE",PLATFORM).allowed());
+    var second=http("POST",PATH,json.writeValueAsString(new RootRecoveryController.Initiate(next.getId().value(),realm.id(),PASSWORD,"Next realm custodian",UUID.randomUUID())),liveToken(recipient));
+    assertEquals(200,second.statusCode(),second.body()); var nextId=json.readTree(second.body()).path("id").asText();
+    var finalResult=http("POST",PATH+"/"+nextId+"/confirm",confirmBody(PASSWORD),liveToken(next));
+    assertEquals(200,finalResult.statusCode(),finalResult.body());
+    assertTrue(decisions.evaluate(next.getId().value(),"AUTHORIZATION_ROOT_RECOVERY",realm.id()).allowed());
+    assertFalse(decisions.evaluate(next.getId().value(),"AUTHORIZATION_ROOT_RECOVERY",PLATFORM).allowed());
   }
 }

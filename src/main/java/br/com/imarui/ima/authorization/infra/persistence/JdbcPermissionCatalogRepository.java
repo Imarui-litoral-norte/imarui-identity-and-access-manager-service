@@ -53,7 +53,12 @@ public class JdbcPermissionCatalogRepository implements PermissionCatalogReposit
     jdbc.update("""
         insert into authorization_audit(id,service_code,action,resource_type,resource_id,occurred_at,correlation_id,after_state)
         values(?,?,'CATALOG_SYNCHRONIZED','CATALOG',?,?,?,?::jsonb)
-        """, UUID.randomUUID(),manifest.owner(),manifest.owner(),Timestamp.from(now),UUID.randomUUID(),
+        """, UUID.randomUUID(),manifest.owner(),manifest.owner(),Timestamp.from(now),correlation(),
         json.writeValueAsString(Map.of("version",manifest.version(),"digest",manifest.digest(),"entries",manifest.permissions().size())));
+  }
+  private UUID correlation() {
+    var authentication=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+    return authentication!=null && authentication.getPrincipal() instanceof br.com.imarui.ima.authentication.api.module.TechnicalServiceAuthentication.Caller caller
+        ? caller.correlationId() : UUID.randomUUID();
   }
 }

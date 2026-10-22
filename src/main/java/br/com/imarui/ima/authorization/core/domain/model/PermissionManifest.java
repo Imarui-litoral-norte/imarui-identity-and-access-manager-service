@@ -24,6 +24,7 @@ public record PermissionManifest(String owner, String namespace, long version, L
         || !namespace.matches("[a-z][a-z0-9-]{1,49}") || version < 1)
       throw new IllegalArgumentException("Invalid catalog owner, namespace or version.");
     Objects.requireNonNull(permissions, "Permission entries required.");
+    if(permissions.stream().anyMatch(Objects::isNull)) throw new IllegalArgumentException("Null Permission entry.");
     if (permissions.size() > 10000) throw new IllegalArgumentException("Catalog too large.");
     permissions = permissions.stream().sorted(Comparator.comparing(Entry::code)).toList();
     var codes = new HashSet<String>();

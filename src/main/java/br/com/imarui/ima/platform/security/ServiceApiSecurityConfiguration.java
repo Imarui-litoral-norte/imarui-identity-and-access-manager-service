@@ -30,6 +30,7 @@ public class ServiceApiSecurityConfiguration {
   private final SecurityAuditEvents events;
   private final JsonMapper json;
   private final MeterRegistry metrics;
+  private final java.time.Clock clock;
 
   @Bean @Order(1)
   public SecurityFilterChain technicalServiceSecurity(HttpSecurity http) throws Exception {
@@ -44,8 +45,10 @@ public class ServiceApiSecurityConfiguration {
           var body=req.getInputStream().readNBytes(65537);
           if(body.length>65536) { problem(res,413,"REQUEST_TOO_LARGE",correlation); return; }
           String header=req.getHeader(HttpHeaders.AUTHORIZATION);
-          if(header==null || !header.startsWith("Service ")) throw new TechnicalAuthenticationException();
+          if(header==null || !header.startsWith("Service ") || Collections.list(req.getHeaders(HttpHeaders.AUTHORIZATION)).size()!=1)
+            throw new TechnicalAuthenticationException();
           caller=authentication.verify(header.substring(8),req.getMethod(),req.getRequestURI(),body);
+          correlation=caller.correlationId();
           limits.check("m2m-client",caller.clientId().toString(),3000);
           var operation=switch(req.getRequestURI()) {
             case "/api/v1/authorization/service/catalog" -> TechnicalServiceAuthentication.Operation.CATALOG_SYNC;
@@ -53,8 +56,10 @@ public class ServiceApiSecurityConfiguration {
             default -> throw new SecurityException("Unknown service operation.");
           };
           if(!caller.operations().contains(operation)) throw new SecurityException("Technical operation is not authorized.");
+          events.record("M2M_AUTHENTICATION",null,caller.serviceCode(),caller.credentialId().toString(),null,"AUTHENTICATED",correlation);
           SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(caller,null,List.of()));
           res.setHeader("Cache-Control","no-store");
+          res.setHeader("X-Correlation-ID",correlation.toString());
           chain.doFilter(new BodyRequest(req,body),res);
         } catch(TechnicalAuthenticationException e) {
           auditProblem(res,401,"INVALID_TECHNICAL_AUTHENTICATION",null,"M2M_AUTHENTICATION","INVALID_CREDENTIAL",correlation);
@@ -90,7 +95,9 @@ public class ServiceApiSecurityConfiguration {
   private void problem(HttpServletResponse response,int status,String code,UUID correlation) throws IOException {
     if(response.isCommitted()) return;
     var p=ProblemDetail.forStatus(status); p.setProperty("code",code); p.setProperty("correlationId",correlation);
+    p.setProperty("timestamp",clock.instant());
     response.setStatus(status); response.setHeader("Cache-Control","no-store");
+    response.setHeader("X-Correlation-ID",correlation.toString());
     if(status==401) response.setHeader("WWW-Authenticate","Service");
     response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
     json.writeValue(response.getOutputStream(),p);

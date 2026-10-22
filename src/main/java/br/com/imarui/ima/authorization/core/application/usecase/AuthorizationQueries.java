@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.*;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(propagation=Propagation.REQUIRES_NEW,readOnly=true,isolation=Isolation.REPEATABLE_READ,timeout=5)
+@Transactional(propagation=Propagation.REQUIRES_NEW,isolation=Isolation.REPEATABLE_READ,timeout=5)
 public class AuthorizationQueries {
   public record Page<T>(List<T> items,long total,int page,int size) {}
   public record RoleView(Long id,String name,Role.Ownership ownership,UUID ownerScopeId,UUID ownerTenantId,
@@ -99,10 +99,17 @@ public class AuthorizationQueries {
   private AuthorizationPolicyState state(UUID scope) { var state=policies.current(); read(state,scope); return state; }
   private void read(AuthorizationPolicyState state,UUID scope) {
     if(state.scopes().stream().noneMatch(s -> s.id().equals(scope))) throw new NoSuchElementException("Scope not found.");
-    guard.require(state,actors.requireIdentityId(),"AUTHORIZATION_AUDIT_READ",scope);
+    var tree=new ScopeHierarchy(state.scopes()); var actor=actors.requireIdentityId();
+    if(tree.active(scope)) guard.require(state,actor,"AUTHORIZATION_AUDIT_READ",scope,tree);
+    else {
+      var ancestor=tree.ancestors(scope).stream().filter(s -> tree.active(s.id())).findFirst()
+          .orElseThrow(() -> new SecurityException("No active administrative boundary."));
+      guard.require(state,actor,"AUTHORIZATION_AUDIT_READ",ancestor.id(),tree);
+      guard.requirePotential(state,actor,"AUTHORIZATION_AUDIT_READ",scope);
+    }
   }
   private void auditRead(UUID identity,UUID scope) {
-    events.record("EFFECTIVE_POLICY_READ",actors.requireIdentityId(),"iiam",identity.toString(),scope,"AUTHORIZED_AUDIT_READ",UUID.randomUUID());
+    events.recordInTransaction("EFFECTIVE_POLICY_READ",actors.requireIdentityId(),"iiam",identity.toString(),scope,"AUTHORIZED_AUDIT_READ",UUID.randomUUID());
   }
   private RoleView view(Role role,AuthorizationPolicyState state,UUID actor,UUID scope,ScopeHierarchy tree) {
     return new RoleView(role.id(),role.name(),role.ownership(),role.ownerScopeId(),role.ownerTenantId(),role.status(),role.version(),

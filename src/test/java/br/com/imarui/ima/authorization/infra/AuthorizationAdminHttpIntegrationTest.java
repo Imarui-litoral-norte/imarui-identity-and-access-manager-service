@@ -117,4 +117,25 @@ class AuthorizationAdminHttpIntegrationTest extends IdentityIntegrationSupport {
     assertTrue(document.path("paths").has("/api/v1/authorization/service/decisions"));
     assertTrue(response.body().contains("ARCHIVED"));
   }
+  @Test void securityAuditIsPaginatedScopedAndImmutableIncludingDeletedScopeHistory() throws Exception {
+    var manager=localAdmin(); var managerJwt=liveToken(manager); var rootJwt=liveToken(reviewer);
+    var inside=hierarchy.create(name(),"Historical leaf",scope(),REASON);
+    hierarchy.revise(inside.id(),inside.name(),AuthorizationScope.Status.DISABLED,inside.parentId(),REASON);
+    hierarchy.delete(inside.id(),REASON);
+    var response=http("GET",API+"/audit?scopeId="+scope()+"&event=SCOPE_DELETED&size=100",null,managerJwt);
+    assertEquals(200,response.statusCode(),response.body());
+    assertTrue(response.body().contains(inside.id().toString()),response.body());
+    var sibling=hierarchy.create(name(),"Outside company",PLATFORM,REASON);
+    assertEquals(403,http("GET",API+"/audit?scopeId="+sibling.id(),null,managerJwt).statusCode());
+    assertEquals(400,http("GET",API+"/audit?scopeId="+PLATFORM+"&size=101",null,rootJwt).statusCode());
+    assertThrows(org.springframework.dao.DataIntegrityViolationException.class,() -> jdbc.update("update authorization_audit set action='TAMPERED' where id=(select id from authorization_audit limit 1)"));
+    assertThrows(org.springframework.dao.DataIntegrityViolationException.class,() -> jdbc.update("delete from authorization_scopes__history where original_scope_id=?",inside.id()));
+  }
+  @Test void activeAncestorCanInspectADisabledScopeForSafeLifecycleAdministration() throws Exception {
+    var leaf=hierarchy.create(name(),"Disabled configuration",PLATFORM,REASON);
+    hierarchy.revise(leaf.id(),leaf.name(),AuthorizationScope.Status.DISABLED,PLATFORM,REASON);
+    var response=http("GET",API+"/scopes/"+leaf.id(),null,liveToken(reviewer));
+    assertEquals(200,response.statusCode(),response.body());
+    assertEquals("DISABLED",json.readTree(response.body()).path("status").asText());
+  }
 }

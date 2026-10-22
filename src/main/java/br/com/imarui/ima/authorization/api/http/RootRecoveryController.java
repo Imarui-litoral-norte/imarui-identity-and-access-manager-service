@@ -22,6 +22,7 @@ public class RootRecoveryController {
     @Override public String toString() { return "RootTransferConfirmation[REDACTED]"; }
   }
   private final RootRecoveryUseCases recovery;
+  @GetMapping("/{id}") public RootRecoveryUseCases.Approval inspect(@PathVariable UUID id) { return recovery.inspect(id); }
   @PostMapping public RootRecoveryUseCases.Approval initiate(@Valid @RequestBody Initiate r) {
     return recovery.initiate(r.recipientId(),r.scopeId(),r.password(),new PolicyChangeReason(r.reason(),r.correlationId()));
   }

@@ -29,7 +29,7 @@ public class RoleAdministrationUseCases {
     if (name!=null) name=name.strip();
     if (ownership==Role.Ownership.TENANT && !Objects.equals(context.before().tenantScopes().get(ownerTenant),ownerScope))
       throw new SecurityException("Role owner is not the Tenant's bound Scope.");
-    for (var code:permissions) guard.delegate(context.before(),context.actor(),code,jurisdiction,false);
+    for (var code:permissions) guard.delegate(context.before(),context.actor(),code,jurisdiction,false,context.hierarchy());
     var now=clock.instant();
     var role=mutations.saveRole(new Role(null,name,ownership,ownerScope,ownerTenant,true,now,now,0));
     mutations.replacePermissions(role.id(),permissions);
@@ -47,12 +47,12 @@ public class RoleAdministrationUseCases {
     permissions=Set.copyOf(permissions);
     var context=guard.begin("AUTHORIZATION_ROLE_MANAGE",s -> jurisdiction(role(s,roleId)),reason);
     var previous=role(context.before(),roleId);
+    if (previous.name().equals("ROOT") || reservedRootName(name))
+      throw new SecurityException("ROOT composition and identity are protected.");
     if (previous.status()==Role.Status.ARCHIVED)
       throw new IllegalStateException("Archived Roles cannot be revised or reactivated.");
     if (status==Role.Status.ARCHIVED && context.before().assignments().stream().anyMatch(a -> a.roleId()==roleId && a.active()))
       throw new IllegalStateException("Revoke active RoleAssignments before archiving.");
-    if (previous.name().equals("ROOT") || reservedRootName(name))
-      throw new SecurityException("ROOT composition and identity are protected.");
     if (name!=null) name=name.strip();
     var oldPermissions=context.before().rolePermissions().getOrDefault(roleId,Set.of());
     var additions=new HashSet<>(permissions); additions.removeAll(oldPermissions);
@@ -63,8 +63,8 @@ public class RoleAdministrationUseCases {
     var grants=new HashSet<>(additions);
     if (status==Role.Status.ACTIVE && !previous.active()) grants.addAll(permissions);
     for (var code:grants) {
-      guard.delegate(context.before(),context.actor(),code,jurisdiction(previous),false);
-      for (var scope:impacted) guard.delegate(context.before(),context.actor(),code,scope,false);
+      guard.delegate(context.before(),context.actor(),code,jurisdiction(previous),false,context.hierarchy());
+      for (var scope:impacted) guard.delegate(context.before(),context.actor(),code,scope,false,context.hierarchy());
     }
     var now=clock.instant();
     var changed=new Role(previous.id(),name,previous.ownership(),previous.ownerScopeId(),previous.ownerTenantId(),
@@ -87,7 +87,7 @@ public class RoleAdministrationUseCases {
     var now=clock.instant();
     mutations.deleteRole(previous,context.actor(),reason,now);
     guard.assertRecovery(policies.current());
-    mutations.audit(context.actor(),"ROLE_DELETED","ROLE",Long.toString(roleId),jurisdiction(previous),reason,previous,null,now);
+    mutations.audit(context.actor(),"ROLE_DELETED","ROLE",Long.toString(roleId),jurisdiction(previous),reason,Map.of("role",previous,"permissions",context.before().rolePermissions().getOrDefault(roleId,Set.of()),"denies",context.before().denies().stream().filter(d -> Objects.equals(d.roleId(),roleId)).toList()),null,now);
   }
 
   public RoleAssignment assign(UUID identity,long roleId,UUID scope,PolicyChangeReason reason) {
@@ -101,7 +101,7 @@ public class RoleAdministrationUseCases {
     var impacted=guard.descendants(context.before(),scope);
     impacted.removeIf(target -> !role.availableAt(target,hierarchy,context.before().tenantScopes()));
     for (var permission:context.before().rolePermissions().getOrDefault(roleId,Set.of()))
-      for (var target:impacted) guard.delegate(context.before(),context.actor(),permission,target,false);
+      for (var target:impacted) guard.delegate(context.before(),context.actor(),permission,target,false,context.hierarchy());
     var prior=context.before().assignments().stream().filter(a -> a.identityId().equals(identity)
         && a.roleId()==roleId && a.scopeId().equals(scope)).findFirst().orElse(null);
     if (prior!=null && prior.active()) return prior;

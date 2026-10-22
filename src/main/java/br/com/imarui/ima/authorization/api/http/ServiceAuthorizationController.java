@@ -20,7 +20,7 @@ public class ServiceAuthorizationController {
     public PdpUseCases.Request command() { return new PdpUseCases.Request(actorToken,identityId,permission,resourceType,resourceId,expectedScopeId,correlationId); }
     @Override public String toString() { return "DecisionRequest[REDACTED]"; }
   }
-  public record Batch(@NotEmpty @Size(max=20) List<@Valid DecisionRequest> decisions) {}
+  public record Batch(@NotNull UUID correlationId,@NotEmpty @Size(max=20) List<@NotNull @Valid DecisionRequest> decisions) {}
   public record ManifestRequest(@NotBlank String owner,@NotBlank String namespace,@Min(1) long version,
       @NotNull @Size(max=10000) List<PermissionManifest.Entry> permissions) {}
   private final PdpUseCases pdp;
@@ -35,7 +35,9 @@ public class ServiceAuthorizationController {
   @PostMapping("/decisions/batch")
   @Operation(summary="Evaluate at most 20 independent decisions; caller and session checks apply to every item")
   public List<PdpUseCases.Result> batch(@Valid @RequestBody Batch request) {
-    return request.decisions().stream().map(r -> pdp.decide(r.command())).toList();
+    if(request.decisions().stream().anyMatch(r -> !request.correlationId().equals(r.correlationId())))
+      throw new IllegalArgumentException("Batch correlation must match every decision.");
+    return pdp.batch(request.decisions().stream().map(DecisionRequest::command).toList());
   }
   @PostMapping("/catalog")
   @Operation(summary="Synchronize only the authenticated service's owned versioned manifest")

@@ -11,16 +11,17 @@ import java.time.Clock;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.*;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(timeout=10)
+@Transactional(propagation=Propagation.NOT_SUPPORTED)
 public class RootRecoveryUseCases {
-  public record Approval(UUID id,UUID initiatorId,UUID recipientId,UUID scopeId,java.time.Instant expiresAt,String status) {}
-  public static final Set<String> RECOVERY=Set.of("AUTHORIZATION_SCOPE_MANAGE","AUTHORIZATION_ROLE_MANAGE",
-      "AUTHORIZATION_ASSIGNMENT_MANAGE","AUTHORIZATION_DENY_MANAGE","AUTHORIZATION_DELEGATION_MANAGE",
-      "AUTHORIZATION_CATALOG_MANAGE","AUTHORIZATION_ROOT_RECOVERY");
+  public record Approval(UUID id,UUID initiatorId,UUID recipientId,UUID scopeId,java.time.Instant expiresAt,String status,
+      Set<String> recoveryCapabilities,boolean preservesExistingDenials) {}
+  public static final Set<String> RECOVERY=RootRecoveryEnvelope.CAPABILITIES;
   private final AuthorizationActor actors;
   private final CurrentHumanSession sessions;
   private final AdministrativeAuthentication authentication;
@@ -29,10 +30,15 @@ public class RootRecoveryUseCases {
   private final AuthorizationPolicyRepository policies;
   private final RootRecoveryRepository recovery;
   private final Clock clock;
+  private final PlatformTransactionManager transactions;
 
   public Approval initiate(UUID recipient,UUID scope,String password,PolicyChangeReason reason) {
     var actor=actors.requireIdentityId(); var sid=sessions.requireSessionId();
     authentication.reauthenticate(actor,password); // before taking the policy lock, preserving Authentication lock order
+    var transaction=new TransactionTemplate(transactions); transaction.setTimeout(10);
+    return transaction.execute(s -> initiateAuthorized(actor,sid,recipient,scope,reason));
+  }
+  private Approval initiateAuthorized(UUID actor,UUID sid,UUID recipient,UUID scope,PolicyChangeReason reason) {
     var context=guard.begin("AUTHORIZATION_ROOT_RECOVERY",scope,reason);
     rootAssignment(context.before(),actor,scope);
     if(actor.equals(recipient) || !context.before().activeIdentities().contains(recipient))
@@ -46,8 +52,12 @@ public class RootRecoveryUseCases {
   }
 
   public Approval confirm(UUID id,String password) {
-    var recipient=actors.requireIdentityId(); sessions.requireSessionId();
+    var recipient=actors.requireIdentityId(); var sid=sessions.requireSessionId();
     authentication.reauthenticate(recipient,password);
+    var transaction=new TransactionTemplate(transactions); transaction.setTimeout(10);
+    return transaction.execute(s -> confirmAuthorized(id,recipient,sid));
+  }
+  private Approval confirmAuthorized(UUID id,UUID recipient,UUID sid) {
     mutations.lock();
     var transfer=recovery.lock(id).orElseThrow(() -> new NoSuchElementException("Recovery approval not found."));
     if(!recipient.equals(transfer.recipientId())) throw new SecurityException("Only the designated recipient can confirm.");
@@ -56,6 +66,7 @@ public class RootRecoveryUseCases {
     if(!transfer.pending(now)) throw new IllegalStateException("Recovery approval expired.");
     var state=policies.current(); var initiator=transfer.initiatorId(); var scope=transfer.scopeId();
     if(!state.activeIdentities().contains(recipient) || !state.activeIdentities().contains(initiator)
+        || !authentication.sessionActive(recipient,sid)
         || !authentication.sessionActive(initiator,transfer.initiatorSessionId()))
       throw new SecurityException("Both approved human contexts must remain valid.");
     guard.require(state,initiator,"AUTHORIZATION_ROOT_RECOVERY",scope);
@@ -63,7 +74,6 @@ public class RootRecoveryUseCases {
     var rights=state.rolePermissions().getOrDefault(root.id(),Set.of());
     var impacted=guard.descendants(state,scope);
     var hierarchy=new ScopeHierarchy(state.scopes());
-    for(var target:impacted) for(var code:rights) guard.delegate(state,initiator,code,target,true,hierarchy);
     if(state.assignments().stream().anyMatch(a -> a.active() && a.identityId().equals(recipient) && a.roleId()==root.id() && a.scopeId().equals(scope)))
       throw new IllegalStateException("Recipient already owns this recovery boundary.");
     var prior=state.assignments().stream().filter(a -> a.identityId().equals(recipient) && a.roleId()==root.id() && a.scopeId().equals(scope)).findFirst().orElse(null);
@@ -71,7 +81,9 @@ public class RootRecoveryUseCases {
         prior==null?now:prior.createdAt(),now,prior==null?0:prior.version()+1);
     mutations.saveAssignment(assignment);
     var reason=new PolicyChangeReason(transfer.reason(),transfer.correlationId());
+    var evaluator=new EffectiveAuthorizationEvaluator();
     for(var code:rights) {
+      if(!evaluator.mayDelegate(state,initiator,code,scope,true,hierarchy)) continue;
       var existing=state.delegations().stream().filter(d -> d.active() && d.identityId().equals(recipient) && d.scopeId().equals(scope) && d.permission().equals(code)).findFirst().orElse(null);
       var delegation=new PermissionDelegation(existing==null?UUID.randomUUID():existing.id(),recipient,code,scope,true,true,
           reason.reason(),existing==null?now:existing.createdAt(),now,existing==null?0:existing.version()+1);
@@ -84,11 +96,45 @@ public class RootRecoveryUseCases {
       mutations.saveDelegation(revoked);
       mutations.audit(initiator,"ROOT_GOVERNANCE_REVOKED","PERMISSION_DELEGATION",d.id().toString(),scope,reason,d,revoked,now);
     }
+    preserveDenials(transfer,state,recipient,impacted,rights,reason);
+    preserveDenials(transfer,state,initiator,impacted,rights,reason);
     guard.assertGains(new AuthorizationMutationGuard.Context(initiator,state),policies.current(),impacted,rights,Map.of());
     recovery.confirm(id,now);
     mutations.audit(recipient,"ROOT_TRANSFER_CONFIRMED","ROOT_TRANSFER",id.toString(),scope,reason,transfer,
         Map.of("assignment",assignment,"initiator",initiator,"recipient",recipient,"confirmedAt",now),now);
-    return new Approval(id,initiator,recipient,scope,transfer.expiresAt(),"COMPLETED");
+    return new Approval(id,initiator,recipient,scope,transfer.expiresAt(),"COMPLETED",RECOVERY,true);
+  }
+
+  public Approval inspect(UUID id) {
+    var actor=actors.requireIdentityId(); sessions.requireSessionId();
+    var transaction=new TransactionTemplate(transactions); transaction.setTimeout(5);
+    return transaction.execute(s -> {
+      var transfer=recovery.lock(id).orElseThrow(() -> new NoSuchElementException("Recovery approval not found."));
+      if(!actor.equals(transfer.initiatorId()) && !actor.equals(transfer.recipientId())) throw new SecurityException("Recovery approval is private to its two participants.");
+      return view(transfer);
+    });
+  }
+
+  private void preserveDenials(RootTransfer transfer,AuthorizationPolicyState before,UUID subject,Set<UUID> impacted,
+      Set<String> rights,PolicyChangeReason reason) {
+    var evaluator=new EffectiveAuthorizationEvaluator();
+    var previous=guard.potentialImpactState(before);
+    var current=guard.potentialImpactState(policies.current());
+    var tree=new ScopeHierarchy(current.scopes());
+    var ordered=impacted.stream().sorted(Comparator.comparingInt((UUID id) -> tree.ancestors(id).size()).thenComparing(UUID::toString)).toList();
+    for(var scope:ordered) for(var code:rights.stream().sorted().toList()) {
+      if(evaluator.evaluate(previous,subject,code,scope,tree).allowed()
+          || !evaluator.evaluate(current,subject,code,scope,tree).allowed()
+          || evaluator.evaluate(previous,transfer.initiatorId(),code,scope,tree).reason()!=EffectiveAuthorizationEvaluator.Reason.EXPLICIT_DENY) continue;
+      var now=clock.instant();
+      var deny=new DenyRule(UUID.randomUUID(),code,scope,subject,null,true,reason.reason(),now,now,0);
+      mutations.saveDeny(deny);
+      mutations.audit(transfer.initiatorId(),"ROOT_CONSTRAINT_PRESERVED","DENY",deny.id().toString(),scope,reason,
+          Map.of("transferId",transfer.id(),"sourceIdentity",transfer.initiatorId(),"previousReason","EXPLICIT_DENY"),deny,now);
+      var denies=new ArrayList<>(current.denies()); denies.add(deny);
+      current=new AuthorizationPolicyState(current.scopes(),current.roles(),current.rolePermissions(),current.assignments(),
+          denies,current.delegations(),current.deprecatedPermissions(),current.tenantScopes(),current.activeIdentities(),current.activeTenants());
+    }
   }
 
   private RoleAssignment rootAssignment(AuthorizationPolicyState state,UUID identity,UUID scope) {
@@ -98,5 +144,5 @@ public class RootRecoveryUseCases {
         .findFirst().orElseThrow(() -> new SecurityException("Existing ROOT governance on this exact boundary is required."));
   }
   private Approval view(RootTransfer t) { return new Approval(t.id(),t.initiatorId(),t.recipientId(),t.scopeId(),t.expiresAt(),
-      t.confirmedAt()!=null?"COMPLETED":t.pending(clock.instant())?"PENDING":"EXPIRED"); }
+      t.confirmedAt()!=null?"COMPLETED":t.pending(clock.instant())?"PENDING":"EXPIRED",RECOVERY,true); }
 }

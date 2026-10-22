@@ -16,9 +16,14 @@ public class JdbcAuthorizationPolicyRepository implements AuthorizationPolicyRep
   private final JdbcTemplate jdbc;
   private final ScopeRepository scopes;
   private final IdentityAuthorizationApi identities;
+  private final io.micrometer.core.instrument.MeterRegistry metrics;
+  private final java.util.concurrent.atomic.AtomicLong loadedRows=new java.util.concurrent.atomic.AtomicLong();
+  @jakarta.annotation.PostConstruct void registerMetrics() { metrics.gauge("iiam.authorization.policy.rows",loadedRows); }
 
   @Transactional(propagation=Propagation.MANDATORY)
   public AuthorizationPolicyState current() {
+    var measurement=io.micrometer.core.instrument.Timer.start(metrics);
+    try {
     var roles=new HashMap<Long,Role>();
     jdbc.query("select * from authorization_roles", (org.springframework.jdbc.core.RowCallbackHandler) r -> {
       var id=r.getLong("id");
@@ -45,7 +50,11 @@ public class JdbcAuthorizationPolicyRepository implements AuthorizationPolicyRep
     jdbc.query("select code,deprecated from authorization_permissions",(org.springframework.jdbc.core.RowCallbackHandler) r -> permissions.put(r.getString("code"),r.getBoolean("deprecated")));
     var bindings=new HashMap<UUID,UUID>();
     jdbc.query("select tenant_id,scope_id from authorization_tenant_scopes",(org.springframework.jdbc.core.RowCallbackHandler) r -> bindings.put(r.getObject("tenant_id",UUID.class),r.getObject("scope_id",UUID.class)));
-    return new AuthorizationPolicyState(scopes.all(),roles,rolePermissions,assignments,denies,delegations,permissions,
+    var state=new AuthorizationPolicyState(scopes.all(),roles,rolePermissions,assignments,denies,delegations,permissions,
         bindings,identities.activeIdentityIds(),identities.activeTenantIds());
+    loadedRows.set((long)state.scopes().size()+roles.size()+assignments.size()+denies.size()+delegations.size()+permissions.size()
+        +bindings.size()+state.activeIdentities().size()+state.activeTenants().size()+rolePermissions.values().stream().mapToInt(Set::size).sum());
+    return state;
+    } finally { measurement.stop(metrics.timer("iiam.authorization.policy.snapshot")); }
   }
 }

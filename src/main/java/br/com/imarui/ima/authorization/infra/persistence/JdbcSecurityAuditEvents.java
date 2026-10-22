@@ -16,6 +16,13 @@ public class JdbcSecurityAuditEvents implements SecurityAuditEvents {
   private final Clock clock;
   @Transactional(propagation=Propagation.REQUIRES_NEW)
   public void record(String event,UUID actor,String service,String resource,UUID scope,String reason,UUID correlation) {
+    append(event,actor,service,resource,scope,reason,correlation);
+  }
+  @Transactional(propagation=Propagation.MANDATORY)
+  public void recordInTransaction(String event,UUID actor,String service,String resource,UUID scope,String reason,UUID correlation) {
+    append(event,actor,service,resource,scope,reason,correlation);
+  }
+  private void append(String event,UUID actor,String service,String resource,UUID scope,String reason,UUID correlation) {
     if(!event.matches("[A-Z0-9_]{1,60}") || !reason.matches("[A-Z0-9_]{1,80}"))
       throw new IllegalArgumentException("Security event codes must be fixed symbols.");
     jdbc.update("""

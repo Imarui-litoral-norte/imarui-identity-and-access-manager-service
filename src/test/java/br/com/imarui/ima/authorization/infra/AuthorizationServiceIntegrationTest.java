@@ -86,6 +86,7 @@ class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
     var claims=new JWTClaimsSet.Builder().issuer(issuer).subject(service).audience(audience)
         .issueTime(Date.from(now)).expirationTime(Date.from(now.plusSeconds(60))).jwtID(UUID.randomUUID().toString())
         .claim("htm","POST").claim("htu",path)
+        .claim("correlation_id",json.readTree(body).hasNonNull("correlationId")?json.readTree(body).path("correlationId").asText():UUID.randomUUID().toString())
         .claim("body_sha256",br.com.imarui.ima.authentication.infra.security.TechnicalServiceAuthenticationAdapter.digest(body.getBytes(java.nio.charset.StandardCharsets.UTF_8))).build();
     var jwt=new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).type(new JOSEObjectType("iiam-service+jwt")).keyID(keyId.toString()).build(),claims);
     jwt.sign(new RSASSASigner(signingKey)); return jwt.serialize();
@@ -189,5 +190,77 @@ class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
     finally { jdbc.execute("drop trigger test_pdp_audit_failure on authorization_security_events"); jdbc.execute("drop function test_pdp_audit_failure()"); }
     assertEquals(200,send(PDP,body,null).statusCode());
     assertEquals(0,jdbc.queryForObject("select count(*) from authorization_security_events where details::text like ?",Integer.class,"%"+jwt+"%"));
+  }
+  @Test void correlationAndTenConcurrentDecisionsRemainBoundAndDoNotExhaustTheConnectionPool() throws Exception {
+    var user=granted(); var jwt=token(user); var body=request(user,jwt,scope()); var correlation=json.readTree(body).path("correlationId").asText();
+    var pool=java.util.concurrent.Executors.newFixedThreadPool(10); var barrier=new java.util.concurrent.CyclicBarrier(10);
+    try {
+      var tasks=new ArrayList<java.util.concurrent.Future<Integer>>();
+      for(int i=0;i<10;i++) tasks.add(pool.submit(() -> {
+        barrier.await(10,java.util.concurrent.TimeUnit.SECONDS);
+        var response=send(PDP,body,null);
+        assertEquals(correlation,response.headers().firstValue("X-Correlation-ID").orElseThrow());
+        assertEquals(correlation,json.readTree(response.body()).path("correlationId").asText());
+        return response.statusCode();
+      }));
+      for(var task:tasks) assertEquals(200,task.get(25,java.util.concurrent.TimeUnit.SECONDS));
+    } finally { pool.shutdownNow(); }
+    assertEquals(20,jdbc.queryForObject("select count(*) from authorization_security_events where correlation_id=? and service_code=? and event in ('M2M_AUTHENTICATION','PDP_DECISION')",
+        Integer.class,UUID.fromString(correlation),service));
+  }
+  @Test void simultaneousReplayHasOnlyOneAuthenticatedWinner() throws Exception {
+    var body=manifest(1); var assertion=proof(CATALOG,body); var pool=java.util.concurrent.Executors.newFixedThreadPool(2);
+    var barrier=new java.util.concurrent.CyclicBarrier(2);
+    try {
+      java.util.concurrent.Callable<Integer> action=() -> { barrier.await(10,java.util.concurrent.TimeUnit.SECONDS); return send(CATALOG,body,assertion).statusCode(); };
+      var a=pool.submit(action); var c=pool.submit(action);
+      assertEquals(Set.of(200,401),Set.of(a.get(20,java.util.concurrent.TimeUnit.SECONDS),c.get(20,java.util.concurrent.TimeUnit.SECONDS)));
+    } finally { pool.shutdownNow(); }
+  }
+  @Test void batchUsesOneActorAndOneCurrentPolicySnapshot() throws Exception {
+    var user=granted(); var jwt=token(user); var correlation=UUID.randomUUID();
+    var item=new br.com.imarui.ima.authorization.api.http.ServiceAuthorizationController.DecisionRequest(jwt,user.getId().value(),permission(),"TENANT",tenant.getId().value().toString(),scope(),correlation);
+    var body=json.writeValueAsString(new br.com.imarui.ima.authorization.api.http.ServiceAuthorizationController.Batch(correlation,List.of(item,item)));
+    var path=PDP+"/batch"; var response=send(path,body,null); assertEquals(200,response.statusCode(),response.body());
+    assertEquals(2,json.readTree(response.body()).size());
+    assertTrue(json.readTree(response.body()).get(0).path("allowed").asBoolean());
+    var forged=new br.com.imarui.ima.authorization.api.http.ServiceAuthorizationController.DecisionRequest(jwt,reviewer.getId().value(),permission(),"TENANT",tenant.getId().value().toString(),scope(),correlation);
+    var wrong=json.writeValueAsString(new br.com.imarui.ima.authorization.api.http.ServiceAuthorizationController.Batch(correlation,List.of(item,forged)));
+    assertEquals(400,send(path,wrong,null).statusCode());
+  }
+  @Test void realConsumerResolvesItsResourceServerSideAndFailsClosedForTheSiblingTenant() throws Exception {
+    var user=granted(); var jwt=token(user);
+    var other=br.com.imarui.ima.identity.core.domain.model.tenant.Tenant.create(
+        br.com.imarui.ima.identity.core.domain.model.tenant.TenantId.generate(),
+        br.com.imarui.ima.identity.core.domain.model.tenant.TenantCode.from("PEP_"+UUID.randomUUID().toString().substring(0,8)),
+        br.com.imarui.ima.identity.core.domain.model.tenant.TenantName.from("Other company"),fixtureClock.instant());
+    other.activate(fixtureClock.instant()); var sibling=tenants.save(other);
+    var pep=new br.com.imarui.ima.authorization.api.pep.AuthorizationPepClient(URI.create("http://localhost:"+port),service,
+        jwtProperties.getAudience()+":services",keyId,signingKey,key -> switch(key) {
+          case "owned-order" -> new br.com.imarui.ima.authorization.api.pep.AuthorizationPepClient.Resource("TENANT",tenant.getId().value().toString(),scope());
+          case "sibling-order" -> new br.com.imarui.ima.authorization.api.pep.AuthorizationPepClient.Resource("TENANT",sibling.getId().value().toString(),null);
+          default -> throw new NoSuchElementException();
+        },Duration.ofSeconds(2),fixtureClock);
+    assertTrue(pep.check(jwt,user.getId().value(),permission(),"owned-order",UUID.randomUUID()).allowed());
+    assertFalse(pep.check(jwt,user.getId().value(),permission(),"sibling-order",UUID.randomUUID()).allowed());
+    denies.deny(permission(),scope(),user.getId().value(),null,REASON);
+    assertFalse(pep.check(jwt,user.getId().value(),permission(),"owned-order",UUID.randomUUID()).allowed());
+  }
+  @Test void roleCompositionRevocationArchiveAndHierarchyMovesAffectTheSameJwt() throws Exception {
+    var user=granted(); var jwt=token(user); var body=request(user,jwt,scope());
+    long role=jdbc.queryForObject("select role_id from authorization_identity_roles where identity_id=?",Long.class,user.getId().value());
+    var name=jdbc.queryForObject("select name from authorization_roles where id=?",String.class,role);
+    roles.revise(role,name,true,Set.of(),REASON); assertEquals(403,send(PDP,body,null).statusCode());
+    roles.revise(role,name,true,Set.of(permission()),REASON); assertEquals(200,send(PDP,body,null).statusCode());
+    var assignment=jdbc.queryForObject("select id from authorization_identity_roles where identity_id=?",UUID.class,user.getId().value());
+    roles.revokeAssignment(assignment,REASON); roles.revise(role,name,Role.Status.ARCHIVED,Set.of(permission()),REASON);
+    assertEquals(403,send(PDP,body,null).statusCode());
+    var a=hierarchy.create("A_"+UUID.randomUUID().toString().replace("-","").toUpperCase(),"First region",PLATFORM,REASON);
+    var c=hierarchy.create("C_"+UUID.randomUUID().toString().replace("-","").toUpperCase(),"Other region",PLATFORM,REASON);
+    var resource=scopes.find(scope()).orElseThrow(); hierarchy.revise(resource.id(),resource.name(),resource.status(),a.id(),REASON);
+    var regional=roles.create("Regional "+UUID.randomUUID(),Role.Ownership.SCOPE,a.id(),null,Set.of(permission()),REASON);
+    roles.assign(user.getId().value(),regional.id(),a.id(),REASON); assertEquals(200,send(PDP,body,null).statusCode());
+    hierarchy.revise(resource.id(),resource.name(),resource.status(),c.id(),REASON);
+    assertEquals(403,send(PDP,body,null).statusCode());
   }
 }

@@ -58,7 +58,13 @@ public class AuthorizationMutationGuard {
   public void delegate(AuthorizationPolicyState state,UUID actor,String permission,UUID scope,boolean redelegating,ScopeHierarchy hierarchy) {
     if (!evaluator.mayDelegate(state,actor,permission,scope,redelegating,hierarchy))
       throw new SecurityException("Explicit Permission delegation authority required.");
-    if (centralPermission(permission)) require(state,actor,"AUTHORIZATION_DELEGATION_MANAGE",AuthorizationScope.PLATFORM_ID,hierarchy);
+    if (centralPermission(permission) && !evaluator.evaluate(state,actor,"AUTHORIZATION_DELEGATION_MANAGE",AuthorizationScope.PLATFORM_ID,hierarchy).allowed()) {
+      boolean realmRoot=state.assignments().stream().anyMatch(a -> a.active() && a.identityId().equals(actor)
+          && hierarchy.active(a.scopeId()) && hierarchy.covers(a.scopeId(),scope)
+          && state.roles().get(a.roleId()).active() && state.roles().get(a.roleId()).name().equals("ROOT"));
+      if(!realmRoot) throw new SecurityException("Central or explicit ROOT-realm governance required.");
+      require(state,actor,"AUTHORIZATION_DELEGATION_MANAGE",scope,hierarchy);
+    }
   }
 
   public boolean centralPermission(String code) {
@@ -100,19 +106,18 @@ public class AuthorizationMutationGuard {
     var recovery=new AuthorizationPolicyState(state.scopes(),state.roles(),state.rolePermissions(),state.assignments(),
         state.denies(),state.delegations(),state.deprecatedPermissions(),state.tenantScopes(),eligible,state.activeTenants());
     var currentHierarchy=new ScopeHierarchy(recovery.scopes());
-    for (var root:roots) for (var code:Set.of("AUTHORIZATION_SCOPE_MANAGE","AUTHORIZATION_ROLE_MANAGE",
-        "AUTHORIZATION_ASSIGNMENT_MANAGE","AUTHORIZATION_DENY_MANAGE","AUTHORIZATION_DELEGATION_MANAGE","AUTHORIZATION_CATALOG_MANAGE","AUTHORIZATION_ROOT_RECOVERY"))
+    for (var root:roots) for (var code:RootRecoveryEnvelope.CAPABILITIES)
       if (!evaluator.evaluate(recovery,root.identityId(),code,root.scopeId(),currentHierarchy).allowed())
         throw new SecurityException("Protected administrative recovery would be lost.");
     var future=potential(recovery);
     var futureHierarchy=new ScopeHierarchy(future.scopes());
     for (var root:roots) for (var scope:currentHierarchy.descendants(root.scopeId()))
-      for (var code:Set.of("AUTHORIZATION_SCOPE_MANAGE","AUTHORIZATION_ROLE_MANAGE","AUTHORIZATION_ASSIGNMENT_MANAGE",
-          "AUTHORIZATION_DENY_MANAGE","AUTHORIZATION_DELEGATION_MANAGE","AUTHORIZATION_CATALOG_MANAGE","AUTHORIZATION_ROOT_RECOVERY"))
+      for (var code:RootRecoveryEnvelope.CAPABILITIES)
         if (!evaluator.evaluate(future,root.identityId(),code,scope.id(),futureHierarchy).allowed())
           throw new SecurityException("A descendant recovery boundary would become inaccessible.");
   }
 
+  public AuthorizationPolicyState potentialImpactState(AuthorizationPolicyState state) { return potential(state); }
   private AuthorizationPolicyState potential(AuthorizationPolicyState state) {
     var recipients=new HashSet<>(state.activeIdentities());
     state.assignments().forEach(a -> recipients.add(a.identityId()));

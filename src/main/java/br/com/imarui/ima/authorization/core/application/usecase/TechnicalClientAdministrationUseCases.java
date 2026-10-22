@@ -20,6 +20,26 @@ public class TechnicalClientAdministrationUseCases {
   private final TechnicalServiceAuthentication authentication;
   private final ServiceResourceRepository resources;
   private final Clock clock;
+  private final AuthorizationPolicyRepository policies;
+  private final br.com.imarui.ima.authorization.core.application.port.AuthorizationActor actors;
+
+  @Transactional(propagation=org.springframework.transaction.annotation.Propagation.REQUIRES_NEW,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+  public TechnicalServiceAuthentication.Client inspect(String service) {
+    var state=policies.current(); var actor=actors.requireIdentityId();
+    guard.require(state,actor,"AUTHORIZATION_AUDIT_READ",AuthorizationScope.PLATFORM_ID);
+    var client=authentication.client(service);
+    mutations.audit(actor,"TECHNICAL_CLIENT_READ","TECHNICAL_CLIENT",service,AuthorizationScope.PLATFORM_ID,
+        new PolicyChangeReason("Authorized technical-security metadata consultation",UUID.randomUUID()),null,null,clock.instant());
+    return client;
+  }
+  @Transactional(propagation=org.springframework.transaction.annotation.Propagation.REQUIRES_NEW,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+  public AuthorizationQueries.Page<TechnicalServiceAuthentication.ClientSummary> list(int page,int size) {
+    AuthorizationQueries.page(List.of(),page,size);
+    var state=policies.current(); var actor=actors.requireIdentityId();
+    guard.require(state,actor,"AUTHORIZATION_AUDIT_READ",AuthorizationScope.PLATFORM_ID);
+    var result=authentication.clients(page*size,size);
+    return new AuthorizationQueries.Page<>(result.items(),result.total(),page,size);
+  }
 
   public TechnicalServiceAuthentication.Client enroll(String service,Set<TechnicalServiceAuthentication.Operation> operations,
       Set<UUID> roots,String publicKey,Instant expires,PolicyChangeReason reason) {

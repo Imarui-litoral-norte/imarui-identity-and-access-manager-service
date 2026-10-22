@@ -38,7 +38,8 @@ public final class EffectiveAuthorizationEvaluator {
     if (!state.activeIdentities().contains(identity)) return new Decision(false,Reason.INACTIVE_IDENTITY);
     if (!state.deprecatedPermissions().containsKey(permission)) return new Decision(false,Reason.UNKNOWN_PERMISSION);
     try {
-      boolean administration=permission.startsWith("AUTHORIZATION_") || permission.equals("TENANT_MANAGE") || permission.equals("TENANT_READ");
+      boolean administration=permission.startsWith("AUTHORIZATION_") || permission.equals("AUTHENTICATION_SERVICE_MANAGE")
+          || permission.equals("TENANT_MANAGE") || permission.equals("TENANT_READ");
       if (!state.resourceAvailable(scope,hierarchy,administration)) return new Decision(false,Reason.UNAVAILABLE_RESOURCE);
       var roles=effectiveRoles(state,identity,scope,hierarchy);
       if (denied(state,identity,permission,scope,roles,hierarchy)) return new Decision(false,Reason.EXPLICIT_DENY);

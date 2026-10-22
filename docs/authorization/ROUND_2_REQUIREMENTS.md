@@ -66,3 +66,25 @@ O loop de delegação da transferência revelou reconstrução de árvore por c�
 o prazo de 10 segundos; a árvore é agora reutilizada somente dentro da revisão corrente.
 A suíte ROOT de 8 casos passou em 3,196 segundos após a correção; nenhum cache entre
 requisições ou relaxamento de revogação foi introduzido. Medição de carga F-02 continua pendente.
+
+## Checkpoint IIAMS-91 / F-02
+
+Passaram execuções dirigidas de 33 casos (ROOT/HTTP/PDP/PEP/concorrência) e 10 casos
+(administração/auditoria/performance). Novo envelope mínimo explícito: 9 capacidades de
+segurança, incluindo AUDIT_READ e SERVICE_MANAGE; operações de negócio continuam sujeitas a DENY.
+Transferência preserva DENYs comuns que seriam contornados e admite sucessão somente na
+raiz ROOT efetivamente governada, sem conferir privilégios PLATFORM a uma raiz independente.
+
+Jornal de decisão e auditoria de consultas usam a mesma transação/conexão da avaliação;
+negações são registradas após rollback. Reautenticação termina antes da transação de
+transferência, evitando retenção de conexão enquanto aguarda a confirmação de credencial.
+Há correlação assinada M2M→PDP→catálogo, logs sem tokens/PII, métricas, batch de um único Actor,
+paginação de auditoria com hierarquia atual/histórica e históricos append-only.
+
+F-02: medição local isolada de 2026-10-22 19:30, PostgreSQL 18.4/Java 17.0.18, 30 snapshots,
+30 reconstruções e 100 avaliações: 2.365 Scopes, 301 Identities, 41 Roles, 901 assignments,
+172 Permissions. Snapshot p50 10,8272 ms / p95 12,4119 ms; árvore p95 0,5342 ms;
+avaliação com árvore preparada p95 0,0035 ms; uma edição compartilhada 887,035 ms.
+Não é SLA/benchmark de produção. Mantidos snapshot amplo e lock 810082; sem cache entre chamadas.
+V22/V23 foram aplicadas e ficam imutáveis. V23 corrige a primeira autoridade ROOT das
+capacidades introduzidas entre migração legada e bootstrap, sem ressuscitar delegações revogadas.
