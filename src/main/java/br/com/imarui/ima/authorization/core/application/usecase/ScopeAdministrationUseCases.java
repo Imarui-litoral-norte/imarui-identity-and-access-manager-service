@@ -82,6 +82,22 @@ public class ScopeAdministrationUseCases {
     return changed;
   }
 
+  public void delete(UUID id,PolicyChangeReason reason) {
+    var context=guard.begin("AUTHORIZATION_SCOPE_MANAGE",s -> managementBoundary(s,id),reason);
+    guard.requirePotential(context.before(),context.actor(),"AUTHORIZATION_SCOPE_MANAGE",id);
+    var previous=scope(context.before(),id); var state=context.before();
+    if(id.equals(AuthorizationScope.PLATFORM_ID) || previous.status()!=AuthorizationScope.Status.DISABLED
+        || state.scopes().stream().anyMatch(s -> id.equals(s.parentId()))
+        || state.tenantScopes().containsValue(id) || state.roles().values().stream().anyMatch(r -> id.equals(r.ownerScopeId()))
+        || state.assignments().stream().anyMatch(a -> id.equals(a.scopeId()))
+        || state.denies().stream().anyMatch(d -> id.equals(d.scopeId()))
+        || state.delegations().stream().anyMatch(d -> id.equals(d.scopeId())))
+      throw new IllegalStateException("Only disabled, unreferenced leaf Scopes may be deleted.");
+    var now=clock.instant(); mutations.deleteScope(previous,context.actor(),reason,now);
+    guard.assertRecovery(policies.current());
+    mutations.audit(context.actor(),"SCOPE_DELETED","AUTHORIZATION_SCOPE",id.toString(),id,reason,previous,null,now);
+  }
+
   private AuthorizationScope scope(AuthorizationPolicyState state,UUID id) {
     return state.scopes().stream().filter(s -> s.id().equals(id)).findFirst().orElseThrow(() -> new NoSuchElementException("Scope not found."));
   }

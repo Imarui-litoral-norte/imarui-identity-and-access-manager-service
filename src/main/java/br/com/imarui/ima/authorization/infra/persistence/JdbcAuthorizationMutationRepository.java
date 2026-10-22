@@ -42,6 +42,11 @@ public class JdbcAuthorizationMutationRepository implements AuthorizationMutatio
     jdbc.update("delete from authorization_role_permissions where role_id=?",role.id());
     changed(jdbc.update("delete from authorization_roles where id=? and version=?",role.id(),role.version()));
   }
+  public void deleteScope(AuthorizationScope scope,UUID actor,PolicyChangeReason reason,Instant now) {
+    jdbc.update("insert into authorization_scopes__history(id,original_scope_id,deleted_at,actor_identity_id,reason,correlation_id,scope_state) values(?,?,?,?,?,?,?::jsonb)",
+        UUID.randomUUID(),scope.id(),Timestamp.from(now),actor,reason.reason(),reason.correlationId(),json.writeValueAsString(scope));
+    changed(jdbc.update("delete from authorization_scopes where id=? and version=?",scope.id(),scope.version()));
+  }
   public void replacePermissions(long role,Set<String> codes) {
     var existing=jdbc.queryForList("select p.code from authorization_role_permissions rp join authorization_permissions p on p.id=rp.permission_id where rp.role_id=?",String.class,role);
     for (var code:existing) if (!codes.contains(code)) jdbc.update("delete from authorization_role_permissions where role_id=? and permission_id=(select id from authorization_permissions where code=?)",role,code);

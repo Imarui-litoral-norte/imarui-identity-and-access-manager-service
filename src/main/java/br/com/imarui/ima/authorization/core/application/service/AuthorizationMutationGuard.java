@@ -13,7 +13,15 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class AuthorizationMutationGuard {
-  public record Context(UUID actor,AuthorizationPolicyState before) {}
+  public static final class Context {
+    private final UUID actor;
+    private final AuthorizationPolicyState before;
+    private final ScopeHierarchy hierarchy;
+    public Context(UUID actor,AuthorizationPolicyState before) { this.actor=actor; this.before=before; this.hierarchy=new ScopeHierarchy(before.scopes()); }
+    public UUID actor() { return actor; }
+    public AuthorizationPolicyState before() { return before; }
+    public ScopeHierarchy hierarchy() { return hierarchy; }
+  }
   private final AuthorizationActor actors;
   private final AuthorizationPolicyRepository policies;
   private final AuthorizationMutationRepository mutations;
@@ -28,12 +36,16 @@ public class AuthorizationMutationGuard {
     mutations.lock();
     UUID actor=actors.requireIdentityId();
     var state=policies.current();
-    require(state,actor,capability,resource.apply(state));
-    return new Context(actor,state);
+    var context=new Context(actor,state);
+    require(state,actor,capability,resource.apply(state),context.hierarchy());
+    return context;
   }
 
   public void require(AuthorizationPolicyState state,UUID actor,String capability,UUID scope) {
-    if (!evaluator.evaluate(state,actor,capability,scope).allowed()) throw new SecurityException("Administrative operation denied.");
+    require(state,actor,capability,scope,new ScopeHierarchy(state.scopes()));
+  }
+  public void require(AuthorizationPolicyState state,UUID actor,String capability,UUID scope,ScopeHierarchy hierarchy) {
+    if (!evaluator.evaluate(state,actor,capability,scope,hierarchy).allowed()) throw new SecurityException("Administrative operation denied.");
   }
 
   public void requirePotential(AuthorizationPolicyState state,UUID actor,String capability,UUID scope) {
@@ -41,9 +53,12 @@ public class AuthorizationMutationGuard {
   }
 
   public void delegate(AuthorizationPolicyState state,UUID actor,String permission,UUID scope,boolean redelegating) {
-    if (!evaluator.mayDelegate(state,actor,permission,scope,redelegating))
+    delegate(state,actor,permission,scope,redelegating,new ScopeHierarchy(state.scopes()));
+  }
+  public void delegate(AuthorizationPolicyState state,UUID actor,String permission,UUID scope,boolean redelegating,ScopeHierarchy hierarchy) {
+    if (!evaluator.mayDelegate(state,actor,permission,scope,redelegating,hierarchy))
       throw new SecurityException("Explicit Permission delegation authority required.");
-    if (centralPermission(permission)) require(state,actor,"AUTHORIZATION_DELEGATION_MANAGE",AuthorizationScope.PLATFORM_ID);
+    if (centralPermission(permission)) require(state,actor,"AUTHORIZATION_DELEGATION_MANAGE",AuthorizationScope.PLATFORM_ID,hierarchy);
   }
 
   public boolean centralPermission(String code) {
@@ -73,7 +88,7 @@ public class AuthorizationMutationGuard {
       if (evaluator.evaluate(afterPotential,recipient,permission,scope,afterHierarchy).allowed()
           && !evaluator.evaluate(beforePotential,recipient,permission,origin,beforeHierarchy).allowed()) {
         if (recipient.equals(context.actor())) throw new SecurityException("Self-grant or indirect self-escalation rejected.");
-        delegate(context.before(),context.actor(),permission,origin,false);
+        delegate(context.before(),context.actor(),permission,origin,false,context.hierarchy());
       }
     }
   }
@@ -86,14 +101,14 @@ public class AuthorizationMutationGuard {
         state.denies(),state.delegations(),state.deprecatedPermissions(),state.tenantScopes(),eligible,state.activeTenants());
     var currentHierarchy=new ScopeHierarchy(recovery.scopes());
     for (var root:roots) for (var code:Set.of("AUTHORIZATION_SCOPE_MANAGE","AUTHORIZATION_ROLE_MANAGE",
-        "AUTHORIZATION_ASSIGNMENT_MANAGE","AUTHORIZATION_DENY_MANAGE","AUTHORIZATION_DELEGATION_MANAGE","AUTHORIZATION_CATALOG_MANAGE"))
+        "AUTHORIZATION_ASSIGNMENT_MANAGE","AUTHORIZATION_DENY_MANAGE","AUTHORIZATION_DELEGATION_MANAGE","AUTHORIZATION_CATALOG_MANAGE","AUTHORIZATION_ROOT_RECOVERY"))
       if (!evaluator.evaluate(recovery,root.identityId(),code,root.scopeId(),currentHierarchy).allowed())
         throw new SecurityException("Protected administrative recovery would be lost.");
     var future=potential(recovery);
     var futureHierarchy=new ScopeHierarchy(future.scopes());
     for (var root:roots) for (var scope:currentHierarchy.descendants(root.scopeId()))
       for (var code:Set.of("AUTHORIZATION_SCOPE_MANAGE","AUTHORIZATION_ROLE_MANAGE","AUTHORIZATION_ASSIGNMENT_MANAGE",
-          "AUTHORIZATION_DENY_MANAGE","AUTHORIZATION_DELEGATION_MANAGE","AUTHORIZATION_CATALOG_MANAGE"))
+          "AUTHORIZATION_DENY_MANAGE","AUTHORIZATION_DELEGATION_MANAGE","AUTHORIZATION_CATALOG_MANAGE","AUTHORIZATION_ROOT_RECOVERY"))
         if (!evaluator.evaluate(future,root.identityId(),code,scope.id(),futureHierarchy).allowed())
           throw new SecurityException("A descendant recovery boundary would become inaccessible.");
   }

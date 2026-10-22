@@ -1,0 +1,27 @@
+[
+  {
+    "key": "IIAMS-114",
+    "title": "Criar domínio e persistência de DENY Identity/Role",
+    "description": "## Entrega\n\nEntidade Permission+Scope+subjectType/subjectId, status, motivo, ator, índices, histórico e Flyway.\n\n## Decisão vinculante\n\n* DENY dirigido a Identity ou Role, por Permission+Scope, propagado a descendentes. Nunca a irmãos ou ancestrais.\n* Qualquer DENY efetivo prevalece sobre todo ALLOW, mesmo role diferente ou ALLOW do Scope mais específico; caso contrário ALLOW válido, senão default deny.\n* Role DENY aplica-se somente a Identities com essa Role efetivamente atribuída; ROOT tem apenas proteção mínima de recuperação, não bypass geral.\n* Dados e caches nunca podem permitir bypass após deny/revoke; registro auditável com motivo e ator.\n\n## Critérios de aceite\n\n* Testar deny direto/herdado, role A DENY role B ALLOW, escopos pai/filho/irmão, identity não alvo, recovery, concorrência e rollback.\n* Testes Postgres/CI, documentação API e story IIAMS-86/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-115",
+    "title": "Implementar administração segura de DENYs",
+    "description": "## Entrega\n\nCreate/revoke/list, authority, razões obrigatórias quando necessário, idempotência, concorrência, auditoria e erros previsíveis.\n\n## Decisão vinculante\n\n* DENY dirigido a Identity ou Role, por Permission+Scope, propagado a descendentes. Nunca a irmãos ou ancestrais.\n* Qualquer DENY efetivo prevalece sobre todo ALLOW, mesmo role diferente ou ALLOW do Scope mais específico; caso contrário ALLOW válido, senão default deny.\n* Role DENY aplica-se somente a Identities com essa Role efetivamente atribuída; ROOT tem apenas proteção mínima de recuperação, não bypass geral.\n* Dados e caches nunca podem permitir bypass após deny/revoke; registro auditável com motivo e ator.\n\n## Critérios de aceite\n\n* Testar deny direto/herdado, role A DENY role B ALLOW, escopos pai/filho/irmão, identity não alvo, recovery, concorrência e rollback.\n* Testes Postgres/CI, documentação API e story IIAMS-86/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-116",
+    "title": "Construir avaliação DENY-first em hierarquia e Roles",
+    "description": "## Entrega\n\nConsultar regras diretas/herdadas e Roles efetivamente atribuídas; deny absoluto, depois allow, depois implicit deny; evitar falsos positivos cross-role.\n\n## Decisão vinculante\n\n* DENY dirigido a Identity ou Role, por Permission+Scope, propagado a descendentes. Nunca a irmãos ou ancestrais.\n* Qualquer DENY efetivo prevalece sobre todo ALLOW, mesmo role diferente ou ALLOW do Scope mais específico; caso contrário ALLOW válido, senão default deny.\n* Role DENY aplica-se somente a Identities com essa Role efetivamente atribuída; ROOT tem apenas proteção mínima de recuperação, não bypass geral.\n* Dados e caches nunca podem permitir bypass após deny/revoke; registro auditável com motivo e ator.\n\n## Critérios de aceite\n\n* Testar deny direto/herdado, role A DENY role B ALLOW, escopos pai/filho/irmão, identity não alvo, recovery, concorrência e rollback.\n* Testes Postgres/CI, documentação API e story IIAMS-86/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-117",
+    "title": "Integrar consistência pós-mudança e proteção de cache",
+    "description": "## Entrega\n\nDENY/RoleAssignment/RolePermission/Scope alteram decisões novas imediatamente; não embutir grants stale no token.\n\n## Decisão vinculante\n\n* DENY dirigido a Identity ou Role, por Permission+Scope, propagado a descendentes. Nunca a irmãos ou ancestrais.\n* Qualquer DENY efetivo prevalece sobre todo ALLOW, mesmo role diferente ou ALLOW do Scope mais específico; caso contrário ALLOW válido, senão default deny.\n* Role DENY aplica-se somente a Identities com essa Role efetivamente atribuída; ROOT tem apenas proteção mínima de recuperação, não bypass geral.\n* Dados e caches nunca podem permitir bypass após deny/revoke; registro auditável com motivo e ator.\n\n## Critérios de aceite\n\n* Testar deny direto/herdado, role A DENY role B ALLOW, escopos pai/filho/irmão, identity não alvo, recovery, concorrência e rollback.\n* Testes Postgres/CI, documentação API e story IIAMS-86/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-118",
+    "title": "Testar matriz anti-bypass e precedência absoluta",
+    "description": "## Entrega\n\nParente-filho-irmão, role A deny B allow, identidade direta, remoção, múltiplas roles e concorrência.\n\n## Decisão vinculante\n\n* DENY dirigido a Identity ou Role, por Permission+Scope, propagado a descendentes. Nunca a irmãos ou ancestrais.\n* Qualquer DENY efetivo prevalece sobre todo ALLOW, mesmo role diferente ou ALLOW do Scope mais específico; caso contrário ALLOW válido, senão default deny.\n* Role DENY aplica-se somente a Identities com essa Role efetivamente atribuída; ROOT tem apenas proteção mínima de recuperação, não bypass geral.\n* Dados e caches nunca podem permitir bypass após deny/revoke; registro auditável com motivo e ator.\n\n## Critérios de aceite\n\n* Testar deny direto/herdado, role A DENY role B ALLOW, escopos pai/filho/irmão, identity não alvo, recovery, concorrência e rollback.\n* Testes Postgres/CI, documentação API e story IIAMS-86/IIAMS-81.\n\n"
+  }
+]

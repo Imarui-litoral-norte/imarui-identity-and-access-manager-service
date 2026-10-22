@@ -20,7 +20,8 @@ public class AuthorizationExceptionHandler {
     events.record("AUTHORIZATION_REJECTED",actor(),null,null,null,"ACCESS_DENIED",UUID.randomUUID());
     return problem(403,"ACCESS_DENIED");
   }
-  @ExceptionHandler({org.springframework.security.core.AuthenticationException.class,org.springframework.security.oauth2.jwt.JwtException.class})
+  @ExceptionHandler({org.springframework.security.core.AuthenticationException.class,org.springframework.security.oauth2.jwt.JwtException.class,
+      br.com.imarui.ima.authentication.core.application.exception.AuthenticationFailure.class})
   public ProblemDetail invalidActor(Exception e) { return problem(401,"INVALID_ACTOR_CONTEXT"); }
   @ExceptionHandler(NoSuchElementException.class)
   public ProblemDetail missing(NoSuchElementException e) { return problem(404,"RESOURCE_NOT_FOUND"); }

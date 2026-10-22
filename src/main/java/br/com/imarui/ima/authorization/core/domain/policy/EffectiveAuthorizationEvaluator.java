@@ -6,6 +6,27 @@ import java.util.*;
 public final class EffectiveAuthorizationEvaluator {
   public enum Reason { ALLOWED, INACTIVE_IDENTITY, UNKNOWN_PERMISSION, UNAVAILABLE_RESOURCE, EXPLICIT_DENY, NO_GRANT }
   public record Decision(boolean allowed, Reason reason) {}
+  public record Trace(String effect,boolean inherited,Long roleId,UUID originScopeId,UUID evidenceId) {}
+  public record Explanation(Decision decision,List<Trace> sources) {}
+
+  public Explanation explain(AuthorizationPolicyState state,UUID identity,String permission,UUID scope) {
+    var decision=evaluate(state,identity,permission,scope);
+    if(decision.reason()!=Reason.ALLOWED && decision.reason()!=Reason.EXPLICIT_DENY && decision.reason()!=Reason.NO_GRANT)
+      return new Explanation(decision,List.of());
+    var tree=new ScopeHierarchy(state.scopes()); var roles=effectiveRoles(state,identity,scope,tree);
+    var sources=new ArrayList<Trace>();
+    state.denies().stream().filter(d -> d.active() && d.permission().equals(permission) && tree.covers(d.scopeId(),scope)
+        && (identity.equals(d.identityId()) || d.roleId()!=null && roles.contains(d.roleId())))
+        .sorted(Comparator.comparing(d -> d.id().toString())).forEach(d ->
+          sources.add(new Trace("DENY",!scope.equals(d.scopeId()),d.roleId(),d.scopeId(),d.id())));
+    state.assignments().stream().filter(a -> a.active() && a.identityId().equals(identity) && roles.contains(a.roleId())
+        && tree.active(a.scopeId()) && tree.covers(a.scopeId(),scope)
+        && state.roles().get(a.roleId()).availableAt(a.scopeId(),tree,state.tenantScopes())
+        && state.rolePermissions().getOrDefault(a.roleId(),Set.of()).contains(permission))
+        .sorted(Comparator.comparing(a -> a.id().toString())).forEach(a ->
+          sources.add(new Trace("ALLOW",!scope.equals(a.scopeId()),a.roleId(),a.scopeId(),a.id())));
+    return new Explanation(decision,List.copyOf(sources));
+  }
 
   public Decision evaluate(AuthorizationPolicyState state, UUID identity, String permission, UUID scope) {
     try { return evaluate(state,identity,permission,scope,new ScopeHierarchy(state.scopes())); }
@@ -29,10 +50,14 @@ public final class EffectiveAuthorizationEvaluator {
   }
 
   public boolean mayDelegate(AuthorizationPolicyState state, UUID identity, String permission, UUID scope, boolean redelegating) {
+    try { return mayDelegate(state,identity,permission,scope,redelegating,new ScopeHierarchy(state.scopes())); }
+    catch(IllegalArgumentException corruptOrUnknownScope) { return false; }
+  }
+
+  public boolean mayDelegate(AuthorizationPolicyState state, UUID identity, String permission, UUID scope, boolean redelegating,ScopeHierarchy hierarchy) {
     if (identity==null || permission==null || scope==null) return false;
     if (!state.activeIdentities().contains(identity) || !Boolean.FALSE.equals(state.deprecatedPermissions().get(permission))) return false;
     try {
-      var hierarchy=new ScopeHierarchy(state.scopes());
       // A live ancestor authority may configure an inactive descendant without activating access there.
       // An authority whose own administrative ancestry is inactive cannot be exercised.
       hierarchy.ancestors(scope);

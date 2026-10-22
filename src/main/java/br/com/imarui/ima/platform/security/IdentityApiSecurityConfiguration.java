@@ -35,6 +35,8 @@ public class IdentityApiSecurityConfiguration {
   private final IdentityAuthenticationApi identities;
   private final AuthenticationStore store;
   private final IdentityAuthorities authorities;
+  private final br.com.imarui.ima.authentication.infra.security.AuthenticationRateLimiter authorizationLimits;
+  private final br.com.imarui.ima.authorization.api.module.SecurityAuditEvents authorizationEvents;
 
   @org.springframework.beans.factory.annotation.Value("${security.auth.allowed-origins:}")
   private String allowedOrigins;
@@ -100,7 +102,7 @@ public class IdentityApiSecurityConfiguration {
       throw new IllegalStateException("Explicit CORS origins required.");
     config.setAllowedOrigins(origins);
     config.setAllowCredentials(true);
-    config.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
+    config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-XSRF-TOKEN"));
     var source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", config);
@@ -109,6 +111,25 @@ public class IdentityApiSecurityConfiguration {
 
   @Bean
   public SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
+    var administrativeRequests=new org.springframework.web.filter.OncePerRequestFilter() {
+      protected void doFilterInternal(jakarta.servlet.http.HttpServletRequest req,jakarta.servlet.http.HttpServletResponse res,
+          jakarta.servlet.FilterChain chain) throws jakarta.servlet.ServletException,java.io.IOException {
+        var auth=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean administrative=req.getRequestURI().startsWith("/api/v1/authorization/admin/")
+            || req.getRequestURI().startsWith("/api/v1/admin/");
+        if(!administrative || !(auth instanceof JwtAuthenticationToken jwt)) { chain.doFilter(req,res); return; }
+        try {
+          authorizationLimits.check("authorization-admin",jwt.getName(),900);
+          chain.doFilter(req,res);
+        } catch(br.com.imarui.ima.authentication.infra.security.AuthenticationRateLimiter.Limited limited) {
+          writeProblem(res,429,"RATE_LIMITED","Too Many Requests");
+        } finally {
+          if(Set.of(401,403,409,429).contains(res.getStatus()))
+            authorizationEvents.record("ADMINISTRATIVE_REJECTED",UUID.fromString(jwt.getName()),"iiam",null,null,
+                "HTTP_"+res.getStatus(),UUID.randomUUID());
+        }
+      }
+    };
     org.springframework.security.web.AuthenticationEntryPoint unauthenticated =
         (req, res, ex) -> {
           res.setHeader("WWW-Authenticate", "Bearer");
@@ -142,6 +163,7 @@ public class IdentityApiSecurityConfiguration {
                     .csrfTokenRequestHandler(handler)
                     .requireCsrfProtectionMatcher(browserMutation))
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .addFilterAfter(administrativeRequests,org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter.class)
         .authorizeHttpRequests(
             a ->
                 a.requestMatchers(

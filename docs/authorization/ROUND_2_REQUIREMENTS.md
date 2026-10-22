@@ -45,3 +45,24 @@ retorna indisponibilidade, nunca ALLOW. V20 foi aplicada e fica imutável neste 
 Manifesto interno passou à versão 2 pelos três novos códigos administrativos. V20 faz upgrade explícito
 das delegações internas dos ROOT existentes; manifests externos continuam sem conceder direitos.
 Ainda serão concluídos o contrato consumidor/timeout, diagnósticos e hardening/observabilidade.
+
+## Checkpoint IIAMS-89/90
+
+15 novos testes HTTP de administração e recuperação aprovados; os 39 casos de administração
+da fundação também passaram na execução anterior. Scopes/Roles têm CRUD seguro, lifecycle,
+composição, reparenting, precondições de versão no lock e exclusão apenas quando segura,
+com histórico independente. Listagens paginadas, Roles disponíveis e diagnósticos exigem
+AUTHORIZATION_AUDIT_READ no recurso; disponibilidade não concede gestão do proprietário.
+
+ROOT: transferência exata de fronteira com dois sujeitos ativos, duas reautenticações por senha,
+confirmação pelo destinatário em até 10 minutos e sessão do iniciador ainda válida; revalidação
+de autoridade/delegação/impacto, consumo único, revogação da atribuição e delegações anteriores,
+auditoria e concorrência. Não há endpoint genérico para conceder ROOT.
+PENDING não substitui o último ROOT ACTIVE. Envelope mínimo agora inclui ROOT_RECOVERY
+além das seis capacidades de administração da Rodada 1; DENY comum continua prevalecendo.
+
+V21 foi aplicada e fica imutável. Auditorias e históricos de Role/Scope/catálogo são append-only.
+O loop de delegação da transferência revelou reconstrução de árvore por célula e excedeu
+o prazo de 10 segundos; a árvore é agora reutilizada somente dentro da revisão corrente.
+A suíte ROOT de 8 casos passou em 3,196 segundos após a correção; nenhum cache entre
+requisições ou relaxamento de revogação foi introduzido. Medição de carga F-02 continua pendente.
