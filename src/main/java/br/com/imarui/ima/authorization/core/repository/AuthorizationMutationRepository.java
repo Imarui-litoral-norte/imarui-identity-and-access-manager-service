@@ -6,6 +6,7 @@ import java.util.*;
 public interface AuthorizationMutationRepository {
   void lock();
   Role saveRole(Role role);
+  void deleteRole(Role role,UUID actor,PolicyChangeReason reason,Instant now);
   void replacePermissions(long roleId,Set<String> codes);
   void saveAssignment(RoleAssignment assignment);
   void saveDeny(DenyRule deny);

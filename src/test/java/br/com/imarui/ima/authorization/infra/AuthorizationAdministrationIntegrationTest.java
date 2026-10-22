@@ -455,6 +455,74 @@ class AuthorizationAdministrationIntegrationTest extends IdentityIntegrationSupp
     } finally { pool.shutdownNow(); }
   }
 
+  @Test void equivalentActiveDeniesAreIdempotentAndRevocationCreatesANewHistoricalGeneration() {
+    var target=user(); var role=global(Set.of("IDENTITY_READ")); grant(target,role,scope());
+    var first=rules.deny("IDENTITY_READ",scope(),target.getId().value(),null,REASON);
+    var duplicate=rules.deny("IDENTITY_READ",scope(),target.getId().value(),null,REASON);
+    assertEquals(first.id(),duplicate.id()); assertFalse(allowed(target,"IDENTITY_READ",scope()));
+    rules.revokeDeny(first.id(),REASON); assertTrue(allowed(target,"IDENTITY_READ",scope()));
+    var next=rules.deny("IDENTITY_READ",scope(),target.getId().value(),null,REASON);
+    assertNotEquals(first.id(),next.id()); assertFalse(allowed(target,"IDENTITY_READ",scope()));
+    assertEquals(2,jdbc.queryForObject("select count(*) from authorization_denies where identity_id=?",Integer.class,target.getId().value()));
+  }
+
+  @Test void roleDeniesHaveTheirOwnLogicalUniquenessAndDatabaseBackstop() {
+    var role=global(Set.of("IDENTITY_READ"));
+    var first=rules.deny("IDENTITY_READ",scope(),null,role.id(),REASON);
+    assertEquals(first.id(),rules.deny("IDENTITY_READ",scope(),null,role.id(),REASON).id());
+    assertThrows(DataIntegrityViolationException.class,() -> jdbc.update("""
+        insert into authorization_denies(id,permission_code,scope_id,role_id,active,reason,created_at,updated_at)
+        values(?,'IDENTITY_READ',?,?,true,'duplicate',current_timestamp,current_timestamp)
+        """,UUID.randomUUID(),scope(),role.id()));
+  }
+
+  @Test void concurrentDuplicateDeniesReturnOneStableId() throws Exception {
+    var target=user(); var resource=scope(); var barrier=new CyclicBarrier(2);
+    var pool=Executors.newFixedThreadPool(2);
+    try {
+      Callable<UUID> command=() -> as(reviewer,() -> {
+        barrier.await(10,TimeUnit.SECONDS);
+        return rules.deny("IDENTITY_READ",resource,target.getId().value(),null,REASON).id();
+      });
+      var a=pool.submit(command); var c=pool.submit(command);
+      assertEquals(a.get(20,TimeUnit.SECONDS),c.get(20,TimeUnit.SECONDS));
+      assertEquals(1,jdbc.queryForObject("select count(*) from authorization_denies where active and identity_id=?",Integer.class,target.getId().value()));
+    } finally { pool.shutdownNow(); }
+  }
+
+  @Test void explicitRoleLifecyclePreservesAssignmentsAndDeniesNewArchivedAssignments() {
+    var target=user(); var role=global(Set.of("IDENTITY_READ")); var assignment=grant(target,role,scope());
+    var inactive=roles.revise(role.id(),role.name(),Role.Status.INACTIVE,Set.of("IDENTITY_READ"),REASON);
+    assertEquals(Role.Status.INACTIVE,inactive.status()); assertFalse(allowed(target,"IDENTITY_READ",scope()));
+    roles.revise(role.id(),role.name(),Role.Status.ACTIVE,Set.of("IDENTITY_READ"),REASON);
+    assertTrue(allowed(target,"IDENTITY_READ",scope()));
+    assertThrows(IllegalStateException.class,() -> roles.revise(role.id(),role.name(),Role.Status.ARCHIVED,Set.of("IDENTITY_READ"),REASON));
+    roles.revokeAssignment(assignment.id(),REASON);
+    var archived=roles.revise(role.id(),role.name(),Role.Status.ARCHIVED,Set.of("IDENTITY_READ"),REASON);
+    assertEquals(Role.Status.ARCHIVED,archived.status()); assertFalse(archived.active());
+    assertThrows(SecurityException.class,() -> grant(target,archived,scope()));
+    assertThrows(IllegalStateException.class,() -> roles.revise(role.id(),role.name(),Role.Status.ACTIVE,Set.of("IDENTITY_READ"),REASON));
+    assertThrows(IllegalStateException.class,() -> roles.delete(role.id(),REASON));
+    assertEquals(1,jdbc.queryForObject("select count(*) from authorization_identity_roles where id=?",Integer.class,assignment.id()));
+  }
+
+  @Test void roleDeletionRequiresArchiveAndRetainsIndependentHistory() {
+    var role=global(Set.of("IDENTITY_READ"));
+    assertThrows(IllegalStateException.class,() -> roles.delete(role.id(),REASON));
+    roles.revise(role.id(),role.name(),Role.Status.ARCHIVED,Set.of("IDENTITY_READ"),REASON);
+    roles.delete(role.id(),REASON);
+    assertEquals(0,jdbc.queryForObject("select count(*) from authorization_roles where id=?",Integer.class,role.id()));
+    assertEquals(1,jdbc.queryForObject("select count(*) from authorization_roles__history where original_role_id=? and role_state->>'status'='ARCHIVED' and jsonb_array_length(permission_state)=1",Integer.class,role.id()));
+    assertEquals(1,jdbc.queryForObject("select count(*) from authorization_audit where action='ROLE_DELETED' and resource_id=?",Integer.class,role.id().toString()));
+  }
+
+  @Test void rootLifecycleIsProtectedAtBothDomainAdministrationAndDatabase() {
+    long root=jdbc.queryForObject("select id from authorization_roles where name='ROOT'",Long.class);
+    assertThrows(RuntimeException.class,() -> roles.revise(root,"ROOT",Role.Status.ARCHIVED,Set.of(),REASON));
+    assertThrows(DataIntegrityViolationException.class,() -> jdbc.update("update authorization_roles set status='INACTIVE' where id=?",root));
+    assertTrue(allowed(reviewer,"AUTHORIZATION_ROLE_MANAGE",PLATFORM));
+  }
+
   @Test void aLegacyRootLikeLabelDoesNotCreateARootIdentityDuringReconstitution() {
     var code=externalPermission(); var manager=user();
     long legacy=jdbc.queryForObject("insert into authorization_roles(name,ownership,active) values(' ROOT ','GLOBAL',true) returning id",Long.class);

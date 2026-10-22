@@ -21,13 +21,26 @@ public class JdbcAuthorizationMutationRepository implements AuthorizationMutatio
   public void lock() { jdbc.query("select pg_advisory_xact_lock(810082)",r -> {}); }
   public Role saveRole(Role role) {
     if (role.id()==null) {
-      long id=jdbc.queryForObject("insert into authorization_roles(name,ownership,owner_scope_id,owner_tenant_id,active,created_at,updated_at,version) values(?,?,?,?,?,?,?,0) returning id",
-          Long.class,role.name(),role.ownership().name(),role.ownerScopeId(),role.ownerTenantId(),role.active(),Timestamp.from(role.createdAt()),Timestamp.from(role.updatedAt()));
-      return new Role(id,role.name(),role.ownership(),role.ownerScopeId(),role.ownerTenantId(),role.active(),role.createdAt(),role.updatedAt(),0);
+      long id=jdbc.queryForObject("insert into authorization_roles(name,ownership,owner_scope_id,owner_tenant_id,status,created_at,updated_at,version) values(?,?,?,?,?,?,?,0) returning id",
+          Long.class,role.name(),role.ownership().name(),role.ownerScopeId(),role.ownerTenantId(),role.status().name(),Timestamp.from(role.createdAt()),Timestamp.from(role.updatedAt()));
+      return new Role(id,role.name(),role.ownership(),role.ownerScopeId(),role.ownerTenantId(),role.status(),role.createdAt(),role.updatedAt(),0);
     }
-    changed(jdbc.update("update authorization_roles set name=?,active=?,updated_at=?,version=? where id=? and version=?",
-        role.name(),role.active(),Timestamp.from(role.updatedAt()),role.version(),role.id(),role.version()-1));
+    changed(jdbc.update("update authorization_roles set name=?,status=?,updated_at=?,version=? where id=? and version=?",
+        role.name(),role.status().name(),Timestamp.from(role.updatedAt()),role.version(),role.id(),role.version()-1));
     return role;
+  }
+  public void deleteRole(Role role,UUID actor,PolicyChangeReason reason,Instant now) {
+    jdbc.update("""
+        insert into authorization_roles__history(id,original_role_id,deleted_at,actor_identity_id,reason,correlation_id,
+          role_state,permission_state,deny_state)
+        select ?,r.id,?,?,?,?,to_jsonb(r),
+          coalesce((select jsonb_agg(to_jsonb(p)) from authorization_role_permissions p where p.role_id=r.id),'[]'::jsonb),
+          coalesce((select jsonb_agg(to_jsonb(d)) from authorization_denies d where d.role_id=r.id),'[]'::jsonb)
+        from authorization_roles r where r.id=? and r.version=?
+        """,UUID.randomUUID(),Timestamp.from(now),actor,reason.reason(),reason.correlationId(),role.id(),role.version());
+    jdbc.update("delete from authorization_denies where role_id=?",role.id());
+    jdbc.update("delete from authorization_role_permissions where role_id=?",role.id());
+    changed(jdbc.update("delete from authorization_roles where id=? and version=?",role.id(),role.version()));
   }
   public void replacePermissions(long role,Set<String> codes) {
     var existing=jdbc.queryForList("select p.code from authorization_role_permissions rp join authorization_permissions p on p.id=rp.permission_id where rp.role_id=?",String.class,role);

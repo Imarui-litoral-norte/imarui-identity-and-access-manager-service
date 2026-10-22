@@ -6,14 +6,22 @@ import br.com.imarui.ima.authorization.core.domain.policy.ScopeHierarchy;
 
 /** Ownership governs availability and administration; only assignments govern grants. */
 public record Role(Long id, String name, Ownership ownership, UUID ownerScopeId, UUID ownerTenantId,
-    boolean active, Instant createdAt, Instant updatedAt, long version) {
+    Status status, Instant createdAt, Instant updatedAt, long version) {
   public enum Ownership { GLOBAL, SCOPE, TENANT }
+  public enum Status { ACTIVE, INACTIVE, ARCHIVED }
+  /** Compatibility for existing internal callers; persistence uses the explicit lifecycle. */
+  public Role(Long id,String name,Ownership ownership,UUID ownerScopeId,UUID ownerTenantId,
+      boolean active,Instant createdAt,Instant updatedAt,long version) {
+    this(id,name,ownership,ownerScopeId,ownerTenantId,active?Status.ACTIVE:Status.INACTIVE,createdAt,updatedAt,version);
+  }
+  public boolean active() { return status==Status.ACTIVE; }
   public Role {
     if (name == null || name.isBlank() || name.length() > 100)
       throw new IllegalArgumentException("Invalid role name.");
     // Reconstitution preserves the persisted label exactly. Normalizing legacy labels here
     // could turn an ordinary " ROOT " row into the protected ROOT security identity.
     Objects.requireNonNull(ownership);
+    Objects.requireNonNull(status);
     Objects.requireNonNull(createdAt);
     Objects.requireNonNull(updatedAt);
     if ((id != null && id <= 0) || version < 0 || updatedAt.isBefore(createdAt))

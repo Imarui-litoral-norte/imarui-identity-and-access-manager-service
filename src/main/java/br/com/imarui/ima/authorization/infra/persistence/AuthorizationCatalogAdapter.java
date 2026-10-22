@@ -41,7 +41,7 @@ public class AuthorizationCatalogAdapter implements AuthorizationCatalog {
                     Role.Ownership.valueOf(r.getString("ownership")),
                     r.getObject("owner_scope_id", UUID.class),
                     r.getObject("owner_tenant_id", UUID.class),
-                    r.getBoolean("active"),
+                    Role.Status.valueOf(r.getString("status")),
                     r.getTimestamp("created_at").toInstant(),
                     r.getTimestamp("updated_at").toInstant(), r.getLong("version")),
             id)

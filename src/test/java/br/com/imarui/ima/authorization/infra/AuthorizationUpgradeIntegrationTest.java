@@ -55,6 +55,33 @@ class AuthorizationUpgradeIntegrationTest extends IdentityIntegrationSupport {
     } finally { jdbc.execute("drop schema if exists "+schema+" cascade"); }
   }
 
+  @Test void populatedV17ReconcilesEquivalentBlocksWithoutDeletingHistoryAndPreservesRoleLifecycle() throws Exception {
+    String schema="auth_v17_"+UUID.randomUUID().toString().replace("-",""); String url=url();
+    var first=UUID.randomUUID(); var duplicate=UUID.randomUUID();
+    try (var c=DriverManager.getConnection(url,"identity_test","identity_test")) {
+      flyway(url,schema,"17").migrate(); c.setSchema(schema);
+      try(var s=c.createStatement()) {
+        s.execute("insert into authorization_permissions(id,code,description,module,service_code,namespace,catalog_version,updated_at) values(88001,'IDENTITY_READ','read','IDENTITY','iiam','iiam',1,current_timestamp)");
+        s.execute("insert into authorization_roles(id,name,ownership,active) values(88002,'OLD_INACTIVE','GLOBAL',false)");
+        s.execute("insert into authorization_denies(id,permission_code,scope_id,role_id,reason,created_at,updated_at) values('"+first+"','IDENTITY_READ','"+AuthorizationScope.PLATFORM_ID+"',88002,'original','2026-01-01Z','2026-01-01Z')");
+        s.execute("insert into authorization_denies(id,permission_code,scope_id,role_id,reason,created_at,updated_at) values('"+duplicate+"','IDENTITY_READ','"+AuthorizationScope.PLATFORM_ID+"',88002,'duplicate','2026-01-02Z','2026-01-02Z')");
+      }
+      flyway(url,schema,null).migrate(); flyway(url,schema,null).validate();
+      try(var s=c.createStatement();var rows=s.executeQuery("select count(*),count(*) filter(where active) from authorization_denies")) {
+        assertTrue(rows.next()); assertEquals(2,rows.getInt(1)); assertEquals(1,rows.getInt(2));
+      }
+      try(var s=c.createStatement();var rows=s.executeQuery("select active,reason from authorization_denies where id='"+first+"'")) {
+        assertTrue(rows.next()); assertTrue(rows.getBoolean(1)); assertEquals("original",rows.getString(2));
+      }
+      try(var s=c.createStatement();var rows=s.executeQuery("select count(*) from authorization_audit where action='DUPLICATE_DENY_RECONCILED' and resource_id='"+duplicate+"' and before_state->>'active'='true' and after_state->>'active'='false'")) {
+        assertTrue(rows.next()); assertEquals(1,rows.getInt(1));
+      }
+      try(var s=c.createStatement();var rows=s.executeQuery("select status,active from authorization_roles where id=88002")) {
+        assertTrue(rows.next()); assertEquals("INACTIVE",rows.getString(1)); assertFalse(rows.getBoolean(2));
+      }
+    } finally { jdbc.execute("drop schema if exists "+schema+" cascade"); }
+  }
+
   @Test void cleanInstallationHasOnlyTheAdministrativeScopeAndNoAutomaticAssignment() throws Exception {
     String schema="auth_fresh_"+UUID.randomUUID().toString().replace("-",""); String url=url();
     try (var c=DriverManager.getConnection(url,"identity_test","identity_test")) {

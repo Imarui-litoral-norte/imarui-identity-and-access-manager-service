@@ -1,0 +1,39 @@
+[
+  {
+    "key": "IIAMS-124",
+    "title": "Definir contrato PDP, PEP e DTOs de decisão",
+    "description": "## Entrega\n\nEndpoint(s) authorize e opcional batch, correlação, reason codes auditáveis, contratos Actor/Scope/Permission, validação de parâmetros e responses.\n\n## Política PDP obrigatória\n\n* IIAM é Policy Decision Point central. Serviço externo é PEP, autentica-se M2M independentemente de usuário, resolve Scope verdadeiro do objeto/Tenant com fonte confiável e consulta IIAM.\n* Actor de Identity, Permission, AuthorizationScope, identidade do caller, sessão/revogação, valid status de Tenant/Identity/Role; sessão não tem active Scope, pode operar vários Tenants.\n* DENY absoluto antes de ALLOW herdado, default deny; JWT válido não substitui policy viva, revogação ou sessão stateful.\n* Não confiar em scopeId livre do frontend nem rede interna; evitar confused deputy; timeout/offline fail closed. Gateway IIAMS-80 não bloqueante.\n\n## Critérios de aceite\n\n* Integration contract e testes HTTP 401/403, M2M inválido, token revogado, spoof de Scope, Tenant irmão, timeout/fail closed, change deny e JWT stale; logs/correlation, docs e CI.\n* Referência IIAMS-88/IIAMS-81.\n\n",
+    "url": "https://logimarui.atlassian.net/browse/IIAMS-124"
+  },
+  {
+    "key": "IIAMS-125",
+    "title": "Implementar autenticação e autorização M2M de consumidores",
+    "description": "## Entrega\n\nIdentidade técnica, credenciais/JWT client binding, validação issuer/audience/owner, rotação/revogação e isolamento de caller; integração com Authentication.\n\n## Política PDP obrigatória\n\n* IIAM é Policy Decision Point central. Serviço externo é PEP, autentica-se M2M independentemente de usuário, resolve Scope verdadeiro do objeto/Tenant com fonte confiável e consulta IIAM.\n* Actor de Identity, Permission, AuthorizationScope, identidade do caller, sessão/revogação, valid status de Tenant/Identity/Role; sessão não tem active Scope, pode operar vários Tenants.\n* DENY absoluto antes de ALLOW herdado, default deny; JWT válido não substitui policy viva, revogação ou sessão stateful.\n* Não confiar em scopeId livre do frontend nem rede interna; evitar confused deputy; timeout/offline fail closed. Gateway IIAMS-80 não bloqueante.\n\n## Critérios de aceite\n\n* Integration contract e testes HTTP 401/403, M2M inválido, token revogado, spoof de Scope, Tenant irmão, timeout/fail closed, change deny e JWT stale; logs/correlation, docs e CI.\n* Referência IIAMS-88/IIAMS-81.\n\n",
+    "url": "https://logimarui.atlassian.net/browse/IIAMS-125"
+  },
+  {
+    "key": "IIAMS-126",
+    "title": "Implementar evaluator central com hierarquia, DENY, ALLOW e revogação",
+    "description": "## Entrega\n\nCadeia de resolução Identity/session/Scope/Tenant/RoleAssignment/Permission e deny-first, decisões auditáveis e teste de frescor.\n\n## Política PDP obrigatória\n\n* IIAM é Policy Decision Point central. Serviço externo é PEP, autentica-se M2M independentemente de usuário, resolve Scope verdadeiro do objeto/Tenant com fonte confiável e consulta IIAM.\n* Actor de Identity, Permission, AuthorizationScope, identidade do caller, sessão/revogação, valid status de Tenant/Identity/Role; sessão não tem active Scope, pode operar vários Tenants.\n* DENY absoluto antes de ALLOW herdado, default deny; JWT válido não substitui policy viva, revogação ou sessão stateful.\n* Não confiar em scopeId livre do frontend nem rede interna; evitar confused deputy; timeout/offline fail closed. Gateway IIAMS-80 não bloqueante.\n\n## Critérios de aceite\n\n* Integration contract e testes HTTP 401/403, M2M inválido, token revogado, spoof de Scope, Tenant irmão, timeout/fail closed, change deny e JWT stale; logs/correlation, docs e CI.\n* Referência IIAMS-88/IIAMS-81.\n\n",
+    "url": "https://logimarui.atlassian.net/browse/IIAMS-126"
+  },
+  {
+    "key": "IIAMS-127",
+    "title": "Definir segurança de resolução do recurso e anti-spoof no PEP",
+    "description": "## Entrega\n\nContrato recomendação/referência para consumidores: resource ownership, Tenant alvo, validação de Scope, evitar input frontend, confused deputy, M2M autorizada.\n\n## Política PDP obrigatória\n\n* IIAM é Policy Decision Point central. Serviço externo é PEP, autentica-se M2M independentemente de usuário, resolve Scope verdadeiro do objeto/Tenant com fonte confiável e consulta IIAM.\n* Actor de Identity, Permission, AuthorizationScope, identidade do caller, sessão/revogação, valid status de Tenant/Identity/Role; sessão não tem active Scope, pode operar vários Tenants.\n* DENY absoluto antes de ALLOW herdado, default deny; JWT válido não substitui policy viva, revogação ou sessão stateful.\n* Não confiar em scopeId livre do frontend nem rede interna; evitar confused deputy; timeout/offline fail closed. Gateway IIAMS-80 não bloqueante.\n\n## Critérios de aceite\n\n* Integration contract e testes HTTP 401/403, M2M inválido, token revogado, spoof de Scope, Tenant irmão, timeout/fail closed, change deny e JWT stale; logs/correlation, docs e CI.\n* Referência IIAMS-88/IIAMS-81.\n\n",
+    "url": "https://logimarui.atlassian.net/browse/IIAMS-127"
+  },
+  {
+    "key": "IIAMS-128",
+    "title": "Instrumentar fail-closed, observabilidade e limites de throughput",
+    "description": "## Entrega\n\nTimeout, autenticação distinta 401/403, correlação, métricas, logs seguros, retries conservadores, batch/paginação se justificável, proteção contra overload.\n\n## Política PDP obrigatória\n\n* IIAM é Policy Decision Point central. Serviço externo é PEP, autentica-se M2M independentemente de usuário, resolve Scope verdadeiro do objeto/Tenant com fonte confiável e consulta IIAM.\n* Actor de Identity, Permission, AuthorizationScope, identidade do caller, sessão/revogação, valid status de Tenant/Identity/Role; sessão não tem active Scope, pode operar vários Tenants.\n* DENY absoluto antes de ALLOW herdado, default deny; JWT válido não substitui policy viva, revogação ou sessão stateful.\n* Não confiar em scopeId livre do frontend nem rede interna; evitar confused deputy; timeout/offline fail closed. Gateway IIAMS-80 não bloqueante.\n\n## Critérios de aceite\n\n* Integration contract e testes HTTP 401/403, M2M inválido, token revogado, spoof de Scope, Tenant irmão, timeout/fail closed, change deny e JWT stale; logs/correlation, docs e CI.\n* Referência IIAMS-88/IIAMS-81.\n\n",
+    "url": "https://logimarui.atlassian.net/browse/IIAMS-128"
+  },
+  {
+    "key": "IIAMS-129",
+    "title": "Testar integração real entre serviço consumidor, Actor e PDP",
+    "description": "## Entrega\n\nTeste consumer contract de Identity válida/revogada, two-tenant, hierarchy, denies, fake service, fake scope, JWT expirado, timeout e gateway independente.\n\n## Política PDP obrigatória\n\n* IIAM é Policy Decision Point central. Serviço externo é PEP, autentica-se M2M independentemente de usuário, resolve Scope verdadeiro do objeto/Tenant com fonte confiável e consulta IIAM.\n* Actor de Identity, Permission, AuthorizationScope, identidade do caller, sessão/revogação, valid status de Tenant/Identity/Role; sessão não tem active Scope, pode operar vários Tenants.\n* DENY absoluto antes de ALLOW herdado, default deny; JWT válido não substitui policy viva, revogação ou sessão stateful.\n* Não confiar em scopeId livre do frontend nem rede interna; evitar confused deputy; timeout/offline fail closed. Gateway IIAMS-80 não bloqueante.\n\n## Critérios de aceite\n\n* Integration contract e testes HTTP 401/403, M2M inválido, token revogado, spoof de Scope, Tenant irmão, timeout/fail closed, change deny e JWT stale; logs/correlation, docs e CI.\n* Referência IIAMS-88/IIAMS-81.\n\n",
+    "url": "https://logimarui.atlassian.net/browse/IIAMS-129"
+  }
+]
+

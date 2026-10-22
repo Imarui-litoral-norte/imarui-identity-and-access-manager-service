@@ -23,7 +23,7 @@ public class JdbcAuthorizationPolicyRepository implements AuthorizationPolicyRep
     jdbc.query("select * from authorization_roles", (org.springframework.jdbc.core.RowCallbackHandler) r -> {
       var id=r.getLong("id");
       roles.put(id,new Role(id,r.getString("name"),Role.Ownership.valueOf(r.getString("ownership")),
-          r.getObject("owner_scope_id",UUID.class),r.getObject("owner_tenant_id",UUID.class),r.getBoolean("active"),
+          r.getObject("owner_scope_id",UUID.class),r.getObject("owner_tenant_id",UUID.class),Role.Status.valueOf(r.getString("status")),
           r.getTimestamp("created_at").toInstant(),r.getTimestamp("updated_at").toInstant(),r.getLong("version")));
     });
     var rolePermissions=new HashMap<Long,Set<String>>();

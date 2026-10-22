@@ -15,4 +15,8 @@ public record DenyRule(UUID id, String permission, UUID scopeId, UUID identityId
       throw new IllegalArgumentException("Invalid DENY rule.");
     reason=reason.trim();
   }
+  public boolean sameTarget(String permission,UUID scope,UUID identity,Long role) {
+    return this.permission.equals(permission) && scopeId.equals(scope)
+        && Objects.equals(identityId,identity) && Objects.equals(roleId,role);
+  }
 }

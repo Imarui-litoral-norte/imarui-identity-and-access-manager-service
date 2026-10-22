@@ -1,0 +1,27 @@
+[
+  {
+    "key": "IIAMS-135",
+    "title": "Criar controllers e contratos OpenAPI para gestão de Scopes e Roles",
+    "description": "## Entrega\n\nEndpoints CRUD/lifecycle/search paginados com validações, ownership, permission checks, erros RFC9457.\n\n## Contratos obrigatórios\n\n* APIs segregadas por owner de Role (GLOBAL, SCOPE, TENANT), Scope hierárquico, grants, DENYs, delegação e Permission registry; validar autoridade de admin para operação e recurso.\n* Gestão de Role disponível não concede direito de alterar seu proprietário ancestral; lista separa disponível versus atribuída.\n* Consultas efetivas evidenciam ALLOW/DENY herdado e origem, mas requerem autorização administrativa/audit-read para evitar expor acessos de outra empresa.\n* Usar DTOs explícitos, paginação, concorrência, rate/erros RFC9457; nenhuma confiança em scopeId frontend sem verificação.\n\n## Aceite\n\n* Testar paths 400/401/403/404/409, cross-tenant, root, permission denials, contratos/OpenAPI e auditoria.\n* Referência IIAMS-90/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-136",
+    "title": "Publicar APIs de grants, RoleAssignments, delegação e DENY",
+    "description": "## Entrega\n\nEndpoints transacionais, idempotência/conflitos, reason auditável, protection ROOT, escopos e DTOs estáveis.\n\n## Contratos obrigatórios\n\n* APIs segregadas por owner de Role (GLOBAL, SCOPE, TENANT), Scope hierárquico, grants, DENYs, delegação e Permission registry; validar autoridade de admin para operação e recurso.\n* Gestão de Role disponível não concede direito de alterar seu proprietário ancestral; lista separa disponível versus atribuída.\n* Consultas efetivas evidenciam ALLOW/DENY herdado e origem, mas requerem autorização administrativa/audit-read para evitar expor acessos de outra empresa.\n* Usar DTOs explícitos, paginação, concorrência, rate/erros RFC9457; nenhuma confiança em scopeId frontend sem verificação.\n\n## Aceite\n\n* Testar paths 400/401/403/404/409, cross-tenant, root, permission denials, contratos/OpenAPI e auditoria.\n* Referência IIAMS-90/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-137",
+    "title": "Construir visão de Roles disponíveis por Tenant/Scope",
+    "description": "## Entrega\n\nUnir Roles globais, roles ancestrais e próprias, distinguindo origem, efetiva disponibilidade e autoridade administrativa.\n\n## Contratos obrigatórios\n\n* APIs segregadas por owner de Role (GLOBAL, SCOPE, TENANT), Scope hierárquico, grants, DENYs, delegação e Permission registry; validar autoridade de admin para operação e recurso.\n* Gestão de Role disponível não concede direito de alterar seu proprietário ancestral; lista separa disponível versus atribuída.\n* Consultas efetivas evidenciam ALLOW/DENY herdado e origem, mas requerem autorização administrativa/audit-read para evitar expor acessos de outra empresa.\n* Usar DTOs explícitos, paginação, concorrência, rate/erros RFC9457; nenhuma confiança em scopeId frontend sem verificação.\n\n## Aceite\n\n* Testar paths 400/401/403/404/409, cross-tenant, root, permission denials, contratos/OpenAPI e auditoria.\n* Referência IIAMS-90/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-138",
+    "title": "Implementar consultas de permissões efetivas e motivos de decisão",
+    "description": "## Entrega\n\nInspecionar ALLOW/DENY diretos/herdados, origem por Role, audit read com escopo, explicar resultados sensíveis sem leak.\n\n## Contratos obrigatórios\n\n* APIs segregadas por owner de Role (GLOBAL, SCOPE, TENANT), Scope hierárquico, grants, DENYs, delegação e Permission registry; validar autoridade de admin para operação e recurso.\n* Gestão de Role disponível não concede direito de alterar seu proprietário ancestral; lista separa disponível versus atribuída.\n* Consultas efetivas evidenciam ALLOW/DENY herdado e origem, mas requerem autorização administrativa/audit-read para evitar expor acessos de outra empresa.\n* Usar DTOs explícitos, paginação, concorrência, rate/erros RFC9457; nenhuma confiança em scopeId frontend sem verificação.\n\n## Aceite\n\n* Testar paths 400/401/403/404/409, cross-tenant, root, permission denials, contratos/OpenAPI e auditoria.\n* Referência IIAMS-90/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-139",
+    "title": "Documentar integração administrativa e testar isolamento",
+    "description": "## Entrega\n\nOpenAPI/contracts, 400/401/403/404/409/429, paginação, audibilidade, cross-tenant e conformidade ProblemDetail.\n\n## Contratos obrigatórios\n\n* APIs segregadas por owner de Role (GLOBAL, SCOPE, TENANT), Scope hierárquico, grants, DENYs, delegação e Permission registry; validar autoridade de admin para operação e recurso.\n* Gestão de Role disponível não concede direito de alterar seu proprietário ancestral; lista separa disponível versus atribuída.\n* Consultas efetivas evidenciam ALLOW/DENY herdado e origem, mas requerem autorização administrativa/audit-read para evitar expor acessos de outra empresa.\n* Usar DTOs explícitos, paginação, concorrência, rate/erros RFC9457; nenhuma confiança em scopeId frontend sem verificação.\n\n## Aceite\n\n* Testar paths 400/401/403/404/409, cross-tenant, root, permission denials, contratos/OpenAPI e auditoria.\n* Referência IIAMS-90/IIAMS-81.\n\n"
+  }
+]

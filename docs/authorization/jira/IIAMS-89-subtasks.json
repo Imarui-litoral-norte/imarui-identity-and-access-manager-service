@@ -1,0 +1,27 @@
+[
+  {
+    "key": "IIAMS-130",
+    "title": "Especificar envelope mínimo de recuperação e policy ROOT",
+    "description": "## Entrega\n\nEnumerar capabilities protegidas por código, invariantes, objetivo de recuperação, sem bypass generalizado; revisão de segurança.\n\n## Segurança ROOT aprovada\n\n* ROOT segue DENY em operações normais, não possui bypass irrestrito.\n* Prevenir criação de DENY e mutations de Roles/Assignments/Identity/Scope capazes de eliminar último acesso de recuperação essencial; definir conjunto mínimo explícito de capacidades reservadas.\n* Break-glass restrito, protegido, rastreável com reason e actor; nenhuma Role administrativa comum pode copiar ROOT ou conceder recovery irrestrito.\n\n## Critérios de aceite\n\n* Testes negativos de bloqueio do último administrador, duas identidades, concorrência, deny comum aplicável ROOT, tentativa de elevação e rollback.\n* Bootstrap atual mantido, procedimento de emergência documentado, auditoria/CI. IIAMS-89/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-131",
+    "title": "Impedir lockout por DENY, RoleAssignment e ciclo de vida",
+    "description": "## Entrega\n\nInterceptar mutation que remova último administrador ou negue recovery; checagem transacional com proteção de concorrência.\n\n## Segurança ROOT aprovada\n\n* ROOT segue DENY em operações normais, não possui bypass irrestrito.\n* Prevenir criação de DENY e mutations de Roles/Assignments/Identity/Scope capazes de eliminar último acesso de recuperação essencial; definir conjunto mínimo explícito de capacidades reservadas.\n* Break-glass restrito, protegido, rastreável com reason e actor; nenhuma Role administrativa comum pode copiar ROOT ou conceder recovery irrestrito.\n\n## Critérios de aceite\n\n* Testes negativos de bloqueio do último administrador, duas identidades, concorrência, deny comum aplicável ROOT, tentativa de elevação e rollback.\n* Bootstrap atual mantido, procedimento de emergência documentado, auditoria/CI. IIAMS-89/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-132",
+    "title": "Proteger bootstrap e administração da Role ROOT",
+    "description": "## Entrega\n\nImpedir clone, atribuição, remoção, autoelevação e alteração de ROOT fora de rito aprovado; compatibilidade com existente.\n\n## Segurança ROOT aprovada\n\n* ROOT segue DENY em operações normais, não possui bypass irrestrito.\n* Prevenir criação de DENY e mutations de Roles/Assignments/Identity/Scope capazes de eliminar último acesso de recuperação essencial; definir conjunto mínimo explícito de capacidades reservadas.\n* Break-glass restrito, protegido, rastreável com reason e actor; nenhuma Role administrativa comum pode copiar ROOT ou conceder recovery irrestrito.\n\n## Critérios de aceite\n\n* Testes negativos de bloqueio do último administrador, duas identidades, concorrência, deny comum aplicável ROOT, tentativa de elevação e rollback.\n* Bootstrap atual mantido, procedimento de emergência documentado, auditoria/CI. IIAMS-89/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-133",
+    "title": "Projetar operação break-glass e auditoria de emergências",
+    "description": "## Entrega\n\nReautenticação reforçada, trilha, alertas, reason e runbook de recovery/rollback, sem segredos em logs.\n\n## Segurança ROOT aprovada\n\n* ROOT segue DENY em operações normais, não possui bypass irrestrito.\n* Prevenir criação de DENY e mutations de Roles/Assignments/Identity/Scope capazes de eliminar último acesso de recuperação essencial; definir conjunto mínimo explícito de capacidades reservadas.\n* Break-glass restrito, protegido, rastreável com reason e actor; nenhuma Role administrativa comum pode copiar ROOT ou conceder recovery irrestrito.\n\n## Critérios de aceite\n\n* Testes negativos de bloqueio do último administrador, duas identidades, concorrência, deny comum aplicável ROOT, tentativa de elevação e rollback.\n* Bootstrap atual mantido, procedimento de emergência documentado, auditoria/CI. IIAMS-89/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-134",
+    "title": "Testar negativas, DENY comum e perda do último admin",
+    "description": "## Entrega\n\nTestar deny em ROOT comum, denial de recovery protegida, duas contas, concorrência, scope reparent, bootstrap legado.\n\n## Segurança ROOT aprovada\n\n* ROOT segue DENY em operações normais, não possui bypass irrestrito.\n* Prevenir criação de DENY e mutations de Roles/Assignments/Identity/Scope capazes de eliminar último acesso de recuperação essencial; definir conjunto mínimo explícito de capacidades reservadas.\n* Break-glass restrito, protegido, rastreável com reason e actor; nenhuma Role administrativa comum pode copiar ROOT ou conceder recovery irrestrito.\n\n## Critérios de aceite\n\n* Testes negativos de bloqueio do último administrador, duas identidades, concorrência, deny comum aplicável ROOT, tentativa de elevação e rollback.\n* Bootstrap atual mantido, procedimento de emergência documentado, auditoria/CI. IIAMS-89/IIAMS-81.\n\n"
+  }
+]

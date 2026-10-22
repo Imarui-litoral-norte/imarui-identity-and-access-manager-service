@@ -39,9 +39,18 @@ public class RoleAdministrationUseCases {
   }
 
   public Role revise(long roleId,String name,boolean active,Set<String> permissions,PolicyChangeReason reason) {
+    return revise(roleId,name,active?Role.Status.ACTIVE:Role.Status.INACTIVE,permissions,reason);
+  }
+
+  public Role revise(long roleId,String name,Role.Status status,Set<String> permissions,PolicyChangeReason reason) {
+    Objects.requireNonNull(status);
     permissions=Set.copyOf(permissions);
     var context=guard.begin("AUTHORIZATION_ROLE_MANAGE",s -> jurisdiction(role(s,roleId)),reason);
     var previous=role(context.before(),roleId);
+    if (previous.status()==Role.Status.ARCHIVED)
+      throw new IllegalStateException("Archived Roles cannot be revised or reactivated.");
+    if (status==Role.Status.ARCHIVED && context.before().assignments().stream().anyMatch(a -> a.roleId()==roleId && a.active()))
+      throw new IllegalStateException("Revoke active RoleAssignments before archiving.");
     if (previous.name().equals("ROOT") || reservedRootName(name))
       throw new SecurityException("ROOT composition and identity are protected.");
     if (name!=null) name=name.strip();
@@ -52,14 +61,14 @@ public class RoleAdministrationUseCases {
       throw new SecurityException("Adding permissions to a Role assigned to the actor is a self-grant.");
     var impacted=impact(context.before(),roleId);
     var grants=new HashSet<>(additions);
-    if (active && !previous.active()) grants.addAll(permissions);
+    if (status==Role.Status.ACTIVE && !previous.active()) grants.addAll(permissions);
     for (var code:grants) {
       guard.delegate(context.before(),context.actor(),code,jurisdiction(previous),false);
       for (var scope:impacted) guard.delegate(context.before(),context.actor(),code,scope,false);
     }
     var now=clock.instant();
     var changed=new Role(previous.id(),name,previous.ownership(),previous.ownerScopeId(),previous.ownerTenantId(),
-        active,previous.createdAt(),now,previous.version()+1);
+        status,previous.createdAt(),now,previous.version()+1);
     mutations.saveRole(changed); mutations.replacePermissions(roleId,permissions);
     var touched=new HashSet<>(oldPermissions); touched.addAll(permissions);
     context.before().denies().stream().filter(d -> Objects.equals(d.roleId(),roleId)).forEach(d -> touched.add(d.permission()));
@@ -67,6 +76,18 @@ public class RoleAdministrationUseCases {
     mutations.audit(context.actor(),"ROLE_REVISED","ROLE",Long.toString(roleId),jurisdiction(previous),reason,
         Map.of("role",previous,"permissions",oldPermissions),Map.of("role",changed,"permissions",permissions),now);
     return changed;
+  }
+
+  public void delete(long roleId,PolicyChangeReason reason) {
+    var context=guard.begin("AUTHORIZATION_ROLE_MANAGE",s -> jurisdiction(role(s,roleId)),reason);
+    var previous=role(context.before(),roleId);
+    if (previous.name().equals("ROOT")) throw new SecurityException("ROOT cannot be deleted.");
+    if (previous.status()!=Role.Status.ARCHIVED || context.before().assignments().stream().anyMatch(a -> a.roleId()==roleId))
+      throw new IllegalStateException("Only archived Roles without operational assignments may be deleted.");
+    var now=clock.instant();
+    mutations.deleteRole(previous,context.actor(),reason,now);
+    guard.assertRecovery(policies.current());
+    mutations.audit(context.actor(),"ROLE_DELETED","ROLE",Long.toString(roleId),jurisdiction(previous),reason,previous,null,now);
   }
 
   public RoleAssignment assign(UUID identity,long roleId,UUID scope,PolicyChangeReason reason) {

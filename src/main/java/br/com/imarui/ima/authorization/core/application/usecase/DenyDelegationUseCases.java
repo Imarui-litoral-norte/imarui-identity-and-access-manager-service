@@ -24,6 +24,11 @@ public class DenyDelegationUseCases {
   public DenyRule deny(String permission,UUID scope,UUID identity,Long role,PolicyChangeReason reason) {
     var context=guard.begin("AUTHORIZATION_DENY_MANAGE",scope,reason);
     known(context.before(),permission);
+    // Serialize lookup and insertion under the same policy lock. A revoked record remains
+    // immutable history; explicitly creating a new block afterwards gets a new UUID.
+    var existing=context.before().denies().stream()
+        .filter(d -> d.active() && d.sameTarget(permission,scope,identity,role)).findFirst();
+    if (existing.isPresent()) return existing.get();
     if (role!=null) {
       var definition=context.before().roles().get(role);
       var tree=new br.com.imarui.ima.authorization.core.domain.policy.ScopeHierarchy(context.before().scopes());
