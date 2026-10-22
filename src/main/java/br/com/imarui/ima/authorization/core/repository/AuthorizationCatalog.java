@@ -10,5 +10,5 @@ public interface AuthorizationCatalog {
 
   List<RolePermission> rolePermissions(long roleId);
 
-  List<IdentityRole> identityRoles(UUID id);
+  List<RoleAssignment> assignments(UUID id);
 }

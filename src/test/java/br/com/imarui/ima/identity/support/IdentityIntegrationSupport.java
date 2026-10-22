@@ -61,6 +61,7 @@ public abstract class IdentityIntegrationSupport {
   @Autowired protected ReactivateTenantUseCase reactivateTenant;
   @Autowired protected JdbcTemplate jdbc;
   @Autowired protected JsonMapper json;
+  @Autowired private br.com.imarui.ima.authorization.infra.bootstrap.PermissionCatalogBootstrap authorizationBootstrap;
   @Autowired protected JwtSigningKeyProvider keys;
 
   @Autowired
@@ -96,6 +97,8 @@ public abstract class IdentityIntegrationSupport {
     jdbc.execute(
         "truncate ima_identities, ima_tenants, ima_identity_applications, ima_identities__history,"
             + " ima_affiliations__history, ima_access_revocation_requests cascade");
+    // Tenant ownership FKs now include Roles in the explicit disposable-fixture truncate graph.
+    authorizationBootstrap.run(new org.springframework.boot.DefaultApplicationArguments());
     reviewer = service("reviewer@example.test");
     reviewer.assignNickname("reviewer");
     reviewer = identities.save(reviewer);

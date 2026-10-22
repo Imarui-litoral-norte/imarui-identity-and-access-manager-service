@@ -21,7 +21,7 @@ public class PermissionCatalogBootstrap implements ApplicationRunner {
     catalogs.synchronizeInternal();
     // Explicit internal ROOT provisioning is separate from registration. External catalog entries never grant access.
     jdbc.update(
-        "insert into authorization_roles(name,active) values('ROOT',true) on conflict(name) do"
+        "insert into authorization_roles(name,active) values('ROOT',true) on conflict do"
             + " nothing");
     for (var definition : PermissionDefinition.values()) jdbc.update(
         "insert into authorization_role_permissions(role_id,permission_id) select r.id,p.id from"

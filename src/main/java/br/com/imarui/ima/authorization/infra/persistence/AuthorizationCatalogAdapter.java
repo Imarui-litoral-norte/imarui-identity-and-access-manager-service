@@ -38,8 +38,12 @@ public class AuthorizationCatalogAdapter implements AuthorizationCatalog {
                 new Role(
                     id,
                     r.getString("name"),
+                    Role.Ownership.valueOf(r.getString("ownership")),
+                    r.getObject("owner_scope_id", UUID.class),
+                    r.getObject("owner_tenant_id", UUID.class),
                     r.getBoolean("active"),
-                    r.getTimestamp("created_at").toInstant()),
+                    r.getTimestamp("created_at").toInstant(),
+                    r.getTimestamp("updated_at").toInstant(), r.getLong("version")),
             id)
         .stream()
         .findFirst();
@@ -57,11 +61,13 @@ public class AuthorizationCatalogAdapter implements AuthorizationCatalog {
         id);
   }
 
-  public List<IdentityRole> identityRoles(UUID id) {
+  public List<RoleAssignment> assignments(UUID id) {
     return jdbc.query(
         "select * from authorization_identity_roles where identity_id=?",
         (r, n) ->
-            new IdentityRole(id, r.getLong("role_id"), r.getTimestamp("created_at").toInstant()),
+            new RoleAssignment(r.getObject("id",UUID.class),id,r.getLong("role_id"),
+                r.getObject("authorization_scope_id",UUID.class),r.getBoolean("active"),
+                r.getTimestamp("created_at").toInstant(),r.getTimestamp("updated_at").toInstant(),r.getLong("version")),
         id);
   }
 }

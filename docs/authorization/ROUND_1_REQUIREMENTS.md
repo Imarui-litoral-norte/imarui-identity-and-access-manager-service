@@ -72,3 +72,40 @@ administração autorizada de Scope, políticas integradas, testes adicionais de
 de grants populados e a conferência de critérios individuais do Jira ainda permanecem.
 O catálogo não publica endpoint externo; ausência de adapter técnico nega a chamada
 externa interna, e os testes HTTP verificam 401 anônimo e 404 autenticado.
+
+### Segundo incremento validado
+
+V13 preserva os IDs de Role/Permission/RolePermission e converte cada vínculo antigo
+Identity/Role em RoleAssignment UUID no Scope administrativo explícito. O nome da
+tabela operacional é mantido por compatibilidade; o campo textual `scope` foi removido.
+Roles agora têm ownership GLOBAL/SCOPE/TENANT e unicidade por proprietário, mantendo
+a semântica anterior de nomes sensíveis a maiúsculas/minúsculas. O binding Tenant/Scope
+é validado por FK composta. V14 acrescenta DENYs e delegações explícitas.
+
+O domínio `IdentityRole` foi removido, substituído por `RoleAssignment`. O provider de
+authorities antigo foi substituído pelo avaliador comum. APIs administrativas antigas
+sem contexto continuam consultando exclusivamente a fronteira PLATFORM explícita;
+grants de um Tenant não são unidos em uma authority global. A adaptação dos endpoints
+que têm um Tenant como recurso ainda será feita antes da entrega.
+
+`EffectiveAuthorizationEvaluator` aplica estado de Identity, Scope e Tenant; ownership;
+assignments ativos; herança descendente; DENY Identity/Role absoluto; default deny.
+Não consulta Affiliation nem claims de Permission. Uma delegação não concede uso;
+uso não concede delegação; redelegação é uma flag explícita; Permission descontinuada
+permanece utilizável por grants existentes, mas não pode ser novamente delegada.
+
+`EffectiveAuthorizationUseCases` lê uma revisão consistente em REPEATABLE_READ,
+sem cache de JWT. Identity publica somente projeções mínimas de IDs ativos, sem
+duplicar entidades. A fixture de testes repõe o ROOT após o truncate descartável,
+pois as novas FKs de ownership incluem Roles nesse grafo de limpeza.
+
+Validação completa: **225 testes, zero falhas, erros ou ignorados; BUILD SUCCESS**,
+Java 17.0.18/PostgreSQL 18.4. Novos 14 cenários do algoritmo e dois testes de migração
+verificam instalação limpa e upgrade V10 populado, com IDs, grants, timestamps,
+Identity, Tenant, Session e Refresh preservados. Flyway validate passou nos schemas.
+
+Próximo trabalho obrigatório: mutações administrativas com ator confiável, delegação
+por Permission/Scope, prevenção de self-grant/alterações compartilhadas/reparenting;
+auditoria dessas mutações; proteção mínima ROOT/último administrador; enforcement
+dos recursos Tenant nas APIs existentes; concorrência e testes de segurança reais.
+Esses requisitos ainda não estão encerrados pelos testes de domínio acima.
