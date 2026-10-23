@@ -10,12 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ChangeNicknameUseCase {
+  private final br.com.imarui.ima.identity.core.application.port.IdentityOperationAccess access;
   private final IdentityRepository identities;
   private final java.time.Clock clock;
 
   @Transactional
   public IdentityResult execute(IdentityId id, String nickname) {
     var i = identities.findByIdForUpdate(id).orElseThrow();
+    access.requireSelfOrPlatform("IDENTITY_MANAGE", id.value());
     i.changeNickname(nickname, clock.instant());
     return IdentityResult.from(identities.save(i));
   }

@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class RejectIdentityApplicationUseCase {
+    private final br.com.imarui.ima.identity.core.application.port.IdentityOperationAccess access;
     private final IdentityApplicationRepository applications;
     private final CurrentActor currentActor;
     private final Clock clock;
@@ -19,6 +20,7 @@ public class RejectIdentityApplicationUseCase {
     public IdentityApplicationResult execute(RejectIdentityApplicationCommand command) {
         var actor = currentActor.requireIdentityId();
         var application = applications.findByIdForUpdate(command.identityApplicationId()).orElseThrow(IdentityApplicationNotFoundException::new);
+        access.requirePlatform("IDENTITY_APPLICATION_REVIEW");
         application.reject(actor, command.reason(), clock.instant());
         return IdentityApplicationResult.from(applications.save(application));
     }

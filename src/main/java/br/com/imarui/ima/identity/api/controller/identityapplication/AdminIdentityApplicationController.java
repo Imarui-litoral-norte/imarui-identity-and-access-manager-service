@@ -90,7 +90,7 @@ public class AdminIdentityApplicationController {
   public ResponseEntity<IdentityApplicationResponse> findById(
       @PathVariable String identityApplicationId) {
     IdentityApplicationResult result =
-        getIdentityApplicationUseCase.execute(IdentityApplicationId.from(identityApplicationId));
+        getIdentityApplicationUseCase.executeForReview(IdentityApplicationId.from(identityApplicationId));
 
     return ResponseEntity.ok(IdentityApplicationResponse.from(result));
   }

@@ -23,6 +23,7 @@ public class AuthenticationUseCases {
   private final ChallengeDelivery delivery;
   private final ApplicationTimeProperties timeProperties;
   private final Clock clock;
+  private final AuthenticationOperationAccess access;
   // Startup-only dummy hash uses the configured BCrypt cost, matching real account verification.
   private String dummyHash;
 
@@ -49,6 +50,8 @@ public class AuthenticationUseCases {
       throw new AuthenticationFailure();
     }
     var identity = identities.lock(candidate.id()).orElseThrow(AuthenticationFailure::new);
+    if (identities.resolve(kind, identifier).filter(current -> current.id().equals(identity.id())).isEmpty())
+      throw new AuthenticationFailure();
     var credential = store.credential(identity.id()).orElse(null);
     var now = clock.instant();
     boolean matches =
@@ -162,6 +165,7 @@ public class AuthenticationUseCases {
   @Transactional
   public void endSession(UUID owner, UUID sid) {
     identities.lock(owner).orElseThrow(AuthenticationFailure::new);
+    access.requireIdentity(owner);
     store.credential(owner);
     var s =
         store
@@ -176,6 +180,7 @@ public class AuthenticationUseCases {
 
   @Transactional(readOnly = true)
   public List<OwnSession> sessions(UUID owner) {
+    access.requireIdentity(owner);
     return store.sessions(owner).stream()
         .map(
             s ->
@@ -227,6 +232,9 @@ public class AuthenticationUseCases {
   @Transactional(noRollbackFor = AuthenticationFailure.class)
   public String administrativeInvitation(UUID actor, UUID target, String origin) {
     try {
+      identities.lock(target).orElseThrow(AuthenticationFailure::new);
+      access.requireIdentity(actor);
+      access.requirePlatform("AUTHENTICATION_INVITATION_CREATE");
       String raw = issueChallenge(target, Purpose.ACCOUNT_ACTIVATION);
       store.audit(actor, target, "ADMIN_INVITATION", "SUCCESS", origin, clock.instant());
       return raw;
@@ -246,6 +254,8 @@ public class AuthenticationUseCases {
     var challenge = store.challenge(hash, true).orElseThrow(AuthenticationFailure::new);
     var now = clock.instant();
     if (!challenge.valid(purpose, now)
+        || (purpose == Purpose.PASSWORD_RESET
+            && !identities.valid(identity.id(), challenge.createdAt(), null))
         || (purpose == Purpose.ACCOUNT_ACTIVATION
             ? identity.status() != IdentityStatus.PENDING
             : !identity.active())) throw new AuthenticationFailure();
@@ -260,14 +270,19 @@ public class AuthenticationUseCases {
         now);
   }
 
-  @Transactional
+  @Transactional(noRollbackFor = AuthenticationFailure.class)
   public void changePassword(UUID owner, String current, String next) {
     Credential.validatePassword(next);
     var i = identities.lock(owner).orElseThrow(AuthenticationFailure::new);
+    access.requireIdentity(owner);
     var c = store.credential(owner).orElseThrow(AuthenticationFailure::new);
     var now = clock.instant();
-    if (!i.active() || !c.allowed(now) || !passwords.matches(current, c.passwordHash()))
+    boolean matches = passwords.matches(current, c.passwordHash());
+    if (!i.active() || !c.allowed(now) || !matches) {
+      if (i.active() && c.allowed(now) && !matches) store.save(c.failed(now));
+      store.audit(owner, "PASSWORD_CHANGE_FAILED", now);
       throw new AuthenticationFailure();
+    }
     store.save(c.password(passwords.hash(next), now));
     store.revoke(owner, now);
     store.audit(owner, "PASSWORD_CHANGED", now);

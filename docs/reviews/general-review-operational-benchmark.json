@@ -1,0 +1,179 @@
+{
+  "java" : "17.0.18",
+  "os" : "Windows 10",
+  "processors" : 16,
+  "methodology" : "fresh schema per scenario; fixed dimensions; warmup 3; 100 snapshot/hierarchy, 1000 evaluator, 120 PDP across 4 readers plus 3 concurrent writes; 3 shared-role/4 reparent/1 revoke samples; p99 only for n>=100",
+  "limits" : "local synthetic policy pipeline with real PostgreSQL/snapshot/evaluator/audit/transactions; human and technical authentication prevalidated fixture ports, excludes HTTP/RSA/network; no production SLA; global mutation lock retained",
+  "scenarios" : [ {
+    "counts" : {
+      "delegations" : 15,
+      "roles" : 2,
+      "assignments" : 51,
+      "identities" : 51,
+      "permissions" : 10,
+      "denies" : 5,
+      "scopes" : 33
+    },
+    "snapshot_ms" : {
+      "samples" : 100,
+      "p50" : 7.7841,
+      "p95" : 11.3222,
+      "p99" : 13.3797,
+      "max" : 14.5207
+    },
+    "hierarchy_ms" : {
+      "samples" : 100,
+      "p50" : 0.0064,
+      "p95" : 0.01,
+      "p99" : 0.0286,
+      "max" : 0.042
+    },
+    "evaluation_ms" : {
+      "samples" : 1000,
+      "p50" : 0.0022,
+      "p95" : 0.0028,
+      "p99" : 0.0088,
+      "max" : 0.041
+    },
+    "shared_role_mutation_ms" : {
+      "samples" : 3,
+      "p50" : 28.7879,
+      "p95" : 38.4259,
+      "max" : 38.4259
+    },
+    "reparent_ms" : {
+      "samples" : 4,
+      "p50" : 23.3247,
+      "p95" : 27.7365,
+      "max" : 27.7365
+    },
+    "concurrent_pdp_ms" : {
+      "samples" : 120,
+      "p50" : 16.7876,
+      "p95" : 41.3574,
+      "p99" : 55.5644,
+      "max" : 64.9731
+    },
+    "observed_pdp_per_second" : 204.2056841332864,
+    "permission_revocation_ms" : {
+      "samples" : 1,
+      "p50" : 31.0502,
+      "p95" : 31.0502,
+      "max" : 31.0502
+    }
+  }, {
+    "counts" : {
+      "delegations" : 25,
+      "roles" : 2,
+      "assignments" : 151,
+      "identities" : 151,
+      "permissions" : 10,
+      "denies" : 15,
+      "scopes" : 83
+    },
+    "snapshot_ms" : {
+      "samples" : 100,
+      "p50" : 6.9251,
+      "p95" : 7.5546,
+      "p99" : 8.3781,
+      "max" : 9.6499
+    },
+    "hierarchy_ms" : {
+      "samples" : 100,
+      "p50" : 0.012,
+      "p95" : 0.0144,
+      "p99" : 0.0159,
+      "max" : 0.0245
+    },
+    "evaluation_ms" : {
+      "samples" : 1000,
+      "p50" : 0.0022,
+      "p95" : 0.0026,
+      "p99" : 0.0038,
+      "max" : 0.0075
+    },
+    "shared_role_mutation_ms" : {
+      "samples" : 3,
+      "p50" : 113.5454,
+      "p95" : 117.672,
+      "max" : 117.672
+    },
+    "reparent_ms" : {
+      "samples" : 4,
+      "p50" : 21.8214,
+      "p95" : 24.0021,
+      "max" : 24.0021
+    },
+    "concurrent_pdp_ms" : {
+      "samples" : 120,
+      "p50" : 13.9901,
+      "p95" : 26.7234,
+      "p99" : 39.1229,
+      "max" : 75.0699
+    },
+    "observed_pdp_per_second" : 238.41226964904524,
+    "permission_revocation_ms" : {
+      "samples" : 1,
+      "p50" : 82.5863,
+      "p95" : 82.5863,
+      "max" : 82.5863
+    }
+  }, {
+    "counts" : {
+      "delegations" : 40,
+      "roles" : 2,
+      "assignments" : 301,
+      "identities" : 301,
+      "permissions" : 10,
+      "denies" : 30,
+      "scopes" : 163
+    },
+    "snapshot_ms" : {
+      "samples" : 100,
+      "p50" : 7.9003,
+      "p95" : 8.7909,
+      "p99" : 10.5365,
+      "max" : 12.9879
+    },
+    "hierarchy_ms" : {
+      "samples" : 100,
+      "p50" : 0.0258,
+      "p95" : 0.0449,
+      "p99" : 0.0554,
+      "max" : 0.0961
+    },
+    "evaluation_ms" : {
+      "samples" : 1000,
+      "p50" : 0.0038,
+      "p95" : 0.0052,
+      "p99" : 0.0067,
+      "max" : 0.0288
+    },
+    "shared_role_mutation_ms" : {
+      "samples" : 3,
+      "p50" : 627.2876,
+      "p95" : 657.3759,
+      "max" : 657.3759
+    },
+    "reparent_ms" : {
+      "samples" : 4,
+      "p50" : 41.8163,
+      "p95" : 49.0256,
+      "max" : 49.0256
+    },
+    "concurrent_pdp_ms" : {
+      "samples" : 120,
+      "p50" : 16.8205,
+      "p95" : 34.4845,
+      "p99" : 48.0076,
+      "max" : 57.9162
+    },
+    "observed_pdp_per_second" : 57.122333904318666,
+    "permission_revocation_ms" : {
+      "samples" : 1,
+      "p50" : 398.5506,
+      "p95" : 398.5506,
+      "max" : 398.5506
+    }
+  } ]
+}

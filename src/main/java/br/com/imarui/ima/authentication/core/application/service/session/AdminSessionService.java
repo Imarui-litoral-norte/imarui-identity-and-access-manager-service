@@ -15,16 +15,18 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class AdminSessionService {
+    private final br.com.imarui.ima.authentication.core.port.AuthenticationOperationAccess access;
 
     private final SessionRepository sessionRepository;
     private final Clock clock;
     private final br.com.imarui.ima.authentication.core.repository.RefreshTokenRepository refreshTokens;
 
     @Transactional(readOnly=true)
-    public List<AdminSessionResult> findPage(int page,int size){return AdminSessionResult.from(sessionRepository.findPage(page,size));}
+    public List<AdminSessionResult> findPage(int page,int size){access.requirePlatform("AUTHENTICATION_SESSION_READ"); return AdminSessionResult.from(sessionRepository.findPage(page,size));}
 
     @Transactional(readOnly = true)
     public List<AdminSessionResult> findAll() {
+        access.requirePlatform("AUTHENTICATION_SESSION_READ");
         return AdminSessionResult.from(
                 sessionRepository.findAll()
         );
@@ -36,6 +38,7 @@ public class AdminSessionService {
     ) {
         Session session =
                 findSessionById(sessionId);
+        access.requirePlatform("AUTHENTICATION_SESSION_READ");
 
         return AdminSessionResult.from(session);
     }
@@ -46,6 +49,7 @@ public class AdminSessionService {
     ) {
         Session session =
                 findSessionByIdForUpdate(sessionId);
+        access.requirePlatform("AUTHENTICATION_SESSION_LOGOUT");
 
         Instant now = Instant.now(clock);
 

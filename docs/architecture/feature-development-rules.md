@@ -6,6 +6,10 @@ O código determina normalização, campos aceitos, estados e efeitos. Descrever
 enforcement. `@PreAuthorize` e a segurança HTTP aplicam o acesso; `@RequiredPermission` publica a mesma authority no OpenAPI.
 Ownership deve permanecer explícito: ler a própria Identity ou portar IDENTITY_READ é diferente de exigir uma permissão
 obrigatória de todos os consumidores. O core recebe o ator por `CurrentActor`, sem consultar SecurityContextHolder.
+Operações protegidas de Identity e Authentication também exigem autorização no caso de uso por seus ports
+`IdentityOperationAccess` e `AuthenticationOperationAccess`. Após aguardar locks de recurso, revalide a sessão
+e a política vigente antes de modificar dados; uma authority obtida no filtro não substitui essa conferência.
+O provider em Authorization reutiliza o evaluator central e resolve o Scope do Tenant pelo binding oficial.
 
 ## Transações e concorrência
 

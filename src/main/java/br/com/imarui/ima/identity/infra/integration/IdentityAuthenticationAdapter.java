@@ -51,7 +51,14 @@ public class IdentityAuthenticationAdapter implements IdentityAuthenticationApi 
   }
 
   private Optional<Account> find(UUID id) {
-    return identities.findById(IdentityId.from(id)).map(this::view);
+    // Authentication discovery must not retain a managed Identity before waiting for its lock.
+    return jdbc.query(
+        "select id,kind,status,nickname,primary_email from ima_identities where id=?",
+        (row, index) -> new Account(row.getObject("id", UUID.class),
+            IdentityKind.valueOf(row.getString("kind")),
+            IdentityStatus.valueOf(row.getString("status")),
+            row.getString("nickname"), row.getString("primary_email")), id)
+        .stream().findFirst();
   }
 
   private Account view(Identity i) {

@@ -41,7 +41,7 @@ class SelfDeleteIdentityUseCaseTest {
     when(repository.findByIdForUpdate(identity.getId())).thenReturn(Optional.of(identity));
     var useCase =
         new SelfDeleteIdentityUseCase(
-            repository, actor, deletion, revocation, Clock.fixed(NOW, ZoneOffset.UTC));
+            mock(IdentityOperationAccess.class), repository, actor, deletion, revocation, Clock.fixed(NOW, ZoneOffset.UTC));
     assertThrows(
         IllegalArgumentException.class, () -> useCase.execute(new SelfDeleteIdentityCommand(" ")));
     verifyNoInteractions(deletion, revocation);

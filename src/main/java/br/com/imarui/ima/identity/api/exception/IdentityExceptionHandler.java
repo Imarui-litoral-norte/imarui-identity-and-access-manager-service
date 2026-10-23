@@ -30,7 +30,7 @@ public class IdentityExceptionHandler {
     public ProblemDetail notFound(RuntimeException ex) {
         return problem(HttpStatus.NOT_FOUND, ex instanceof IdentityNotFoundException ? "IDENTITY_NOT_FOUND" : ex instanceof TenantNotFoundException ? "TENANT_NOT_FOUND" : "IDENTITY_APPLICATION_NOT_FOUND", "Requested resource was not found.");
     }
-    @ExceptionHandler(CurrentActorUnavailableException.class)
+    @ExceptionHandler({CurrentActorUnavailableException.class, org.springframework.security.oauth2.jwt.JwtException.class, org.springframework.security.core.AuthenticationException.class})
     public ProblemDetail unauthenticated() { return problem(HttpStatus.UNAUTHORIZED, "CURRENT_ACTOR_REQUIRED", "An authenticated Identity subject is required."); }
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
     public ProblemDetail forbidden() { return problem(HttpStatus.FORBIDDEN, "IDENTITY_ACCESS_DENIED", "Access to this resource is not permitted."); }
