@@ -10,6 +10,7 @@ O contrato HTTP é publicado no OpenAPI; os guias explicam arquitetura, domínio
 | Módulo | [Authorization](authorization/ARCHITECTURE.md) e [revisão corretiva](authorization/ROUND_3_REVIEW.md) | RBAC hierárquico, PDP/M2M, administração, recuperação, auditoria, rastreabilidade e parecer atual |
 | HTTP | `/docs` e `/v3/api-docs` | Endpoints, parâmetros, variantes, exemplos, acesso e erros |
 | Operação | [Ambiente local](operations/local-development.md) e [banco](database/README.md) | Configuração, inicialização e migrations |
+| Operação Authorization | [Hardening operacional](authorization/OPERATIONAL_HARDENING.md) | Benchmarks, sinais/alertas, auditoria, retenção e ensaio backup/restore |
 | Validação | [Estratégia de testes](testing/README.md) | Comandos, isolamento e cobertura por feature |
 | Evidências | [Aceite de Identity](identity-acceptance.md) | Rastreabilidade das tarefas e resultados executados |
 

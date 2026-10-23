@@ -29,6 +29,8 @@ jobs:
           java-version: '17'
           cache: maven
       - name: Verify migrations, domain, HTTP, PostgreSQL concurrency and regression
+        env:
+          IIAM_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           chmod +x mvnw
           ./mvnw -B clean verify
@@ -40,3 +42,6 @@ jobs:
             target/surefire-reports/
             target/authorization-openapi.json
             target/authorization-benchmark.json
+            target/authorization-operational-benchmark.json
+            target/authorization-recovery-rehearsal.json
+            target/authorization-audit-capacity.json

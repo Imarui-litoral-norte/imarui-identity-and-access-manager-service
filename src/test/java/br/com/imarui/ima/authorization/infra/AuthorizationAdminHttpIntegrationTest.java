@@ -13,6 +13,7 @@ import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionTemplate;
 
+@org.springframework.test.context.TestPropertySource(properties="management.endpoints.web.exposure.include=health,metrics")
 class AuthorizationAdminHttpIntegrationTest extends IdentityIntegrationSupport {
   @Autowired RoleAdministrationUseCases roles;
   @Autowired ScopeAdministrationUseCases hierarchy;
@@ -159,5 +160,16 @@ class AuthorizationAdminHttpIntegrationTest extends IdentityIntegrationSupport {
     var response=http("GET",API+"/scopes/"+leaf.id(),null,liveToken(reviewer));
     assertEquals(200,response.statusCode(),response.body());
     assertEquals("DISABLED",json.readTree(response.body()).path("status").asText());
+  }
+  @Test void explicitlyExposedMetricsRequireCurrentGlobalAuditAuthority() throws Exception {
+    var rootJwt=liveToken(reviewer); var manager=localAdmin(); var managerJwt=liveToken(manager);
+    assertEquals(200,http("GET","/actuator/health",null,null).statusCode());
+    assertEquals(401,http("GET","/actuator/metrics",null,null).statusCode());
+    assertEquals(403,http("GET","/actuator/metrics",null,managerJwt).statusCode());
+    var response=http("GET","/actuator/metrics",null,rootJwt);
+    assertEquals(200,response.statusCode(),response.body());
+    assertTrue(response.body().contains("iiam.authorization.policy.snapshot"));
+    disable.execute(new br.com.imarui.ima.identity.core.application.command.identity.DisableIdentityCommand(manager.getId()));
+    assertEquals(401,http("GET","/actuator/metrics",null,managerJwt).statusCode());
   }
 }

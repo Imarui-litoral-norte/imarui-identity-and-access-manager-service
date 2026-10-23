@@ -73,4 +73,27 @@ class ScopeHierarchyTest {
     assertThrows(IllegalArgumentException.class, () -> platform.revise("IIAM",
         AuthorizationScope.Status.ACTIVE, UUID.randomUUID(), NOW));
   }
+
+  @Test void preparedPathsAreImmutableAndNeverSharedAcrossReparentingOrLifecycleRevisions() {
+    var root=node("ROOT",null); var other=node("OTHER",null); var child=node("CHILD",root.id());
+    var old=new ScopeHierarchy(List.of(root,other,child));
+    var moved=child.revise(child.name(),child.status(),other.id(),NOW.plusSeconds(1));
+    var disabled=other.revise(other.name(),AuthorizationScope.Status.DISABLED,null,NOW.plusSeconds(1));
+    var next=new ScopeHierarchy(List.of(root,disabled,moved));
+    assertTrue(old.covers(root.id(),child.id())); assertTrue(old.active(child.id()));
+    assertFalse(next.covers(root.id(),child.id())); assertTrue(next.covers(other.id(),child.id()));
+    assertFalse(next.active(child.id()));
+    assertThrows(UnsupportedOperationException.class,() -> old.ancestors(child.id()).clear());
+    assertThrows(IllegalArgumentException.class,() -> next.active(UUID.randomUUID()));
+  }
+  @Test void unusuallyDeepTreesRemainValidatedWhenPreparedPathBudgetIsExceeded() {
+    var scopes=new ArrayList<AuthorizationScope>(); UUID parent=null;
+    for(int i=0;i<600;i++) { var scope=node("DEEP_"+i,parent); scopes.add(scope); parent=scope.id(); }
+    var tree=new ScopeHierarchy(scopes);
+    assertEquals(600,tree.ancestors(parent).size()); assertTrue(tree.covers(scopes.get(0).id(),parent));
+    assertThrows(IllegalArgumentException.class,() -> tree.ancestors(UUID.randomUUID()));
+    var broken=scopes.get(599).revise("Broken",AuthorizationScope.Status.ACTIVE,UUID.randomUUID(),NOW);
+    scopes.set(599,broken);
+    assertThrows(IllegalArgumentException.class,() -> new ScopeHierarchy(scopes));
+  }
 }

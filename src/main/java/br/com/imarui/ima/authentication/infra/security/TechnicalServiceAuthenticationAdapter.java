@@ -24,11 +24,13 @@ public class TechnicalServiceAuthenticationAdapter implements TechnicalServiceAu
   private final JdbcTemplate jdbc;
   private final Clock clock;
   private final JwtProperties properties;
+  private final io.micrometer.core.instrument.MeterRegistry metrics;
 
   private record ProofKey(String publicKey,String service,UUID clientId,Set<Operation> operations,Set<UUID> roots) {}
 
   @Transactional(propagation=Propagation.REQUIRES_NEW,timeout=5)
   public Caller verify(String assertion,String method,String path,byte[] body) {
+    String outcome="ERROR";
     try {
       if (assertion==null || assertion.length()>12000 || body.length>65536) throw new TechnicalAuthenticationException();
       var jwt=SignedJWT.parse(assertion); var h=jwt.getHeader(); var c=jwt.getJWTClaimsSet(); var now=clock.instant();
@@ -68,12 +70,15 @@ public class TechnicalServiceAuthenticationAdapter implements TechnicalServiceAu
           where n.credential_id=expired.credential_id and n.nonce=expired.nonce
           """,Timestamp.from(now));
       if(jdbc.update("insert into authentication_service_nonces(credential_id,nonce,expires_at) values(?,?,?) on conflict do nothing",
-          credential,nonce,Timestamp.from(c.getExpirationTime().toInstant()))!=1) throw new TechnicalAuthenticationException();
+          credential,nonce,Timestamp.from(c.getExpirationTime().toInstant()))!=1)
+        throw new TechnicalAuthenticationException(TechnicalAuthenticationException.Reason.REPLAY);
+      outcome="VERIFIED";
       return new Caller(proofKey.clientId(),service,credential,proofKey.operations(),proofKey.roots(),correlation);
-    } catch (TechnicalAuthenticationException e) { throw e; }
+    } catch (TechnicalAuthenticationException e) { outcome=e.reason().name(); throw e; }
       catch (java.text.ParseException | GeneralSecurityException | JOSEException | IllegalArgumentException e) {
+        outcome="INVALID_PROOF";
         throw new TechnicalAuthenticationException();
-      }
+      } finally { metrics.counter("iiam.m2m.proofs","outcome",outcome).increment(); }
   }
 
   @Transactional(propagation=Propagation.MANDATORY)

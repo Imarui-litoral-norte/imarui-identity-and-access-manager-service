@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthorizationExceptionHandler {
   private final SecurityAuditEvents events;
   private final java.time.Clock clock;
+  private final io.micrometer.core.instrument.MeterRegistry metrics;
   @ExceptionHandler(br.com.imarui.ima.authentication.core.exception.TechnicalAuthenticationException.class)
   public ProblemDetail invalidTechnical(Exception e,jakarta.servlet.http.HttpServletResponse response) {
     response.setHeader("WWW-Authenticate","Service");
@@ -57,12 +58,19 @@ public class AuthorizationExceptionHandler {
   @ExceptionHandler(AuthenticationRateLimiter.Limited.class)
   public ProblemDetail limited(Exception e) { return problem(429,"RATE_LIMITED"); }
   @ExceptionHandler({DataAccessException.class,org.springframework.transaction.TransactionException.class})
-  public ProblemDetail unavailable(Exception e) { return problem(503,"AUTHORIZATION_UNAVAILABLE"); }
+  public ProblemDetail unavailable(Exception e) {
+    boolean timeout=false;
+    for(Throwable cause=e;cause!=null;cause=cause.getCause())
+      if(cause instanceof org.springframework.dao.QueryTimeoutException || cause instanceof org.springframework.transaction.TransactionTimedOutException) timeout=true;
+    metrics.counter("iiam.authorization.dependency.failures","reason",timeout?"TIMEOUT":"DATABASE_OR_TRANSACTION").increment();
+    return problem(503,"AUTHORIZATION_UNAVAILABLE");
+  }
   private UUID actor() {
     var auth=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
     try { return auth==null?null:UUID.fromString(auth.getName()); } catch(IllegalArgumentException e) { return null; }
   }
   private ProblemDetail problem(int status,String code) {
+    metrics.counter("iiam.authorization.http.failures","code",code).increment();
     var auth=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
     var correlation=auth!=null && auth.getPrincipal() instanceof br.com.imarui.ima.authentication.api.module.TechnicalServiceAuthentication.Caller c?c.correlationId():UUID.randomUUID();
     var problem=ProblemDetail.forStatus(status); problem.setProperty("code",code); problem.setProperty("correlationId",correlation);

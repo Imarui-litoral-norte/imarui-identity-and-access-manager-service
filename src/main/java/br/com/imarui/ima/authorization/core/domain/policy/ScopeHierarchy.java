@@ -5,18 +5,33 @@ import java.util.*;
 
 /** Immutable, bounded traversal; corrupt or incomplete hierarchies fail closed. */
 public final class ScopeHierarchy {
+  // Bound retained path references for unusually deep trees; traversal remains the same beyond this budget.
+  private static final int PREPARED_PATH_NODE_LIMIT=100_000;
   private final Map<UUID, AuthorizationScope> scopes;
+  private final Map<UUID,List<AuthorizationScope>> paths;
 
   public ScopeHierarchy(Collection<AuthorizationScope> scopes) {
     var indexed = new HashMap<UUID, AuthorizationScope>();
     for (var scope : scopes)
       if (indexed.put(scope.id(), scope) != null) throw new IllegalArgumentException("Duplicate Scope.");
     this.scopes = Map.copyOf(indexed);
-    for (var scope : scopes) ancestors(scope.id());
+    var prepared=new HashMap<UUID,List<AuthorizationScope>>();
+    int retained=0;
+    for (var scope : scopes) {
+      var path=traverse(scope.id()); // Always validate, even when the retention budget is exhausted.
+      if(path.size()<=PREPARED_PATH_NODE_LIMIT-retained) { prepared.put(scope.id(),path); retained+=path.size(); }
+    }
+    this.paths=Map.copyOf(prepared);
   }
 
   /** Includes the resource itself, ordered from resource to root. */
   public List<AuthorizationScope> ancestors(UUID id) {
+    if(id==null) return List.of();
+    var path=paths.get(id);
+    return path==null?traverse(id):path;
+  }
+
+  private List<AuthorizationScope> traverse(UUID id) {
     var result = new ArrayList<AuthorizationScope>();
     var visited = new HashSet<UUID>();
     while (id != null) {

@@ -71,12 +71,14 @@ public class ServiceApiSecurityConfiguration {
           res.setHeader("X-Correlation-ID",correlation.toString());
           chain.doFilter(new BodyRequest(req,body),res);
         } catch(TechnicalAuthenticationException e) {
-          auditProblem(res,401,"INVALID_TECHNICAL_AUTHENTICATION",null,"M2M_AUTHENTICATION","INVALID_CREDENTIAL",correlation);
+          auditProblem(res,401,"INVALID_TECHNICAL_AUTHENTICATION",null,"M2M_AUTHENTICATION",e.reason()==TechnicalAuthenticationException.Reason.REPLAY?"REPLAY_DETECTED":"INVALID_CREDENTIAL",correlation);
         } catch(AuthenticationRateLimiter.Limited e) {
           problem(res,429,"RATE_LIMITED",correlation);
         } catch(SecurityException e) {
           auditProblem(res,403,"TECHNICAL_OPERATION_DENIED",caller,"M2M_AUTHORIZATION","OPERATION_DENIED",correlation);
-        } catch(org.springframework.dao.DataAccessException e) {
+        } catch(org.springframework.dao.DataAccessException | org.springframework.transaction.TransactionException e) {
+          metrics.counter("iiam.authorization.dependency.failures","reason",
+              e instanceof org.springframework.dao.QueryTimeoutException || e instanceof org.springframework.transaction.TransactionTimedOutException?"TIMEOUT":"DATABASE_OR_TRANSACTION").increment();
           problem(res,503,"AUTHORIZATION_UNAVAILABLE",correlation);
         } finally {
           sample.stop(metrics.timer("iiam.m2m.request","outcome",Integer.toString(res.getStatus())));
@@ -103,6 +105,7 @@ public class ServiceApiSecurityConfiguration {
 
   private void problem(HttpServletResponse response,int status,String code,UUID correlation) throws IOException {
     if(response.isCommitted()) return;
+    metrics.counter("iiam.authorization.http.failures","code",code).increment();
     var p=ProblemDetail.forStatus(status); p.setProperty("code",code); p.setProperty("correlationId",correlation);
     p.setProperty("timestamp",clock.instant());
     response.setStatus(status); response.setHeader("Cache-Control","no-store");

@@ -9,6 +9,11 @@
 O runner cria PostgreSQL 17 em porta aleatória restrita ao localhost, espera readiness, executa clean verify e remove
 somente seu próprio container no finally. O build inclui migrations, validação JPA, domínio/aplicação, HTTP real e JAR.
 O JAVA_HOME e IDENTITY_TEST_DB_URL do processo são restaurados ao encerrar.
+O runner também seleciona/restaura `IIAM_TEST_PG_CONTAINER` para usar pg_dump/pg_restore/psql
+do mesmo PostgreSQL no ensaio de recuperação. Ao executar Maven com PostgreSQL nativo,
+defina `IIAM_PG_BIN` para o diretório de clientes do mesmo major, ou disponibilize-os no PATH.
+Os testes operacionais exigem `identity_test` em loopback, permissões de criar/remover a própria
+base descartável e clientes PostgreSQL reais; não são ignorados silenciosamente.
 
 ## Recorte por feature
 

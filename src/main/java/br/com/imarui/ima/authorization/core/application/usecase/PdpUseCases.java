@@ -71,9 +71,10 @@ public class PdpUseCases {
           || !caller.serviceCode().equals(resources.permissionOwner(request.permission())))
         throw new Rejected(actor.identityId(),caller.serviceCode(),correlation);
       var decision=new EffectiveAuthorizationEvaluator().evaluate(state,actor.identityId(),request.permission(),scope,tree);
-      var id=UUID.randomUUID(); outcome=decision.allowed()?"ALLOW":"DENY";
+      var id=UUID.randomUUID();
       // Same connection/transaction: audit failure prevents ALLOW without nested-pool starvation.
       events.decision(id,actor.identityId(),caller.serviceCode(),request.resourceType(),request.resourceId(),scope,request.permission(),decision.reason().name(),correlation);
+      outcome=decision.allowed()?"ALLOW":"DENY";
       String committedOutcome=outcome;
       org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
         public void afterCommit() {
