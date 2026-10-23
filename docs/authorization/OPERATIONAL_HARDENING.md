@@ -14,7 +14,20 @@ V1–V25 permanecem imutáveis. Sem alteração no PR #3, Gateway, produção, m
 1. Recuperadas as ressalvas de `ROUND_3_REVIEW.md`, arquitetura, operação e contratos.
    Consultados IIAMS-128/133/143 pelo Atlassian Rovo Legacy. Busca por Tasks existentes
    não encontrou hardening equivalente (somente IIAMS-80, fora do escopo).
-2. Baseline e medições controladas: em execução; resultados serão registrados após validação.
+2. Baseline: `mvnw.cmd -B clean verify`, Java 17.0.18/PostgreSQL 18.4, 347 testes,
+   42 suites, sem falhas/erros/ignorados. Task técnica criada no Legacy:
+   [IIAMS-151](https://logimarui.atlassian.net/browse/IIAMS-151). A primeira criação
+   expirou; a busca subsequente não encontrou duplicata e a segunda foi confirmada.
+3. Benchmark em schema novo por cenário: 51/151/301 Identities, 33/83/163 Scopes,
+   DENYs e delegações, quatro leitores PDP com três escritas simultâneas, reparenting
+   e revogação. [Dados comparativos](round-4-benchmark.json). Reutilização de caminhos
+   imutáveis dentro da árvore da revisão reduziu a mediana da edição compartilhada
+   no maior cenário de 652,2181 para 445,6952 ms (31,7%). Cenários menores variaram;
+   três amostras de mutação não demonstram p99, capacidade de produção ou SLA.
+4. Sinais de replay, falha de auditoria, erro/timeout de dependência, espera por lock
+   e mutações confirmadas. Falha de auditoria PDP agora registra duração ERROR,
+   preservando resposta fail-closed e ausência de contador de decisão confirmada.
+   47 testes dirigidos aprovados (HTTP/M2M, métricas protegidas, árvore e sinais).
 
 ## Estados de entrega
 

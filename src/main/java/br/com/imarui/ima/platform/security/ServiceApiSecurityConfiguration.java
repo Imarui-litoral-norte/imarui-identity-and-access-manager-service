@@ -71,7 +71,7 @@ public class ServiceApiSecurityConfiguration {
           res.setHeader("X-Correlation-ID",correlation.toString());
           chain.doFilter(new BodyRequest(req,body),res);
         } catch(TechnicalAuthenticationException e) {
-          auditProblem(res,401,"INVALID_TECHNICAL_AUTHENTICATION",null,"M2M_AUTHENTICATION","INVALID_CREDENTIAL",correlation);
+          auditProblem(res,401,"INVALID_TECHNICAL_AUTHENTICATION",null,"M2M_AUTHENTICATION",e.reason()==TechnicalAuthenticationException.Reason.REPLAY?"REPLAY_DETECTED":"INVALID_CREDENTIAL",correlation);
         } catch(AuthenticationRateLimiter.Limited e) {
           problem(res,429,"RATE_LIMITED",correlation);
         } catch(SecurityException e) {
@@ -103,6 +103,7 @@ public class ServiceApiSecurityConfiguration {
 
   private void problem(HttpServletResponse response,int status,String code,UUID correlation) throws IOException {
     if(response.isCommitted()) return;
+    metrics.counter("iiam.authorization.http.failures","code",code).increment();
     var p=ProblemDetail.forStatus(status); p.setProperty("code",code); p.setProperty("correlationId",correlation);
     p.setProperty("timestamp",clock.instant());
     response.setStatus(status); response.setHeader("Cache-Control","no-store");

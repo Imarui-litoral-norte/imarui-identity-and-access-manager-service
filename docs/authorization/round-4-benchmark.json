@@ -1,0 +1,373 @@
+{
+  "date": "2026-10-23",
+  "baselineCode": "aaf04a575304b57b8e04d2520647037a0fba4f8a",
+  "database": "PostgreSQL 18.4 isolated on loopback",
+  "change": "Immutable ancestor paths reused only within one ScopeHierarchy revision; observability instrumentation included after baseline",
+  "before": {
+    "java": "17.0.18",
+    "os": "Windows 10",
+    "processors": 16,
+    "methodology": "fresh schema per scenario; fixed dimensions; warmup 3; 100 snapshot/hierarchy, 1000 evaluator, 120 PDP across 4 readers plus 3 concurrent writes; 3 shared-role/4 reparent/1 revoke samples; p99 only for n>=100",
+    "limits": "local synthetic policy pipeline with real PostgreSQL/snapshot/evaluator/audit/transactions; human and technical authentication prevalidated fixture ports, excludes HTTP/RSA/network; no production SLA; global mutation lock retained",
+    "scenarios": [
+      {
+        "counts": {
+          "assignments": 51,
+          "roles": 2,
+          "delegations": 15,
+          "scopes": 33,
+          "denies": 5,
+          "permissions": 10,
+          "identities": 51
+        },
+        "snapshot_ms": {
+          "samples": 100,
+          "p50": 2.8246,
+          "p95": 3.9728,
+          "p99": 7.6909,
+          "max": 8.2457
+        },
+        "hierarchy_ms": {
+          "samples": 100,
+          "p50": 0.016,
+          "p95": 0.0344,
+          "p99": 0.0395,
+          "max": 0.0453
+        },
+        "evaluation_ms": {
+          "samples": 1000,
+          "p50": 0.0079,
+          "p95": 0.0238,
+          "p99": 0.047,
+          "max": 0.215
+        },
+        "shared_role_mutation_ms": {
+          "samples": 3,
+          "p50": 26.8015,
+          "p95": 81.2369,
+          "max": 81.2369
+        },
+        "reparent_ms": {
+          "samples": 4,
+          "p50": 12.6719,
+          "p95": 19.1072,
+          "max": 19.1072
+        },
+        "concurrent_pdp_ms": {
+          "samples": 120,
+          "p50": 6.1826,
+          "p95": 81.9025,
+          "p99": 101.2394,
+          "max": 155.6893
+        },
+        "observed_pdp_per_second": 246.83861444548938,
+        "permission_revocation_ms": {
+          "samples": 1,
+          "p50": 46.3941,
+          "p95": 46.3941,
+          "max": 46.3941
+        }
+      },
+      {
+        "counts": {
+          "assignments": 151,
+          "roles": 2,
+          "delegations": 25,
+          "scopes": 83,
+          "denies": 15,
+          "permissions": 10,
+          "identities": 151
+        },
+        "snapshot_ms": {
+          "samples": 100,
+          "p50": 3.1977,
+          "p95": 5.0808,
+          "p99": 5.6751,
+          "max": 5.6945
+        },
+        "hierarchy_ms": {
+          "samples": 100,
+          "p50": 0.0185,
+          "p95": 0.0332,
+          "p99": 0.0539,
+          "max": 0.0541
+        },
+        "evaluation_ms": {
+          "samples": 1000,
+          "p50": 0.0054,
+          "p95": 0.0095,
+          "p99": 0.0122,
+          "max": 0.0713
+        },
+        "shared_role_mutation_ms": {
+          "samples": 3,
+          "p50": 127.699,
+          "p95": 131.9696,
+          "max": 131.9696
+        },
+        "reparent_ms": {
+          "samples": 4,
+          "p50": 11.0199,
+          "p95": 13.0658,
+          "max": 13.0658
+        },
+        "concurrent_pdp_ms": {
+          "samples": 120,
+          "p50": 7.8531,
+          "p95": 19.2907,
+          "p99": 57.7126,
+          "max": 58.6351
+        },
+        "observed_pdp_per_second": 307.40374228192456,
+        "permission_revocation_ms": {
+          "samples": 1,
+          "p50": 73.804,
+          "p95": 73.804,
+          "max": 73.804
+        }
+      },
+      {
+        "counts": {
+          "assignments": 301,
+          "roles": 2,
+          "delegations": 40,
+          "scopes": 163,
+          "denies": 30,
+          "permissions": 10,
+          "identities": 301
+        },
+        "snapshot_ms": {
+          "samples": 100,
+          "p50": 2.7211,
+          "p95": 3.3623,
+          "p99": 4.0059,
+          "max": 4.0177
+        },
+        "hierarchy_ms": {
+          "samples": 100,
+          "p50": 0.0192,
+          "p95": 0.0275,
+          "p99": 0.0461,
+          "max": 0.0604
+        },
+        "evaluation_ms": {
+          "samples": 1000,
+          "p50": 0.0046,
+          "p95": 0.0071,
+          "p99": 0.009,
+          "max": 0.0228
+        },
+        "shared_role_mutation_ms": {
+          "samples": 3,
+          "p50": 652.2181,
+          "p95": 678.7378,
+          "max": 678.7378
+        },
+        "reparent_ms": {
+          "samples": 4,
+          "p50": 19.1529,
+          "p95": 21.2627,
+          "max": 21.2627
+        },
+        "concurrent_pdp_ms": {
+          "samples": 120,
+          "p50": 7.3327,
+          "p95": 28.0229,
+          "p99": 55.2133,
+          "max": 55.3598
+        },
+        "observed_pdp_per_second": 61.88687193269968,
+        "permission_revocation_ms": {
+          "samples": 1,
+          "p50": 400.8394,
+          "p95": 400.8394,
+          "max": 400.8394
+        }
+      }
+    ]
+  },
+  "after": {
+    "java": "17.0.18",
+    "os": "Windows 10",
+    "processors": 16,
+    "methodology": "fresh schema per scenario; fixed dimensions; warmup 3; 100 snapshot/hierarchy, 1000 evaluator, 120 PDP across 4 readers plus 3 concurrent writes; 3 shared-role/4 reparent/1 revoke samples; p99 only for n>=100",
+    "limits": "local synthetic policy pipeline with real PostgreSQL/snapshot/evaluator/audit/transactions; human and technical authentication prevalidated fixture ports, excludes HTTP/RSA/network; no production SLA; global mutation lock retained",
+    "scenarios": [
+      {
+        "counts": {
+          "permissions": 10,
+          "identities": 51,
+          "assignments": 51,
+          "roles": 2,
+          "delegations": 15,
+          "scopes": 33,
+          "denies": 5
+        },
+        "snapshot_ms": {
+          "samples": 100,
+          "p50": 3.4851,
+          "p95": 5.2251,
+          "p99": 6.6444,
+          "max": 7.6364
+        },
+        "hierarchy_ms": {
+          "samples": 100,
+          "p50": 0.0207,
+          "p95": 0.0408,
+          "p99": 0.0588,
+          "max": 0.104
+        },
+        "evaluation_ms": {
+          "samples": 1000,
+          "p50": 0.007,
+          "p95": 0.0268,
+          "p99": 0.0599,
+          "max": 0.4248
+        },
+        "shared_role_mutation_ms": {
+          "samples": 3,
+          "p50": 30.9094,
+          "p95": 98.0669,
+          "max": 98.0669
+        },
+        "reparent_ms": {
+          "samples": 4,
+          "p50": 15.4911,
+          "p95": 27.2846,
+          "max": 27.2846
+        },
+        "concurrent_pdp_ms": {
+          "samples": 120,
+          "p50": 8.2236,
+          "p95": 51.4348,
+          "p99": 190.7658,
+          "max": 217.9373
+        },
+        "observed_pdp_per_second": 210.4842927850545,
+        "permission_revocation_ms": {
+          "samples": 1,
+          "p50": 37.686,
+          "p95": 37.686,
+          "max": 37.686
+        }
+      },
+      {
+        "counts": {
+          "permissions": 10,
+          "identities": 151,
+          "assignments": 151,
+          "roles": 2,
+          "delegations": 25,
+          "scopes": 83,
+          "denies": 15
+        },
+        "snapshot_ms": {
+          "samples": 100,
+          "p50": 2.557,
+          "p95": 4.5698,
+          "p99": 4.8737,
+          "max": 7.2084
+        },
+        "hierarchy_ms": {
+          "samples": 100,
+          "p50": 0.0136,
+          "p95": 0.018,
+          "p99": 0.0695,
+          "max": 0.0769
+        },
+        "evaluation_ms": {
+          "samples": 1000,
+          "p50": 0.0015,
+          "p95": 0.0028,
+          "p99": 0.0037,
+          "max": 0.0234
+        },
+        "shared_role_mutation_ms": {
+          "samples": 3,
+          "p50": 110.1325,
+          "p95": 114.936,
+          "max": 114.936
+        },
+        "reparent_ms": {
+          "samples": 4,
+          "p50": 11.7129,
+          "p95": 12.3491,
+          "max": 12.3491
+        },
+        "concurrent_pdp_ms": {
+          "samples": 120,
+          "p50": 8.0559,
+          "p95": 21.9534,
+          "p99": 55.4042,
+          "max": 55.7289
+        },
+        "observed_pdp_per_second": 348.6921574193991,
+        "permission_revocation_ms": {
+          "samples": 1,
+          "p50": 57.9548,
+          "p95": 57.9548,
+          "max": 57.9548
+        }
+      },
+      {
+        "counts": {
+          "permissions": 10,
+          "identities": 301,
+          "assignments": 301,
+          "roles": 2,
+          "delegations": 40,
+          "scopes": 163,
+          "denies": 30
+        },
+        "snapshot_ms": {
+          "samples": 100,
+          "p50": 3.0951,
+          "p95": 4.1649,
+          "p99": 4.4775,
+          "max": 4.8066
+        },
+        "hierarchy_ms": {
+          "samples": 100,
+          "p50": 0.0213,
+          "p95": 0.0277,
+          "p99": 0.0349,
+          "max": 0.0861
+        },
+        "evaluation_ms": {
+          "samples": 1000,
+          "p50": 0.0026,
+          "p95": 0.0027,
+          "p99": 0.0046,
+          "max": 0.0099
+        },
+        "shared_role_mutation_ms": {
+          "samples": 3,
+          "p50": 445.6952,
+          "p95": 460.0736,
+          "max": 460.0736
+        },
+        "reparent_ms": {
+          "samples": 4,
+          "p50": 18.5736,
+          "p95": 21.3007,
+          "max": 21.3007
+        },
+        "concurrent_pdp_ms": {
+          "samples": 120,
+          "p50": 8.1235,
+          "p95": 21.2349,
+          "p99": 54.3733,
+          "max": 54.9696
+        },
+        "observed_pdp_per_second": 91.10425416629245,
+        "permission_revocation_ms": {
+          "samples": 1,
+          "p50": 273.0146,
+          "p95": 273.0146,
+          "max": 273.0146
+        }
+      }
+    ]
+  },
+  "limits": "One process per variant, fresh JVM warmup not fully controlled, three mutation samples only. Concurrent throughput includes writer tail. No production SLA or claim of general capacity."
+}

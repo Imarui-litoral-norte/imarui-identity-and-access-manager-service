@@ -32,6 +32,7 @@ class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
   @Autowired ScopeRepository scopes;
   @Autowired ScopeAdministrationUseCases hierarchy;
   @Autowired JwtProperties jwtProperties;
+  @Autowired io.micrometer.core.instrument.MeterRegistry metrics;
   private static KeyPair pair;
   private String service;
   private TechnicalServiceAuthentication.Client client;
@@ -224,10 +225,16 @@ class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
   }
   @Test void auditFailureNeverReturnsAnAllowAndRecordsNoToken() throws Exception {
     var user=granted(); var jwt=token(user); var body=request(user,jwt,scope());
+    double failures=metrics.counter("iiam.security.audit.failures","journal","DECISION").count();
+    double committed=metrics.counter("iiam.pdp.decisions","reason","ALLOWED").count();
+    long errors=metrics.timer("iiam.pdp.duration","outcome","ERROR").count();
     jdbc.execute("create function test_pdp_audit_failure() returns trigger language plpgsql as $$ begin if new.event='PDP_DECISION' then raise exception 'fixture audit failure'; end if; return new; end $$");
     jdbc.execute("create trigger test_pdp_audit_failure before insert on authorization_security_events for each row execute function test_pdp_audit_failure()");
     try { assertEquals(503,send(PDP,body,null).statusCode()); }
     finally { jdbc.execute("drop trigger test_pdp_audit_failure on authorization_security_events"); jdbc.execute("drop function test_pdp_audit_failure()"); }
+    assertEquals(failures+1,metrics.counter("iiam.security.audit.failures","journal","DECISION").count());
+    assertEquals(committed,metrics.counter("iiam.pdp.decisions","reason","ALLOWED").count());
+    assertEquals(errors+1,metrics.timer("iiam.pdp.duration","outcome","ERROR").count());
     assertEquals(200,send(PDP,body,null).statusCode());
     assertEquals(0,jdbc.queryForObject("select count(*) from authorization_security_events where details::text like ?",Integer.class,"%"+jwt+"%"));
   }
@@ -249,6 +256,8 @@ class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
         Integer.class,UUID.fromString(correlation),service));
   }
   @Test void simultaneousReplayHasOnlyOneAuthenticatedWinner() throws Exception {
+    double replays=metrics.counter("iiam.m2m.proofs","outcome","REPLAY").count();
+    long replayEvents=jdbc.queryForObject("select count(*) from authorization_security_events where reason_code='REPLAY_DETECTED'",Long.class);
     var body=manifest(1); var assertion=proof(CATALOG,body); var pool=java.util.concurrent.Executors.newFixedThreadPool(2);
     var barrier=new java.util.concurrent.CyclicBarrier(2);
     try {
@@ -256,6 +265,8 @@ class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
       var a=pool.submit(action); var c=pool.submit(action);
       assertEquals(Set.of(200,401),Set.of(a.get(20,java.util.concurrent.TimeUnit.SECONDS),c.get(20,java.util.concurrent.TimeUnit.SECONDS)));
     } finally { pool.shutdownNow(); }
+    assertEquals(replays+1,metrics.counter("iiam.m2m.proofs","outcome","REPLAY").count());
+    assertEquals(replayEvents+1,jdbc.queryForObject("select count(*) from authorization_security_events where reason_code='REPLAY_DETECTED'",Long.class));
   }
   @Test void anUnrelatedLockedExpiredNonceCannotBlockFreshAuthentication() throws Exception {
     var stale=UUID.randomUUID();

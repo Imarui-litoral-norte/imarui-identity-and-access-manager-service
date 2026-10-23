@@ -6,17 +6,27 @@ import java.util.*;
 /** Immutable, bounded traversal; corrupt or incomplete hierarchies fail closed. */
 public final class ScopeHierarchy {
   private final Map<UUID, AuthorizationScope> scopes;
+  private final Map<UUID,List<AuthorizationScope>> paths;
 
   public ScopeHierarchy(Collection<AuthorizationScope> scopes) {
     var indexed = new HashMap<UUID, AuthorizationScope>();
     for (var scope : scopes)
       if (indexed.put(scope.id(), scope) != null) throw new IllegalArgumentException("Duplicate Scope.");
     this.scopes = Map.copyOf(indexed);
-    for (var scope : scopes) ancestors(scope.id());
+    var prepared=new HashMap<UUID,List<AuthorizationScope>>();
+    for (var scope : scopes) prepared.put(scope.id(),traverse(scope.id()));
+    this.paths=Map.copyOf(prepared);
   }
 
   /** Includes the resource itself, ordered from resource to root. */
   public List<AuthorizationScope> ancestors(UUID id) {
+    if(id==null) return List.of();
+    var path=paths.get(id);
+    if(path==null) throw new IllegalArgumentException("Unknown Scope or ancestor.");
+    return path;
+  }
+
+  private List<AuthorizationScope> traverse(UUID id) {
     var result = new ArrayList<AuthorizationScope>();
     var visited = new HashSet<UUID>();
     while (id != null) {

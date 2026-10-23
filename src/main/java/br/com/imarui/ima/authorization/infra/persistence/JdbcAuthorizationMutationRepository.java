@@ -19,7 +19,11 @@ public class JdbcAuthorizationMutationRepository implements AuthorizationMutatio
   private final JdbcTemplate jdbc;
   private final JsonMapper json;
   private final io.micrometer.core.instrument.MeterRegistry metrics;
-  public void lock() { jdbc.query("select pg_advisory_xact_lock(810082)",r -> {}); }
+  public void lock() {
+    var sample=io.micrometer.core.instrument.Timer.start(metrics); String outcome="ERROR";
+    try { jdbc.query("select pg_advisory_xact_lock(810082)",r -> {}); outcome="ACQUIRED"; }
+    finally { sample.stop(metrics.timer("iiam.authorization.mutation.lock","outcome",outcome)); }
+  }
   public Role saveRole(Role role) {
     if (role.id()==null) {
       long id=jdbc.queryForObject("insert into authorization_roles(name,ownership,owner_scope_id,owner_tenant_id,status,created_at,updated_at,version) values(?,?,?,?,?,?,?,0) returning id",
@@ -77,9 +81,18 @@ public class JdbcAuthorizationMutationRepository implements AuthorizationMutatio
   public void audit(UUID actor,String operation,String type,String resource,UUID scope,
       PolicyChangeReason reason,Object before,Object after,Instant now) {
     metrics.counter("iiam.authorization.mutation.attempts","action",operation).increment();
+    try {
     jdbc.update("insert into authorization_audit(id,actor_identity_id,service_code,action,resource_type,resource_id,scope_id,occurred_at,reason,correlation_id,before_state,after_state) values(?,?,'iiam',?,?,?,?,?,?,?,?::jsonb,?::jsonb)",
         UUID.randomUUID(),actor,operation,type,resource,scope,Timestamp.from(now),reason.reason(),reason.correlationId(),
         before==null?null:json.writeValueAsString(before),after==null?null:json.writeValueAsString(after));
+    } catch(org.springframework.dao.DataAccessException failure) {
+      metrics.counter("iiam.security.audit.failures","journal","ADMINISTRATIVE").increment();
+      org.slf4j.LoggerFactory.getLogger(getClass()).error("security_audit_failure journal=ADMINISTRATIVE correlationId={}",reason.correlationId());
+      throw failure;
+    }
+    org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+      public void afterCommit() { metrics.counter("iiam.authorization.mutations","action",operation).increment(); }
+    });
   }
   private void changed(int rows) { if (rows!=1) throw new OptimisticLockingFailureException("Policy changed concurrently."); }
 }
