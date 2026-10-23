@@ -21,7 +21,6 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 12
     env:
       IDENTITY_TEST_DB_URL: jdbc:postgresql://localhost:5432/identity_test
-      IIAM_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -30,6 +29,8 @@ jobs:
           java-version: '17'
           cache: maven
       - name: Verify migrations, domain, HTTP, PostgreSQL concurrency and regression
+        env:
+          IIAM_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           chmod +x mvnw
           ./mvnw -B clean verify
