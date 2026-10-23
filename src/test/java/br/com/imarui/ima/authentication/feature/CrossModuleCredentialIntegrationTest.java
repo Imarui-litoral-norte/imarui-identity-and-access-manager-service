@@ -81,11 +81,12 @@ class CrossModuleCredentialIntegrationTest extends IdentityIntegrationSupport {
   @Test
   void failedCurrentPasswordAttemptsPersistAndUseCredentialLockout() {
     var target = active("change-lockout");
+    actor(target.getId());
     for (int attempt = 0; attempt < 5; attempt++)
       assertThrows(AuthenticationFailure.class, () -> authentication.changePassword(target.getId().value(), "Wrong password!", NEXT));
     assertEquals(5, jdbc.queryForObject("select failures from authentication_credentials where identity_id=?", Integer.class, target.getId().value()));
+    assertEquals(5, jdbc.queryForObject("select count(*) from authentication_audit where identity_id=? and event='PASSWORD_CHANGE_FAILED'", Integer.class, target.getId().value()));
     assertThrows(AuthenticationFailure.class, () -> authentication.changePassword(target.getId().value(), PASSWORD, NEXT));
     assertThrows(AuthenticationFailure.class, () -> authentication.login(IdentityKind.SERVICE, "change-lockout", PASSWORD));
-    assertEquals(5, jdbc.queryForObject("select count(*) from authentication_audit where identity_id=? and event='PASSWORD_CHANGE_FAILED'", Integer.class, target.getId().value()));
   }
 }

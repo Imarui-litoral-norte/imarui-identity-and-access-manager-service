@@ -15,6 +15,7 @@ import java.time.Clock;
 @Service
 @RequiredArgsConstructor
 public class DisableTenantUseCase {
+    private final br.com.imarui.ima.identity.core.application.port.IdentityOperationAccess access;
 
     private final TenantRepository tenantRepository;
     private final Clock clock;
@@ -32,6 +33,7 @@ public class DisableTenantUseCase {
                         )
                 );
 
+        access.requireTenant("TENANT_MANAGE", tenantId.value());
         tenant.disable(clock.instant());
 
         Tenant savedTenant = tenantRepository.save(tenant);

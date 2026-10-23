@@ -112,6 +112,28 @@ public abstract class IdentityIntegrationSupport {
     tenant.activate(earlier);
     tenant = tenants.save(tenant);
     actor(reviewer.getId());
+    grantFixtureAdministration();
+  }
+
+  /** Explicit grants for fixture calls to protected Identity/Authentication use cases. */
+  protected void grantFixtureAdministration() {
+    grantFixtureAdministration(reviewer.getId());
+  }
+
+  protected void grantFixtureAdministration(IdentityId subject) {
+    new TransactionTemplate(transactions).executeWithoutResult(status -> {
+      var existing = jdbc.queryForList("select id from authorization_roles where name='fixture-legacy-administration'", Long.class);
+      Long role = existing.isEmpty() ? jdbc.queryForObject("insert into authorization_roles(name,ownership,active) values('fixture-legacy-administration','GLOBAL',true) returning id", Long.class) : existing.get(0);
+      jdbc.update("insert into authorization_role_permissions(role_id,permission_id) select ?,id from authorization_permissions where code in ('IDENTITY_READ','IDENTITY_MANAGE','IDENTITY_APPLICATION_READ','IDENTITY_APPLICATION_REVIEW','TENANT_READ','TENANT_MANAGE','AUTHENTICATION_SESSION_READ','AUTHENTICATION_SESSION_LOGOUT','AUTHENTICATION_REFRESH_TOKEN_READ','AUTHENTICATION_REFRESH_TOKEN_REVOKE','AUTHENTICATION_INVITATION_CREATE') on conflict do nothing", role);
+      jdbc.update("insert into authorization_identity_roles(identity_id,role_id,authorization_scope_id) values(?,?,?) on conflict do nothing", subject.value(), role, br.com.imarui.ima.authorization.core.domain.model.AuthorizationScope.PLATFORM_ID);
+    });
+  }
+
+  protected void independentAdministrativeActor() {
+    var operator = identities.save(service("operator@example.test"));
+    firstAccess(operator.getId());
+    grantFixtureAdministration(operator.getId());
+    actor(operator.getId());
   }
 
   @AfterEach

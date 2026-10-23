@@ -18,6 +18,7 @@ import java.time.Instant;
 @Service
 @RequiredArgsConstructor
 public class CreateTenantUseCase {
+    private final br.com.imarui.ima.identity.core.application.port.IdentityOperationAccess access;
 
     private final TenantRepository tenantRepository;
     private final Clock clock;
@@ -27,6 +28,7 @@ public class CreateTenantUseCase {
             CreateTenantCommand command
     ) {
         TenantCode code = TenantCode.from(command.code());
+        access.requirePlatform("TENANT_MANAGE");
         TenantName name = TenantName.from(command.name());
 
         if (tenantRepository.existsByCode(code)) {

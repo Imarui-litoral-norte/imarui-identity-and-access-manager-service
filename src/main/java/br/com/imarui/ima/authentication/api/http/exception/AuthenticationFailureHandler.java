@@ -14,7 +14,8 @@ import org.springframework.web.bind.annotation.*;
 public class AuthenticationFailureHandler {
   private final Clock clock;
 
-  @ExceptionHandler(AuthenticationFailure.class)
+  @ExceptionHandler({AuthenticationFailure.class, br.com.imarui.ima.identity.core.application.exception.CurrentActorUnavailableException.class,
+      org.springframework.security.oauth2.jwt.JwtException.class, org.springframework.security.core.AuthenticationException.class})
   public ResponseEntity<ProblemDetail> failure() {
     return problem(401, "AUTHENTICATION_FAILED");
   }

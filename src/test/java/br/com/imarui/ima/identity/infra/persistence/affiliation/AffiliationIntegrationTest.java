@@ -78,6 +78,7 @@ class AffiliationIntegrationTest extends IdentityIntegrationSupport {
         disableTenant.execute(new DisableTenantCommand(tenant.getId())); reactivateTenant.execute(new ReactivateTenantCommand(tenant.getId()));
         assertTrue(affiliations.findByIdentityId(reviewer.getId()).isEmpty());
         assertTrue(affiliations.findById(affiliation.getId()).orElseThrow().isInactive());
+        independentAdministrativeActor();
         disable.execute(new DisableIdentityCommand(reviewer.getId())); reactivate.execute(new ReactivateIdentityCommand(reviewer.getId()));
         assertEquals(3,revocations.count());
     }

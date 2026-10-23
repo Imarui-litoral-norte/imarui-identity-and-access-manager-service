@@ -104,6 +104,16 @@ public class JdbcAuthenticationStore implements AuthenticationStore {
   }
 
   public Optional<Session> session(UUID sid, boolean lock) {
+    if (!lock) {
+      // A point-of-use SID check must see committed revocation, even if JPA already loaded it.
+      return jdbc.query("select * from authentication_sessions where public_id=?",
+          (row, index) -> Session.reconstitute(row.getLong("id"), time(row, "created_at"),
+              time(row, "expires_at"), time(row, "logged_out_at"),
+              br.com.imarui.ima.authentication.core.domain.enums.SessionStatus.valueOf(row.getString("session_status")))
+              .authenticationContext(row.getObject("identity_id", UUID.class),
+                  row.getObject("public_id", UUID.class), time(row, "revoked_at")), sid)
+          .stream().findFirst();
+    }
     return jdbc
         .queryForList("select id from authentication_sessions where public_id=?", Long.class, sid)
         .stream()

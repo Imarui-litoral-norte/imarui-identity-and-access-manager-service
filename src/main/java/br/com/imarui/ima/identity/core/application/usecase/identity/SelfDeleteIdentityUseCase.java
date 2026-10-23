@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class SelfDeleteIdentityUseCase {
+    private final IdentityOperationAccess access;
     private final IdentityRepository identities;
     private final CurrentActor currentActor;
     private final IdentityDeletion deletion;
@@ -23,6 +24,7 @@ public class SelfDeleteIdentityUseCase {
         var actor = currentActor.requireIdentityId();
         var identity = identities.findByIdForUpdate(actor)
                 .orElseThrow(() -> new IdentityNotFoundException(actor));
+        access.requireSelfOrPlatform("IDENTITY_MANAGE", actor.value());
         String reason = command.reason() == null ? null : command.reason().trim();
         if (reason != null && (reason.isBlank() || reason.length() > 500)) {
             throw new IllegalArgumentException("Deletion reason must contain 1 to 500 characters.");

@@ -38,11 +38,12 @@ class IdentityLifecycleUseCaseTest {
     var clock = Clock.fixed(NOW, ZoneOffset.UTC);
     when(repository.findByIdForUpdate(identity.getId())).thenReturn(Optional.of(identity));
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-    new ActivateIdentityUseCase(repository, clock, id -> true)
+    var access = mock(IdentityOperationAccess.class);
+    new ActivateIdentityUseCase(access, repository, clock, id -> true)
         .execute(new ActivateIdentityCommand(identity.getId()));
-    new DisableIdentityUseCase(repository, clock, revocation)
+    new DisableIdentityUseCase(access, repository, clock, revocation)
         .execute(new DisableIdentityCommand(identity.getId()));
-    new ReactivateIdentityUseCase(repository, clock)
+    new ReactivateIdentityUseCase(access, repository, clock)
         .execute(new ReactivateIdentityCommand(identity.getId()));
     verify(revocation).revokeIdentity(identity.getId());
     verifyNoMoreInteractions(revocation);

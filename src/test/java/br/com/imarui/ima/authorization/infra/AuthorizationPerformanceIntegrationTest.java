@@ -28,6 +28,7 @@ class AuthorizationPerformanceIntegrationTest extends IdentityIntegrationSupport
     transaction.executeWithoutResult(s -> {
       jdbc.update("delete from authentication_bootstrap where name='initial-root'");
       jdbc.update("insert into authentication_bootstrap values('initial-root',?,current_timestamp)",reviewer.getId().value());
+      jdbc.update("delete from authorization_identity_roles where identity_id=?",reviewer.getId().value());
       rootAuthorization.assign(reviewer.getId().value());
       jdbc.update("""
           insert into ima_identities(id,kind,primary_email_id,primary_email,primary_email_type,primary_email_verified,

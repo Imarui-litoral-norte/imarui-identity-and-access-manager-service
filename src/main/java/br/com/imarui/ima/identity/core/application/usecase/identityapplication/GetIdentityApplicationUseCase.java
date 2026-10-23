@@ -7,7 +7,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class GetIdentityApplicationUseCase {
+    private final br.com.imarui.ima.identity.core.application.port.IdentityOperationAccess access;
     private final IdentityApplicationRepository applications;
     @Transactional(readOnly = true)
-    public IdentityApplicationResult execute(br.com.imarui.ima.identity.core.domain.model.identityapplication.IdentityApplicationId id) { return IdentityApplicationResult.from(applications.findById(id).orElseThrow(br.com.imarui.ima.identity.core.application.exception.IdentityApplicationNotFoundException::new)); }
+    public IdentityApplicationResult execute(br.com.imarui.ima.identity.core.domain.model.identityapplication.IdentityApplicationId id) {
+        access.requirePlatform("IDENTITY_APPLICATION_READ");
+        return load(id);
+    }
+
+    @Transactional(readOnly = true)
+    public IdentityApplicationResult executeForReview(br.com.imarui.ima.identity.core.domain.model.identityapplication.IdentityApplicationId id) {
+        access.requirePlatform("IDENTITY_APPLICATION_REVIEW");
+        return load(id);
+    }
+
+    private IdentityApplicationResult load(br.com.imarui.ima.identity.core.domain.model.identityapplication.IdentityApplicationId id) {
+        return IdentityApplicationResult.from(applications.findById(id).orElseThrow(br.com.imarui.ima.identity.core.application.exception.IdentityApplicationNotFoundException::new));
+    }
 }

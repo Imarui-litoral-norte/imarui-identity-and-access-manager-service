@@ -32,6 +32,7 @@ class ApproveIdentityApplicationUseCaseTest {
   final Instant now = IdentitySamples.NOW;
   final ApproveIdentityApplicationUseCase useCase =
       new ApproveIdentityApplicationUseCase(
+          mock(IdentityOperationAccess.class),
           applications,
           identities,
           tenants,

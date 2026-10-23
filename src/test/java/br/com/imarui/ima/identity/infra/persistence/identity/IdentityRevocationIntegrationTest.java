@@ -52,6 +52,7 @@ class IdentityRevocationIntegrationTest extends IdentityIntegrationSupport {
 
     @Test void oldIdentityTokenRemainsRevokedAfterReactivation() throws Exception {
         var old=token(reviewer.getId(),"IDENTITY_READ");
+        independentAdministrativeActor();
         disable.execute(new DisableIdentityCommand(reviewer.getId()));
         reactivate.execute(new ReactivateIdentityCommand(reviewer.getId()));
         assertEquals(401,http("GET","/api/v1/identities/"+reviewer.getId(),null,old).statusCode());
@@ -64,6 +65,7 @@ class IdentityRevocationIntegrationTest extends IdentityIntegrationSupport {
         var scoped=Jwts.builder().claims(claims).header().keyId(keys.kid()).type("at+jwt").and()
             .claim("tenant_id",tenant.getId().toString()).signWith(keys.getKey(),Jwts.SIG.RS256).compact();
         assertEquals(200,http("GET","/api/v1/identities/"+reviewer.getId(),null,scoped).statusCode());
+        independentAdministrativeActor();
         disableTenant.execute(new DisableTenantCommand(tenant.getId())); reactivateTenant.execute(new ReactivateTenantCommand(tenant.getId()));
         assertEquals(401,http("GET","/api/v1/identities/"+reviewer.getId(),null,scoped).statusCode());
     }

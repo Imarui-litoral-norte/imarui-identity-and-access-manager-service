@@ -12,31 +12,31 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.time.Instant;
 
 
 @Service
 @RequiredArgsConstructor
 public class RenameTenantUseCase {
+    private final br.com.imarui.ima.identity.core.application.port.IdentityOperationAccess access;
 
     private final TenantRepository tenantRepository;
     private final Clock clock;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public TenantResult execute(RenameTenantCommand command) {
         TenantName name = TenantName.from(command.name());
         TenantId id = command.tenantId();
-        Instant now = Instant.now(clock);
 
         Tenant tenant = tenantRepository
-                .findById(id)
+                .findByIdForUpdate(id)
                 .orElseThrow(
                         () -> new TenantNotFoundException(id)
                 );
 
-        tenant.rename(name, now);
+        access.requireTenant("TENANT_MANAGE", id.value());
+        tenant.rename(name, clock.instant());
 
-        return TenantResult.from(tenant);
+        return TenantResult.from(tenantRepository.save(tenant));
     }
 
 }

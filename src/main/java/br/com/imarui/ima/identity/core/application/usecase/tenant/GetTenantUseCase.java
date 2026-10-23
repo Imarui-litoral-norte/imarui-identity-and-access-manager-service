@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class GetTenantUseCase {
+    private final br.com.imarui.ima.identity.core.application.port.IdentityOperationAccess access;
 
     private final TenantRepository tenantRepository;
 
@@ -23,6 +24,7 @@ public class GetTenantUseCase {
                         () -> new TenantNotFoundException(tenantId)
                 );
 
+        access.requireTenant("TENANT_READ", tenantId.value());
         return TenantResult.from(tenant);
     }
 }
