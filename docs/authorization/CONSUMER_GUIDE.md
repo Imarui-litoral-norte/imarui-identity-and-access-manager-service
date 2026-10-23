@@ -86,7 +86,13 @@ falhas estruturais/autenticação/jurisdição abortam a chamada. Não usar stat
 Problemas usam `application/problem+json`, code, status e correlação. Nunca logar actorToken,
 Authorization, senha ou corpo completo. Registrar decisionId/correlationId para investigação.
 Use timeout total curto (exemplo 2 s), sem fallback permissivo, redirect ou cache de ALLOW.
+O cliente de referência aplica o deadline até o corpo completo e cancela o transporte em timeout;
+o recebimento é limitado a 16 KiB, antes do parse, inclusive para respostas fragmentadas.
 Uma nova operação deve gerar nova consulta/prova; não há atomicidade distribuída com o banco do PEP.
+
+Proxy reverso deve preservar o path canônico assinado; o IIAM compara o request URI recebido e
+não usa Forwarded/X-Forwarded-* para conferir autoridade. Audience deve identificar o destino
+configurado; usar valores distintos entre ambientes que não devam compartilhar credenciais.
 
 ## Cliente de referência Java 17
 

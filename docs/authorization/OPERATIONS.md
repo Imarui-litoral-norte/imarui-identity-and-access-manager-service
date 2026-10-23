@@ -11,7 +11,8 @@ um cadastro PENDING não substitui ROOT ativo. Dados legados inconsistentes deve
 não reativados ou apagados automaticamente. Fazer backup consistente e ensaiar restauração em
 ambiente isolado. Registrar responsáveis, janela, correlação, versão e plano de reversão.
 
-Migrations V1–V17 são preservadas byte a byte. A sequência adicional é:
+Migrations V1–V17 foram preservadas nas Rodadas 1/2; V1–V24 continuam intocadas na Rodada 3.
+A sequência adicional é:
 
 | Versão | Efeito e compatibilidade |
 | --- | --- |
@@ -22,6 +23,7 @@ Migrations V1–V17 são preservadas byte a byte. A sequência adicional é:
 | V22 | Recurso auditável de até 200 caracteres e índices de investigação |
 | V23 | Completa primeira delegação de governança interna de ROOT legado; respeita qualquer delegação histórica, inclusive revogada |
 | V24 | Criação/reativação de assignment exige Role ACTIVE, inclusive por SQL; índice de consulta por recurso auditado |
+| V25 | Fecha a saída do último ROOT ACTIVE para PENDING por escrita persistida; mantém IDs/grants/históricos e substitui apenas a função de guarda |
 
 V18 não elimina registro: antes de migrar, pode-se inventariar duplicatas agrupando
 permission_code, scope_id e identity_id/role_id com active=true. Após migração, consultar
@@ -37,7 +39,7 @@ sessões, refresh e históricos. Constraints são proteções adicionais, não s
 ## Reversão e falhas
 
 Flyway comunitário não fornece down migration deste conjunto. Não apagar flyway_schema_history,
-não editar V1–V24 aplicadas e não rodar clean contra base operacional. Falha transacional em
+não editar V1–V25 aplicadas e não rodar clean contra base operacional. Falha transacional em
 mutação ou migration PostgreSQL reverte a transação; os testes verificam rollback, ausência de
 ganho parcial e consistência concorrente. Para desfazer comportamento de negócio, usar revogação,
 correção de lifecycle ou nova migration revisada. ARCHIVED é terminal; não mudar status por SQL
@@ -79,7 +81,9 @@ chave, jurisdição e binding. Um binding de objeto é estável; mudança de pro
 procedimento explícito revisado, não substituição silenciosa por chamada de consumidor.
 
 JTI é único por credencial no PostgreSQL, inclusive entre instâncias. A implementação remove
-nonces expirados no caminho de autenticação; retenção de auditoria é independente e requer
+até 256 nonces expirados por autenticação, em CTE MATERIALIZED com FOR UPDATE SKIP LOCKED:
+manutenção não bloqueia prova nova atrás de expirado ocupado, nem remove barreira ainda válida.
+Retenção de auditoria é independente e requer
 política operacional de retenção/arquivamento que preserve evidências. Não desativar triggers
 append-only para contornar erro. Limites por origem/cliente usam o rate limiter persistido existente:
 6.000 e 3.000 requisições por cinco minutos, respectivamente; administração humana 900/5 min.
@@ -94,6 +98,11 @@ também são auditadas; a resposta PDP comum não carrega a política completa.
 
 Métricas Micrometer: `iiam.authorization.policy.snapshot`, `iiam.authorization.policy.rows`,
 `iiam.authorization.mutation.attempts`, `iiam.pdp.decisions`, `iiam.pdp.duration` e `iiam.m2m.request`.
+`iiam.root.transfers` tem apenas os valores REQUESTED e CONFIRMED para a label event; o WARN
+`authorization_root_transfer` contém transferId, scopeId e correlationId sem senha/token ou
+nome de pessoa. Ambos só são emitidos após commit e repetição confirmada não os duplica.
+Configurar o coletor operacional para alertar nesses sinais e correlacionar com o journal ROOT.
+O aplicativo fornece os sinais; a entrega não configura destinatários ou plataforma de alertas externa.
 Verificar nomes efetivos do registry/exporter ao integrar monitoração. Não há exportador externo
 novo. Actuator mantém somente health exposto por padrão; se o operador habilitar outros endpoints,
 eles exigem AUDIT_READ em PLATFORM. Jamais expor metrics/env indiscriminadamente.

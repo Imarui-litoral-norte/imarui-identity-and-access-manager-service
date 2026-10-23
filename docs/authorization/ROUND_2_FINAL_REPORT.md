@@ -1,5 +1,9 @@
 # IIAM Authorization — relatório final da Rodada 2
 
+> Registro da entrega da Rodada 2. O [parecer corretivo da Rodada 3](ROUND_3_REVIEW.md)
+> contém os defeitos posteriormente reproduzidos, correções, migration V25 e validação atual.
+> Os 320 testes e o HEAD registrados abaixo são o checkpoint histórico dessa rodada.
+
 Data: 2026-10-22. Epic [IIAMS-81](https://logimarui.atlassian.net/browse/IIAMS-81).
 Branch: `feat/iiams-81-authorization-foundation`; base `main`.
 PR consolidado: [#3](https://github.com/Imarui-litoral-norte/imarui-identity-and-access-manager-service/pull/3).

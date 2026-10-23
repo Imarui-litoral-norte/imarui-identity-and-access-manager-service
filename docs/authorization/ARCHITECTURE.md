@@ -14,7 +14,11 @@ Affiliation para uma atribuição válida. O JWT identifica sujeito e sessão; n
 1. Verificar Identity, Permission e Scope efetivos; estados inativos invalidam a concessão.
 2. Resolver atribuições válidas nos ancestrais, respeitando ownership e disponibilidade da Role.
 3. Aplicar DENYs de Identity e das Roles efetivas, diretos ou herdados, antes dos ALLOWs.
-4. Conceder somente por Role ativa com Permission vigente; ausência de concessão resulta em default deny.
+4. Conceder somente por Role ativa com Permission cadastrada; ausência de concessão resulta em default deny.
+
+DEPRECATED preserva uso por concessões existentes e impede novas concessões/delegações,
+conforme a política da fundação; depreciação não é revogação. Para revogar uso, alterar RolePermission,
+assignment, DENY ou lifecycle. O código persistido e seu histórico não são apagados pelo manifesto.
 
 Scopes possuem UUID próprio, código estável, pai e estado. O UUID do Tenant é distinto do UUID
 do Scope; o binding persistido é estável. Árvores independentes não herdam de PLATFORM.
@@ -35,8 +39,9 @@ ROOT tem proteção adicional e não segue o CRUD comum. IDs existentes são pre
 
 Uso, administração e delegação são direitos distintos. `PermissionDelegation` especifica sujeito,
 Permission, Scope e possibilidade de redelegar. Permission administrativa sozinha não autoriza
-distribuir toda Permission disponível. Guards verificam cada ganho e cada Scope afetado, inclusive
-Roles compartilhadas e self-grant indireto. As capacidades centrais exigem governança central ou
+distribuir toda Permission disponível. Guards verificam ganhos de uso, delegação e redelegação
+em cada Scope afetado, inclusive sujeitos com somente delegação, Roles compartilhadas e
+self-grant indireto. As capacidades centrais exigem governança central ou
 ROOT efetivo da própria raiz, com autoridade granular válida; um administrador local não clona ROOT.
 
 ## DENY e histórico
@@ -106,7 +111,9 @@ fronteira exata, sessão humana atual e reautenticação do iniciador; destinat�
 confirma com sua própria sessão/senha em até 10 minutos. Revalidam-se sessões, delegação,
 ganhos e recuperação sob lock. O novo assignment é instalado antes da revogação do anterior,
 na mesma transação. DENYs de negócio que seriam contornados pela transferência são preservados
-como restrições explícitas. Motivo, correlação e ambos os sujeitos ficam auditados.
+como restrições explícitas, inclusive Permissions apenas negadas pela Role ROOT e restauração
+de delegação sem ALLOW de uso. Motivo, correlação e ambos os sujeitos ficam auditados.
+Pedidos e confirmações emitem WARN correlacionado e métrica somente após commit.
 
 Não existe endpoint anônimo de criação de ROOT. Recuperação da credencial humana reutiliza o
 fluxo de Authentication; perda catastrófica de banco/chaves exige restauração controlada do backup.
@@ -115,6 +122,8 @@ Ver [operação](OPERATIONS.md), incluindo limites do procedimento de emergênci
 ## Consistência, auditoria e escala
 
 Mutações usam o lock transacional PostgreSQL 810082 antes de ler a política e validar versões.
+O contexto humano é revalidado no ponto de uso depois do lock, incluindo JWT, SID e revogações;
+não se mantém autorização de sessão apenas porque o filtro HTTP a verificou antes da fila.
 Leituras de política usam snapshot REPEATABLE READ; novas decisões após commit veem revogação
 sem novo login. Não há cache entre requisições. Chamadas já em avaliação podem concluir na revisão
 consistente anterior: revogação não retroage sobre decisão concluída. O PEP deve consultar junto
