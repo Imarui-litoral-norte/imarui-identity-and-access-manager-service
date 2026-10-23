@@ -3,6 +3,12 @@
 Este guia prepara uma integração futura. A Rodada 2 não executa deploy, merge, alterações no
 Gateway ou acesso a dados de produção. PostgreSQL de teste é descartável e isolado.
 
+Após a integração do PR #3, a [Rodada 4](OPERATIONAL_HARDENING.md) consolida evidências de
+escala, sinais e operação. Consultar o [runbook executável de banco](DATABASE_RUNBOOK.md),
+[sinais/alertas](MONITORING.md) e [dimensionamento/retenção](AUDIT_RETENTION.md).
+Há ensaio real de backup e restore **sintético isolado**; nenhuma restauração de produção,
+integração de coletor ou política definitiva de retenção foi executada/aprovada nesta entrega.
+
 ## Antes de atualizar
 
 Conferir versão do aplicativo/schema, Flyway validate e saúde de Identity/Authentication.
@@ -45,7 +51,8 @@ ganho parcial e consistência concorrente. Para desfazer comportamento de negóc
 correção de lifecycle ou nova migration revisada. ARCHIVED é terminal; não mudar status por SQL
 para contornar a regra. Reversão de versão de aplicativo/schema exige restauração testada do
 backup ou correção progressiva compatível, sob autorização operacional. O ensaio desta entrega
-valida rollback transacional, não afirma ter restaurado um backup de produção.
+valida rollback transacional e, na Rodada 4, restauração sintética em outra base descartável;
+não afirma ter restaurado um backup de produção.
 
 ## Transferência administrativa e emergência
 

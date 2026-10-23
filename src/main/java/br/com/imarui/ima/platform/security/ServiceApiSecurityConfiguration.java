@@ -76,7 +76,9 @@ public class ServiceApiSecurityConfiguration {
           problem(res,429,"RATE_LIMITED",correlation);
         } catch(SecurityException e) {
           auditProblem(res,403,"TECHNICAL_OPERATION_DENIED",caller,"M2M_AUTHORIZATION","OPERATION_DENIED",correlation);
-        } catch(org.springframework.dao.DataAccessException e) {
+        } catch(org.springframework.dao.DataAccessException | org.springframework.transaction.TransactionException e) {
+          metrics.counter("iiam.authorization.dependency.failures","reason",
+              e instanceof org.springframework.dao.QueryTimeoutException || e instanceof org.springframework.transaction.TransactionTimedOutException?"TIMEOUT":"DATABASE_OR_TRANSACTION").increment();
           problem(res,503,"AUTHORIZATION_UNAVAILABLE",correlation);
         } finally {
           sample.stop(metrics.timer("iiam.m2m.request","outcome",Integer.toString(res.getStatus())));

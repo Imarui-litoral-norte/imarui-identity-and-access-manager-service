@@ -4,6 +4,7 @@ $repoPath = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $containerName = 'iiams-identity-tests-' + [guid]::NewGuid().ToString('N').Substring(0, 10)
 $priorDbUrl = $env:IDENTITY_TEST_DB_URL
 $priorJavaHome = $env:JAVA_HOME
+$priorPgContainer = $env:IIAM_TEST_PG_CONTAINER
 $containerId = $null
 $buildExit = 1
 try {
@@ -20,6 +21,7 @@ try {
     $mapping = (& docker port $containerName 5432/tcp).Trim()
     $port = $mapping.Split(':')[-1]
     $env:IDENTITY_TEST_DB_URL = "jdbc:postgresql://127.0.0.1:$port/identity_test"
+    $env:IIAM_TEST_PG_CONTAINER = $containerName
     Push-Location $repoPath
     try {
         $mavenArguments = @('-B', 'clean', 'verify')
@@ -33,5 +35,6 @@ finally {
     if ($containerId) { & docker rm --force $containerName *> $null }
     $env:IDENTITY_TEST_DB_URL = $priorDbUrl
     $env:JAVA_HOME = $priorJavaHome
+    $env:IIAM_TEST_PG_CONTAINER = $priorPgContainer
 }
 exit $buildExit

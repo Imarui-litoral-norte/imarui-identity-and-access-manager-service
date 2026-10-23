@@ -1,0 +1,25 @@
+{
+  "preserved" : {
+    "authentication_service_clients" : "63669bd4a325bb0ef2e37ae0e0af915b",
+    "authentication_service_keys" : "7fe343b98942683e08bd631429ba1541",
+    "authentication_service_nonces" : "b14d4cb9408787182dcd8d6c0e3ec78a",
+    "authorization_audit" : "a670d0c73f4fced717cefdf4305dc1cd",
+    "authorization_denies" : "092a908b745f51c490ce0b03b81c54c1",
+    "authorization_identity_roles" : "6bc08a796a96fe634334779c2705fa35",
+    "authorization_permission_delegations" : "d4b1844050769a5e0554f8007a4c794b",
+    "authorization_role_permissions" : "b0ca2a1bdf14abb77ebb8d7c0389d676",
+    "authorization_roles" : "c31fbaca39bc76dd8988d6ccda1cb69a",
+    "authorization_roles__history" : "5634ac938cc5be2c8ccd6e22eb06f153",
+    "authorization_security_events" : "b0a71858ae3512e7735bb9e5eb9869f7",
+    "ima_identities" : "c4d294a9f17b67ccf49e1f2a7165fb45"
+  },
+  "restoredToSeparateDatabase" : true,
+  "sha256" : "c7fd23af0e31f48c2dbba4ec8eaeb8b792259d74ddd47fdf003156b9cae3e69a",
+  "startingSchema" : "20",
+  "endingSchema" : "25",
+  "controlledFailureRolledBack" : true,
+  "immutableAuditAndLastRootGuard" : true,
+  "serverVersion" : "18.4",
+  "archiveBytes" : 164212,
+  "limits" : "synthetic local database; not a production backup, disaster recovery SLA, encryption or remote storage validation"
+}
