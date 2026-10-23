@@ -21,6 +21,8 @@ class TenantHttpContractTest extends IdentityIntegrationSupport {
         String firstActivation = json.readTree(active.body()).path("activatedAt").asText();
         var renamed = http("PATCH", "/api/v1/admin/tenants/" + id + "/name", "{\"name\":\"Renamed Tenant\"}", admin);
         assertEquals("Renamed Tenant", json.readTree(renamed.body()).path("name").asText());
+        var persisted = http("GET", "/api/v1/tenants/" + id, null, admin);
+        assertEquals("Renamed Tenant", json.readTree(persisted.body()).path("name").asText());
         assertEquals(200, http("POST", "/api/v1/admin/tenants/" + id + "/disable", null, admin).statusCode());
         var forbiddenRename = http("PATCH", "/api/v1/admin/tenants/" + id + "/name", "{\"name\":\"Wrong state\"}", admin);
         assertEquals(409, forbiddenRename.statusCode(), forbiddenRename.body());
