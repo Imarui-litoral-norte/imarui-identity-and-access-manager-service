@@ -1,0 +1,51 @@
+package br.com.imarui.ima.authorization.core.domain.policy;
+
+import br.com.imarui.ima.authorization.core.domain.model.AuthorizationScope;
+import java.util.*;
+
+/** Immutable, bounded traversal; corrupt or incomplete hierarchies fail closed. */
+public final class ScopeHierarchy {
+  private final Map<UUID, AuthorizationScope> scopes;
+
+  public ScopeHierarchy(Collection<AuthorizationScope> scopes) {
+    var indexed = new HashMap<UUID, AuthorizationScope>();
+    for (var scope : scopes)
+      if (indexed.put(scope.id(), scope) != null) throw new IllegalArgumentException("Duplicate Scope.");
+    this.scopes = Map.copyOf(indexed);
+    for (var scope : scopes) ancestors(scope.id());
+  }
+
+  /** Includes the resource itself, ordered from resource to root. */
+  public List<AuthorizationScope> ancestors(UUID id) {
+    var result = new ArrayList<AuthorizationScope>();
+    var visited = new HashSet<UUID>();
+    while (id != null) {
+      if (!visited.add(id)) throw new IllegalArgumentException("Scope cycle.");
+      var scope = scopes.get(id);
+      if (scope == null) throw new IllegalArgumentException("Unknown Scope or ancestor.");
+      result.add(scope);
+      id = scope.parentId();
+    }
+    return List.copyOf(result);
+  }
+
+  public boolean covers(UUID ancestor, UUID resource) {
+    return ancestors(resource).stream().anyMatch(s -> s.id().equals(ancestor));
+  }
+
+  public boolean active(UUID resource) {
+    return ancestors(resource).stream().allMatch(s -> s.status() == AuthorizationScope.Status.ACTIVE);
+  }
+
+  public List<AuthorizationScope> descendants(UUID id) {
+    ancestors(id);
+    return scopes.values().stream().filter(s -> covers(id, s.id()))
+        .sorted(Comparator.comparing(AuthorizationScope::code)).toList();
+  }
+
+  public void validateParent(UUID scopeId, UUID parentId) {
+    ancestors(scopeId);
+    if (parentId != null && (covers(scopeId, parentId) || !active(parentId)))
+      throw new IllegalArgumentException("Parent would introduce a cycle or inactive ancestry.");
+  }
+}

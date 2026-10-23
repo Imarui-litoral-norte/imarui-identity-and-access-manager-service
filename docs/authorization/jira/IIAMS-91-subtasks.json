@@ -1,0 +1,27 @@
+[
+  {
+    "key": "IIAMS-140",
+    "title": "Definir esquema de auditoria de segurança e decisão PDP",
+    "description": "## Entrega\n\nModelo imutável de eventos, actor/technical caller, target, old/new, request correlation, retention e consultas seguras.\n\n## Regras de consistência\n\n* Role compartilhada editada afeta todas as atribuições atuais sem clonar Permission; herança muda após reparent sem perder grants diretos.\n* DENY, revogação, desativação, reparenting ou alteração RolePermission afetam avaliações novas independentemente de JWT antigo ainda válido; cache não mantém ALLOW pós-revoke.\n* Alterações atômicas com concurrency control, audit trail contendo humano/serviço técnico, before/after, Scope, motivo, timestamp e correlation ID, sem secrets.\n* Erro de dependência/caches falhos comporta-se fail-closed. Não depender do Gateway IIAMS-80 para política de Authorization.\n\n## Critérios de aceite\n\n* Testes com sessão/JWT anterior à mudança, Role regional compartilhada, múltiplos tenants, rollback, reparent, DENY-first, outbox/observability e CI.\n* IIAMS-91/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-141",
+    "title": "Versionar alterações e invalidar caches sem grants obsoletos",
+    "description": "## Entrega\n\nPolítica central de frescor para Role/DENY/Scope/Tenant e revogações; fail closed; teste multiinstância se aplicável.\n\n## Regras de consistência\n\n* Role compartilhada editada afeta todas as atribuições atuais sem clonar Permission; herança muda após reparent sem perder grants diretos.\n* DENY, revogação, desativação, reparenting ou alteração RolePermission afetam avaliações novas independentemente de JWT antigo ainda válido; cache não mantém ALLOW pós-revoke.\n* Alterações atômicas com concurrency control, audit trail contendo humano/serviço técnico, before/after, Scope, motivo, timestamp e correlation ID, sem secrets.\n* Erro de dependência/caches falhos comporta-se fail-closed. Não depender do Gateway IIAMS-80 para política de Authorization.\n\n## Critérios de aceite\n\n* Testes com sessão/JWT anterior à mudança, Role regional compartilhada, múltiplos tenants, rollback, reparent, DENY-first, outbox/observability e CI.\n* IIAMS-91/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-142",
+    "title": "Garantir propagação atômica de Role compartilhada e reparent",
+    "description": "## Entrega\n\nRecalcular avaliação com dados atuais, validar efeitos em subárvore e proteger simultaneidade, locks e rollback.\n\n## Regras de consistência\n\n* Role compartilhada editada afeta todas as atribuições atuais sem clonar Permission; herança muda após reparent sem perder grants diretos.\n* DENY, revogação, desativação, reparenting ou alteração RolePermission afetam avaliações novas independentemente de JWT antigo ainda válido; cache não mantém ALLOW pós-revoke.\n* Alterações atômicas com concurrency control, audit trail contendo humano/serviço técnico, before/after, Scope, motivo, timestamp e correlation ID, sem secrets.\n* Erro de dependência/caches falhos comporta-se fail-closed. Não depender do Gateway IIAMS-80 para política de Authorization.\n\n## Critérios de aceite\n\n* Testes com sessão/JWT anterior à mudança, Role regional compartilhada, múltiplos tenants, rollback, reparent, DENY-first, outbox/observability e CI.\n* IIAMS-91/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-143",
+    "title": "Instrumentar métricas, logs de decisão e observabilidade",
+    "description": "## Entrega\n\nLatência/PDP, deny reasons, mutations, correlação PEP/PDP, segurança de PII e rate limit.\n\n## Regras de consistência\n\n* Role compartilhada editada afeta todas as atribuições atuais sem clonar Permission; herança muda após reparent sem perder grants diretos.\n* DENY, revogação, desativação, reparenting ou alteração RolePermission afetam avaliações novas independentemente de JWT antigo ainda válido; cache não mantém ALLOW pós-revoke.\n* Alterações atômicas com concurrency control, audit trail contendo humano/serviço técnico, before/after, Scope, motivo, timestamp e correlation ID, sem secrets.\n* Erro de dependência/caches falhos comporta-se fail-closed. Não depender do Gateway IIAMS-80 para política de Authorization.\n\n## Critérios de aceite\n\n* Testes com sessão/JWT anterior à mudança, Role regional compartilhada, múltiplos tenants, rollback, reparent, DENY-first, outbox/observability e CI.\n* IIAMS-91/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-144",
+    "title": "Testar consistência temporal, impacto e auditoria completa",
+    "description": "## Entrega\n\nTestes E2E com JWT anterior à alteração, revoke, deny, RolePermission, reparent, falha parcial e restarts.\n\n## Regras de consistência\n\n* Role compartilhada editada afeta todas as atribuições atuais sem clonar Permission; herança muda após reparent sem perder grants diretos.\n* DENY, revogação, desativação, reparenting ou alteração RolePermission afetam avaliações novas independentemente de JWT antigo ainda válido; cache não mantém ALLOW pós-revoke.\n* Alterações atômicas com concurrency control, audit trail contendo humano/serviço técnico, before/after, Scope, motivo, timestamp e correlation ID, sem secrets.\n* Erro de dependência/caches falhos comporta-se fail-closed. Não depender do Gateway IIAMS-80 para política de Authorization.\n\n## Critérios de aceite\n\n* Testes com sessão/JWT anterior à mudança, Role regional compartilhada, múltiplos tenants, rollback, reparent, DENY-first, outbox/observability e CI.\n* IIAMS-91/IIAMS-81.\n\n"
+  }
+]

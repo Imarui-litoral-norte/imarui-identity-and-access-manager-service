@@ -358,7 +358,7 @@ class AuthenticationStabilizationIntegrationTest extends IdentityIntegrationSupp
     verify(mail, times(5)).send(anyString(), anyString(), any());
     jdbc.update(
         "update authentication_notification_jobs set"
-            + " state='PROCESSING',attempts=4,next_attempt_at=current_timestamp where"
+            + " state='PROCESSING',attempts=4,next_attempt_at=current_timestamp-interval '1 second' where"
             + " identity_id=?",
         i.getId().value());
     reset(mail);
@@ -369,7 +369,7 @@ class AuthenticationStabilizationIntegrationTest extends IdentityIntegrationSupp
     verify(mail, times(1)).send(anyString(), anyString(), any());
     jdbc.update(
         "update authentication_notification_jobs set"
-            + " state='PROCESSING',attempts=5,next_attempt_at=current_timestamp where"
+            + " state='PROCESSING',attempts=5,next_attempt_at=current_timestamp-interval '1 second' where"
             + " identity_id=?",
         i.getId().value());
     reset(mail);
@@ -682,6 +682,7 @@ class AuthenticationStabilizationIntegrationTest extends IdentityIntegrationSupp
             json,
             transactions,
             clock,
+            rootAuthorization,
             input.toString(),
             output.toString());
     try {

@@ -1,0 +1,27 @@
+[
+  {
+    "key": "IIAMS-109",
+    "title": "Evoluir domínio RoleAssignment e migração de IdentityRole",
+    "description": "## Entrega\n\nCriar ID/uniqueness/status/ator/tempo, Flyway pós-V9 e estratégia verificável para PLATFORM legado, sem grants perdidos.\n\n## Invariantes obrigatórios\n\n* RoleAssignment liga Identity, Role e AuthorizationScope. RoleAssignment em ancestor concede no descendant, nunca pai ou irmão.\n* Respeitar ownership/availability de Role GLOBAL/SCOPE/TENANT e dependência do estado efetivo de Identity/Role/Scope/Tenant.\n* Não exigir Affiliation para acesso regional; regras de negócio de vínculo continuam separadas. Não conceder Role automaticamente por mera disponibilidade.\n* Migrar V9 identity_roles.scope=PLATFORM de modo seguro, sem privilégio global acidental, preservando grants, histórico e IDs.\n\n## Aceite\n\n* Casos de owner cruzado, sibling, parent, revoke, mudança hierárquica, upgrade e concorrência cobertos; auditoria, testes PostgreSQL e documentação.\n* Ver IIAMS-85, Epic IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-110",
+    "title": "Criar gestão transacional de atribuições e revogações",
+    "description": "## Entrega\n\nCreate/revoke/list/filter/idempotência, controle de proprietários e direito de atribuição por Scope, auditoria de ator.\n\n## Invariantes obrigatórios\n\n* RoleAssignment liga Identity, Role e AuthorizationScope. RoleAssignment em ancestor concede no descendant, nunca pai ou irmão.\n* Respeitar ownership/availability de Role GLOBAL/SCOPE/TENANT e dependência do estado efetivo de Identity/Role/Scope/Tenant.\n* Não exigir Affiliation para acesso regional; regras de negócio de vínculo continuam separadas. Não conceder Role automaticamente por mera disponibilidade.\n* Migrar V9 identity_roles.scope=PLATFORM de modo seguro, sem privilégio global acidental, preservando grants, histórico e IDs.\n\n## Aceite\n\n* Casos de owner cruzado, sibling, parent, revoke, mudança hierárquica, upgrade e concorrência cobertos; auditoria, testes PostgreSQL e documentação.\n* Ver IIAMS-85, Epic IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-111",
+    "title": "Implementar resolução de Roles efetivas via ancestrais",
+    "description": "## Entrega\n\nBuscar assignments válidos no caminho do Scope, sem acesso ascendente/lateral; retornar evidências e evitar N+1.\n\n## Invariantes obrigatórios\n\n* RoleAssignment liga Identity, Role e AuthorizationScope. RoleAssignment em ancestor concede no descendant, nunca pai ou irmão.\n* Respeitar ownership/availability de Role GLOBAL/SCOPE/TENANT e dependência do estado efetivo de Identity/Role/Scope/Tenant.\n* Não exigir Affiliation para acesso regional; regras de negócio de vínculo continuam separadas. Não conceder Role automaticamente por mera disponibilidade.\n* Migrar V9 identity_roles.scope=PLATFORM de modo seguro, sem privilégio global acidental, preservando grants, histórico e IDs.\n\n## Aceite\n\n* Casos de owner cruzado, sibling, parent, revoke, mudança hierárquica, upgrade e concorrência cobertos; auditoria, testes PostgreSQL e documentação.\n* Ver IIAMS-85, Epic IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-112",
+    "title": "Separar RoleAssignment do domínio Affiliation",
+    "description": "## Entrega\n\nNão exigir vínculo de empregado por IAM; validar Tenant/Identity statuses conforme política e deixar verificações de negócio aos consumidores.\n\n## Invariantes obrigatórios\n\n* RoleAssignment liga Identity, Role e AuthorizationScope. RoleAssignment em ancestor concede no descendant, nunca pai ou irmão.\n* Respeitar ownership/availability de Role GLOBAL/SCOPE/TENANT e dependência do estado efetivo de Identity/Role/Scope/Tenant.\n* Não exigir Affiliation para acesso regional; regras de negócio de vínculo continuam separadas. Não conceder Role automaticamente por mera disponibilidade.\n* Migrar V9 identity_roles.scope=PLATFORM de modo seguro, sem privilégio global acidental, preservando grants, histórico e IDs.\n\n## Aceite\n\n* Casos de owner cruzado, sibling, parent, revoke, mudança hierárquica, upgrade e concorrência cobertos; auditoria, testes PostgreSQL e documentação.\n* Ver IIAMS-85, Epic IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-113",
+    "title": "Testar herança, reparenting, revogação e upgrade",
+    "description": "## Entrega\n\nTestes com 3 níveis, duas empresas irmãs, sessão única, revoke, Scope inativo, tenant disabled, concorrência e migração.\n\n## Invariantes obrigatórios\n\n* RoleAssignment liga Identity, Role e AuthorizationScope. RoleAssignment em ancestor concede no descendant, nunca pai ou irmão.\n* Respeitar ownership/availability de Role GLOBAL/SCOPE/TENANT e dependência do estado efetivo de Identity/Role/Scope/Tenant.\n* Não exigir Affiliation para acesso regional; regras de negócio de vínculo continuam separadas. Não conceder Role automaticamente por mera disponibilidade.\n* Migrar V9 identity_roles.scope=PLATFORM de modo seguro, sem privilégio global acidental, preservando grants, histórico e IDs.\n\n## Aceite\n\n* Casos de owner cruzado, sibling, parent, revoke, mudança hierárquica, upgrade e concorrência cobertos; auditoria, testes PostgreSQL e documentação.\n* Ver IIAMS-85, Epic IIAMS-81.\n\n"
+  }
+]

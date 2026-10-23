@@ -54,6 +54,7 @@ public class AdminTenantController {
     }
 
     @PostMapping("/{tenantId}/activate")
+    @org.springframework.security.access.prepost.PreAuthorize("@tenantAuthorizationAccess.allowed('TENANT_MANAGE', #tenantId)")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
     @io.swagger.v3.oas.annotations.Operation(summary = "Ativar tenant pendente", description = "Executa PENDING → ACTIVE e permite provisionamento de identidades e validade contextual dos vínculos já ativos. Não altera o estado intrínseco de Identity ou Affiliation.")
     @br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup(value = "Tenants · Administração", order = 80)
@@ -72,6 +73,7 @@ public class AdminTenantController {
     }
 
     @PostMapping("/{tenantId}/disable")
+    @org.springframework.security.access.prepost.PreAuthorize("@tenantAuthorizationAccess.allowed('TENANT_MANAGE', #tenantId)")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
     @io.swagger.v3.oas.annotations.Operation(summary = "Desabilitar contexto do tenant", description = "Executa ACTIVE → DISABLED e registra revogação contextual na mesma transação. Vínculos tornam-se indisponíveis sem alterar os estados intrínsecos de Identity/Affiliation. Não exclui o Tenant.")
     @br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup(value = "Tenants · Administração", order = 80)
@@ -90,6 +92,7 @@ public class AdminTenantController {
     }
 
     @PostMapping("/{tenantId}/reactivate")
+    @org.springframework.security.access.prepost.PreAuthorize("@tenantAuthorizationAccess.allowed('TENANT_MANAGE', #tenantId)")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
     @io.swagger.v3.oas.annotations.Operation(summary = "Reativar tenant", description = "Executa DISABLED → ACTIVE. Apenas vínculos com Identity ACTIVE e Affiliation ACTIVE tornam-se efetivos novamente. Afiliações INACTIVE permanecem inativas e tokens revogados continuam inválidos.")
     @br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup(value = "Tenants · Administração", order = 80)
@@ -106,6 +109,7 @@ public class AdminTenantController {
     }
 
     @PatchMapping("/{tenantId}/name")
+    @org.springframework.security.access.prepost.PreAuthorize("@tenantAuthorizationAccess.allowed('TENANT_MANAGE', #tenantId)")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = TenantResponse.class)))
     @io.swagger.v3.oas.annotations.Operation(summary = "Renomear tenant", description = "Altera apenas name de Tenant PENDING ou ACTIVE, aparando o texto e atualizando updatedAt. Não altera code. Tenant DISABLED retorna conflito.")
     @br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup(value = "Tenants · Administração", order = 80)

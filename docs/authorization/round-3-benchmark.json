@@ -1,0 +1,72 @@
+{
+  "reviewDate": "2026-10-23",
+  "baselineCommit": "a994d58f3a4673de864bf09d66c7733bd8409de1",
+  "codeCommit": "eea59130253b94530e4653f636ce53a128cabafe",
+  "baseline": {
+    "scenario": "isolated PostgreSQL; 300 additional identities, 60 scopes, 40 roles, 900 shared assignments",
+    "counts": {
+      "roles": 41,
+      "scopes": 3286,
+      "assignments": 901,
+      "permissions": 251,
+      "identities": 301
+    },
+    "snapshot_ms": {
+      "p50": 12.3352,
+      "max": 14.1527,
+      "p95": 12.8828
+    },
+    "hierarchy_ms": {
+      "p50": 0.5241,
+      "max": 0.8001,
+      "p95": 0.7687
+    },
+    "evaluation_ms": {
+      "p50": 0.0044,
+      "max": 0.0588,
+      "p95": 0.005
+    },
+    "shared_role_mutation_ms": 1216.7099,
+    "samples": {
+      "evaluation": 100,
+      "hierarchy": 30,
+      "snapshot": 30,
+      "mutation": 1
+    },
+    "limitation": "single host, bounded synthetic scenario; no production throughput/SLA claim; full snapshot and global mutation lock retained"
+  },
+  "final": {
+    "scenario": "isolated PostgreSQL; 300 additional identities, 60 scopes, 40 roles, 900 shared assignments",
+    "counts": {
+      "permissions": 445,
+      "assignments": 901,
+      "scopes": 4687,
+      "roles": 41,
+      "identities": 301
+    },
+    "snapshot_ms": {
+      "max": 17.923,
+      "p50": 16.147,
+      "p95": 16.6587
+    },
+    "hierarchy_ms": {
+      "max": 1.3231,
+      "p50": 0.7999,
+      "p95": 0.9488
+    },
+    "evaluation_ms": {
+      "max": 0.0489,
+      "p50": 0.0047,
+      "p95": 0.0095
+    },
+    "shared_role_mutation_ms": 1671.8446,
+    "samples": {
+      "mutation": 1,
+      "snapshot": 30,
+      "hierarchy": 30,
+      "evaluation": 100
+    },
+    "limitation": "single host, bounded synthetic scenario; no production throughput/SLA claim; full snapshot and global mutation lock retained"
+  },
+  "limitation": "Accumulated isolated fixtures differ; not a controlled same-data A/B experiment or production SLA."
+}

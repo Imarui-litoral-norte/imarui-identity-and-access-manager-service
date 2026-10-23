@@ -1,0 +1,32 @@
+[
+  {
+    "key": "IIAMS-98",
+    "title": "Modelar metadados e ciclo de vida do Permission Catalog",
+    "description": "## Entrega\n\nEvoluir Permission/registries existentes sem perda; introduzir owner lógico, namespace, timestamps/status/version e unicidade por código; migrations compatíveis com bootstrap.\n\n## Regras de negócio preservadas\n\n* Catálogo central e único, federado na declaração por serviço, incluindo Permissions internas Authentication/Authorization/Identity.\n* Ownership por serviço, namespace estável, sync autenticada M2M, sem grants implícitos; IIAM não duplica catálogo de runtime ou habilitação de Tenant do Gateway.\n* Alteração/retirada de manifest não elimina Roles, histórico, códigos anteriores ou catálogo offline.\n\n## Critérios de pronto\n\n* Contratos, erros e versionamento explícitos; testes positivos e negativos, idempotência, conflito de ownership e rollback PostgreSQL.\n* Auditoria da mudança, OpenAPI/documentação e CI. Referências: IIAMS-83, Epic IIAMS-81, Gateway IIAMS-80 futuro.\n\n"
+  },
+  {
+    "key": "IIAMS-99",
+    "title": "Definir manifesto versionado e protocolo federado de sincronização",
+    "description": "## Entrega\n\nContrato DTO/OpenAPI para manifest/diff, identificação estável de proprietário, validações, alterações permitidas, semântica PUT/upsert, idempotência e versão/conflito.\n\n## Regras de negócio preservadas\n\n* Catálogo central e único, federado na declaração por serviço, incluindo Permissions internas Authentication/Authorization/Identity.\n* Ownership por serviço, namespace estável, sync autenticada M2M, sem grants implícitos; IIAM não duplica catálogo de runtime ou habilitação de Tenant do Gateway.\n* Alteração/retirada de manifest não elimina Roles, histórico, códigos anteriores ou catálogo offline.\n\n## Critérios de pronto\n\n* Contratos, erros e versionamento explícitos; testes positivos e negativos, idempotência, conflito de ownership e rollback PostgreSQL.\n* Auditoria da mudança, OpenAPI/documentação e CI. Referências: IIAMS-83, Epic IIAMS-81, Gateway IIAMS-80 futuro.\n\n"
+  },
+  {
+    "key": "IIAMS-100",
+    "title": "Proteger registro de Permission com credenciais M2M e ownership",
+    "description": "## Entrega\n\nAutenticar cliente técnico, restringir namespace, recusar spoof do owner e registrar ator/serviço, limitar carga/rate e auditar tentativas.\n\n## Regras de negócio preservadas\n\n* Catálogo central e único, federado na declaração por serviço, incluindo Permissions internas Authentication/Authorization/Identity.\n* Ownership por serviço, namespace estável, sync autenticada M2M, sem grants implícitos; IIAM não duplica catálogo de runtime ou habilitação de Tenant do Gateway.\n* Alteração/retirada de manifest não elimina Roles, histórico, códigos anteriores ou catálogo offline.\n\n## Critérios de pronto\n\n* Contratos, erros e versionamento explícitos; testes positivos e negativos, idempotência, conflito de ownership e rollback PostgreSQL.\n* Auditoria da mudança, OpenAPI/documentação e CI. Referências: IIAMS-83, Epic IIAMS-81, Gateway IIAMS-80 futuro.\n\n"
+  },
+  {
+    "key": "IIAMS-101",
+    "title": "Integrar Permissions internas de Authentication/Authorization/Identity",
+    "description": "## Entrega\n\nDeclarar permissões administrativas específicas por módulo e registrar pelo mesmo bootstrap/registry; manter ROOT e compatibilidade com catálogo já entregue.\n\n## Regras de negócio preservadas\n\n* Catálogo central e único, federado na declaração por serviço, incluindo Permissions internas Authentication/Authorization/Identity.\n* Ownership por serviço, namespace estável, sync autenticada M2M, sem grants implícitos; IIAM não duplica catálogo de runtime ou habilitação de Tenant do Gateway.\n* Alteração/retirada de manifest não elimina Roles, histórico, códigos anteriores ou catálogo offline.\n\n## Critérios de pronto\n\n* Contratos, erros e versionamento explícitos; testes positivos e negativos, idempotência, conflito de ownership e rollback PostgreSQL.\n* Auditoria da mudança, OpenAPI/documentação e CI. Referências: IIAMS-83, Epic IIAMS-81, Gateway IIAMS-80 futuro.\n\n"
+  },
+  {
+    "key": "IIAMS-102",
+    "title": "Implementar depreciação, reconciliação e histórico do catálogo",
+    "description": "## Entrega\n\nPersistir último catálogo válido; regras para deprecate/retire, impedir hard delete implícito, informar dependências RolePermission, registrar versão/impacto e rollback lógico.\n\n## Regras de negócio preservadas\n\n* Catálogo central e único, federado na declaração por serviço, incluindo Permissions internas Authentication/Authorization/Identity.\n* Ownership por serviço, namespace estável, sync autenticada M2M, sem grants implícitos; IIAM não duplica catálogo de runtime ou habilitação de Tenant do Gateway.\n* Alteração/retirada de manifest não elimina Roles, histórico, códigos anteriores ou catálogo offline.\n\n## Critérios de pronto\n\n* Contratos, erros e versionamento explícitos; testes positivos e negativos, idempotência, conflito de ownership e rollback PostgreSQL.\n* Auditoria da mudança, OpenAPI/documentação e CI. Referências: IIAMS-83, Epic IIAMS-81, Gateway IIAMS-80 futuro.\n\n"
+  },
+  {
+    "key": "IIAMS-103",
+    "title": "Cobrir conflitos, startup isolado e testes contractuais",
+    "description": "## Entrega\n\nTestar serviços simultâneos, idempotência, falha no meio da sync, owner inadequado, offline, catálogo interno e migração de codes já cadastrados.\n\n## Regras de negócio preservadas\n\n* Catálogo central e único, federado na declaração por serviço, incluindo Permissions internas Authentication/Authorization/Identity.\n* Ownership por serviço, namespace estável, sync autenticada M2M, sem grants implícitos; IIAM não duplica catálogo de runtime ou habilitação de Tenant do Gateway.\n* Alteração/retirada de manifest não elimina Roles, histórico, códigos anteriores ou catálogo offline.\n\n## Critérios de pronto\n\n* Contratos, erros e versionamento explícitos; testes positivos e negativos, idempotência, conflito de ownership e rollback PostgreSQL.\n* Auditoria da mudança, OpenAPI/documentação e CI. Referências: IIAMS-83, Epic IIAMS-81, Gateway IIAMS-80 futuro.\n\n"
+  }
+]

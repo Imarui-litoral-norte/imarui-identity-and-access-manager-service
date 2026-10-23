@@ -7,7 +7,7 @@ import br.com.imarui.ima.authorization.api.catalog.PermissionCode;
 public class PermissionCodeMismatchException extends RuntimeException {
 
   public PermissionCodeMismatchException(
-      PermissionCode currentCode, PermissionCode definitionCode) {
+      String currentCode, String definitionCode) {
     super(
         "Cannot synchronize permission with different code. Current code: "
             + currentCode

@@ -63,7 +63,7 @@ class AuthenticationDomainTest {
     assertFalse(p.synchronizeWith(d, now.plusSeconds(1)));
     var changed = new PermissionDefinition(d.code(), "Updated description", d.module());
     assertTrue(p.synchronizeWith(changed, now.plusSeconds(1)));
-    assertEquals(d.code(), p.getCode());
+    assertEquals(d.code().name(), p.getCode());
     assertThrows(IllegalArgumentException.class, () -> RolePermission.create(-1L, 1L, now));
   }
 }

@@ -1,0 +1,32 @@
+[
+  {
+    "key": "IIAMS-145",
+    "title": "Inspecionar classes atuais, Flyway V9 e riscos de compatibilidade",
+    "description": "## Entrega\n\nMapear Permission/Role/IdentityRole e constraints, definir plano de migração incremental e mapeamento de PLATFORM para scopes sem perda.\n\n## Exigências de qualidade\n\n* Flyway somente novas versões após V9, não reescrever schemas antigos; preservar Role, Permission, RolePermission, IdentityRole, bootstrap ROOT e histórico com IDs estáveis.\n* Testar banco vazio e upgrade de banco povoado/PLATFORM existente com PostgreSQL real. Nenhuma globalização indevida nem perda de grants.\n* Matriz completa de AuthorizationScope e Tenant, ownership global/scope/tenant, delegação, DENY absoluto, RoleAssignments, PDP M2M, fail closed e ROOT anti-lockout.\n* Authentication/Identity seguem funcionais; IIAM executável standalone e Gateway IIAMS-80 continua futuro.\n\n## Critérios de aceite\n\n* Pipeline CI verde, migrations validadas, testes negativos e concorrentes, OpenAPI/ADRs, métricas e runbooks, sem regressão.\n* IIAMS-92/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-146",
+    "title": "Criar migrações PostgreSQL e verificações de upgrade realista",
+    "description": "## Entrega\n\nScripts posteriores V9, invariantes FK/check/unique/index e rollback lógico; testar com DB legado preenchido.\n\n## Exigências de qualidade\n\n* Flyway somente novas versões após V9, não reescrever schemas antigos; preservar Role, Permission, RolePermission, IdentityRole, bootstrap ROOT e histórico com IDs estáveis.\n* Testar banco vazio e upgrade de banco povoado/PLATFORM existente com PostgreSQL real. Nenhuma globalização indevida nem perda de grants.\n* Matriz completa de AuthorizationScope e Tenant, ownership global/scope/tenant, delegação, DENY absoluto, RoleAssignments, PDP M2M, fail closed e ROOT anti-lockout.\n* Authentication/Identity seguem funcionais; IIAM executável standalone e Gateway IIAMS-80 continua futuro.\n\n## Critérios de aceite\n\n* Pipeline CI verde, migrations validadas, testes negativos e concorrentes, OpenAPI/ADRs, métricas e runbooks, sem regressão.\n* IIAMS-92/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-147",
+    "title": "Adicionar suíte de autorização hierárquica e anti-escalada",
+    "description": "## Entrega\n\nMatriz domain/app: deny-first, scopes, roles global/local/tenant, delegation, owner, last root, no affiliation.\n\n## Exigências de qualidade\n\n* Flyway somente novas versões após V9, não reescrever schemas antigos; preservar Role, Permission, RolePermission, IdentityRole, bootstrap ROOT e histórico com IDs estáveis.\n* Testar banco vazio e upgrade de banco povoado/PLATFORM existente com PostgreSQL real. Nenhuma globalização indevida nem perda de grants.\n* Matriz completa de AuthorizationScope e Tenant, ownership global/scope/tenant, delegação, DENY absoluto, RoleAssignments, PDP M2M, fail closed e ROOT anti-lockout.\n* Authentication/Identity seguem funcionais; IIAM executável standalone e Gateway IIAMS-80 continua futuro.\n\n## Critérios de aceite\n\n* Pipeline CI verde, migrations validadas, testes negativos e concorrentes, OpenAPI/ADRs, métricas e runbooks, sem regressão.\n* IIAMS-92/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-148",
+    "title": "Criar testes de integração API/M2M/PDP e segurança",
+    "description": "## Entrega\n\nHTTP 401/403, forged identity/scope, revoked session, stale JWT, requests concorrentes, timeout, observabilidade.\n\n## Exigências de qualidade\n\n* Flyway somente novas versões após V9, não reescrever schemas antigos; preservar Role, Permission, RolePermission, IdentityRole, bootstrap ROOT e histórico com IDs estáveis.\n* Testar banco vazio e upgrade de banco povoado/PLATFORM existente com PostgreSQL real. Nenhuma globalização indevida nem perda de grants.\n* Matriz completa de AuthorizationScope e Tenant, ownership global/scope/tenant, delegação, DENY absoluto, RoleAssignments, PDP M2M, fail closed e ROOT anti-lockout.\n* Authentication/Identity seguem funcionais; IIAM executável standalone e Gateway IIAMS-80 continua futuro.\n\n## Critérios de aceite\n\n* Pipeline CI verde, migrations validadas, testes negativos e concorrentes, OpenAPI/ADRs, métricas e runbooks, sem regressão.\n* IIAMS-92/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-149",
+    "title": "Revisar docs, contratos e rollout do Authorization",
+    "description": "## Entrega\n\nADR, OpenAPI, exemplos Caller/Actor, responsabilidade Gateway, migration guide, cache semantics e bootstrap.\n\n## Exigências de qualidade\n\n* Flyway somente novas versões após V9, não reescrever schemas antigos; preservar Role, Permission, RolePermission, IdentityRole, bootstrap ROOT e histórico com IDs estáveis.\n* Testar banco vazio e upgrade de banco povoado/PLATFORM existente com PostgreSQL real. Nenhuma globalização indevida nem perda de grants.\n* Matriz completa de AuthorizationScope e Tenant, ownership global/scope/tenant, delegação, DENY absoluto, RoleAssignments, PDP M2M, fail closed e ROOT anti-lockout.\n* Authentication/Identity seguem funcionais; IIAM executável standalone e Gateway IIAMS-80 continua futuro.\n\n## Critérios de aceite\n\n* Pipeline CI verde, migrations validadas, testes negativos e concorrentes, OpenAPI/ADRs, métricas e runbooks, sem regressão.\n* IIAMS-92/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-150",
+    "title": "Executar regressão final da fundação e consolidar CI",
+    "description": "## Entrega\n\nValidar suites Auth e Identity intactas, postgres integration, coverage de incidentes, qualidade dos erros, performance e readiness.\n\n## Exigências de qualidade\n\n* Flyway somente novas versões após V9, não reescrever schemas antigos; preservar Role, Permission, RolePermission, IdentityRole, bootstrap ROOT e histórico com IDs estáveis.\n* Testar banco vazio e upgrade de banco povoado/PLATFORM existente com PostgreSQL real. Nenhuma globalização indevida nem perda de grants.\n* Matriz completa de AuthorizationScope e Tenant, ownership global/scope/tenant, delegação, DENY absoluto, RoleAssignments, PDP M2M, fail closed e ROOT anti-lockout.\n* Authentication/Identity seguem funcionais; IIAM executável standalone e Gateway IIAMS-80 continua futuro.\n\n## Critérios de aceite\n\n* Pipeline CI verde, migrations validadas, testes negativos e concorrentes, OpenAPI/ADRs, métricas e runbooks, sem regressão.\n* IIAMS-92/IIAMS-81.\n\n"
+  }
+]

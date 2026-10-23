@@ -1,6 +1,6 @@
 # Authentication V1 — IIAMS-39
 
-O IIAM autentica Identity UUID e mantém credenciais, sessões e refresh tokens em PostgreSQL. Identity conserva ownership de nickname, documentos, contato e lifecycle. Authorization fornece somente catálogo/roles persistidos e a integração básica de authorities; Platform compõe segurança HTTP, assinatura e operação.
+O IIAM autentica Identity UUID e mantém credenciais, sessões e refresh tokens em PostgreSQL. Identity conserva ownership de nickname, documentos, contato e lifecycle. Authorization fornece RBAC hierárquico e PDP; Platform compõe segurança HTTP, assinatura e operação. A evolução vigente está na [arquitetura de Authorization](../authorization/ARCHITECTURE.md); as decisões de V1 abaixo preservam o histórico da implementação.
 
 ## Decisões desta rodada
 
@@ -11,7 +11,7 @@ O IIAM autentica Identity UUID e mantém credenciais, sessões e refresh tokens 
 - E-mail válido e nickname são obrigatórios para PERSON, LEGAL_ENTITY e SERVICE, inclusive bootstrap ROOT. E-mail não possui unicidade: pode repetir no mesmo kind e entre kinds. Recuperação resolve kind + nickname/documento e usa somente o contato daquela Identity. Não há recuperação alternativa de SERVICE sem contato.
 - Primeira ativação depende de convite e senha. Aprovação permanece PENDING. O endpoint antigo de ativação não contorna a prova do primeiro acesso. Reativação administrativa de uma Identity previamente ativada preserva sua semântica.
 - Alteração humana posterior ao pedido inicial: o usuário solicitou bootstrap ROOT igual ao Jeep e permissions funcionais para @PreAuthorize. Por isso a role ROOT real, persistida, recebe o catálogo IIAM e é associada somente à Identity inicial pelo bootstrap controlado. Não existe permission fictícia ROOT, wildcard, acesso por nickname root ou concessão por Affiliation.
-- A associação IdentityRole PLATFORM desta V1 não é o modelo definitivo de RBAC. Não há endpoints de gestão incompleta de Authorization. Escopos TENANT e decisão por recurso pertencem à próxima rodada.
+- A associação IdentityRole PLATFORM da V1 foi migrada para RoleAssignment com Scope explícito pelo Epic IIAMS-81, preservando dados. A [Rodada 2](../authorization/ROUND_2_FINAL_REPORT.md) concluiu APIs administrativas, Scopes e PDP por recurso.
 
 ## Navegação
 
@@ -27,7 +27,9 @@ Authentication resolve/locka Identity por contrato mínimo, não por JPA de outr
 
 Session/RefreshToken, seus IDs técnicos Long, mappers e adapters existentes foram preservados. Session ganhou Identity UUID, SID UUID público e instante de revogação; os IDs técnicos não representam usuários. Credential e Challenge têm adapters próprios. Nenhum User paralelo, dado de Memberships ou cópia de cadastro foi criado.
 
-O próprio IIAM valida sessão/estado/cutoff e consulta permissions persistidas após validar a assinatura. Claims `permissions` não concedem authorities. Consumidores futuros validam o JWT localmente e criam Actor runtime com `sub`/`sid`, sem imports de domínio IIAM, sem objeto Actor transmitido no login e sem chave privada.
+O próprio IIAM valida sessão/estado/cutoff e consulta policy persistida após validar a assinatura. Claims `permissions` não concedem authorities. Consumidores validam o contexto do usuário e consultam o PDP com prova técnica independente; a sessão humana e a política atual são verificadas no IIAM. Ver [guia PEP/M2M](../authorization/CONSUMER_GUIDE.md). Não há objeto Actor persistido/transmitido no login nem chave privada do IIAM no consumidor.
+
+Authentication possui `TechnicalServiceAuthentication` (clientes técnicos, chaves públicas, nonce e revogação) e `AdministrativeAuthentication` (reautenticação/sessão para transferência ROOT). Esses contratos reutilizam as proteções existentes sem introduzir Identity humana paralela ou segunda solução M2M para catálogo. Credenciais técnicas pertencem ao serviço autenticado e não substituem o usuário em nome de quem o PDP decide.
 
 ## Segunda rodada do PR #2
 

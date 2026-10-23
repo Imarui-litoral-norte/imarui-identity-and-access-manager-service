@@ -1,0 +1,27 @@
+[
+  {
+    "key": "IIAMS-119",
+    "title": "Definir direitos de delegação explícitos por Permission+Scope",
+    "description": "## Entrega\n\nEscolher entidade/policy de delegação, sujeitos/alvos/owner; definir uso versus gestão versus delegar e herança com deny.\n\n## Decisões vinculantes\n\n* Direito de usar Permission, criar Role, atribuir Role e delegar cada Permission são capacidades distintas; per-Permission delegação explícita dentro de Scope autorizado.\n* Possuir Permission de leitura não autoriza entregá-la a outra Identity, mesmo que o usuário possa criar Roles.\n* Administrador de Tenant não modifica Role de Scope anterior. Nenhuma elevação via role-clone, alteração de Role compartilhada, self-grant, reparent ou concessão indireta.\n* DENY vigente prevalece também em delegação; ações sensíveis internas do IAM/ROOT têm governança central.\n\n## Aceite\n\n* Testes negativos cross-tenant, cross-role, autoelevação, escopos, concorrência/TOCTOU; motivo e autor auditados, cobertura Postgres + API/CI.\n* Referência IIAMS-87/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-120",
+    "title": "Aplicar guardrails em RolePermission e Roles compartilhadas",
+    "description": "## Entrega\n\nChecar capacidade por Permission no escopo alvo e impacto em múltiplos assignments; transação e auditoria.\n\n## Decisões vinculantes\n\n* Direito de usar Permission, criar Role, atribuir Role e delegar cada Permission são capacidades distintas; per-Permission delegação explícita dentro de Scope autorizado.\n* Possuir Permission de leitura não autoriza entregá-la a outra Identity, mesmo que o usuário possa criar Roles.\n* Administrador de Tenant não modifica Role de Scope anterior. Nenhuma elevação via role-clone, alteração de Role compartilhada, self-grant, reparent ou concessão indireta.\n* DENY vigente prevalece também em delegação; ações sensíveis internas do IAM/ROOT têm governança central.\n\n## Aceite\n\n* Testes negativos cross-tenant, cross-role, autoelevação, escopos, concorrência/TOCTOU; motivo e autor auditados, cobertura Postgres + API/CI.\n* Referência IIAMS-87/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-121",
+    "title": "Proteger RoleAssignments, Role ownership e gestão de Scope",
+    "description": "## Entrega\n\nValidar atribuição de Roles disponíveis, alteração de owner, ações cross-tenant, self-grants e reparenting.\n\n## Decisões vinculantes\n\n* Direito de usar Permission, criar Role, atribuir Role e delegar cada Permission são capacidades distintas; per-Permission delegação explícita dentro de Scope autorizado.\n* Possuir Permission de leitura não autoriza entregá-la a outra Identity, mesmo que o usuário possa criar Roles.\n* Administrador de Tenant não modifica Role de Scope anterior. Nenhuma elevação via role-clone, alteração de Role compartilhada, self-grant, reparent ou concessão indireta.\n* DENY vigente prevalece também em delegação; ações sensíveis internas do IAM/ROOT têm governança central.\n\n## Aceite\n\n* Testes negativos cross-tenant, cross-role, autoelevação, escopos, concorrência/TOCTOU; motivo e autor auditados, cobertura Postgres + API/CI.\n* Referência IIAMS-87/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-122",
+    "title": "Resguardar privilégios internos sensíveis e autoridade central",
+    "description": "## Entrega\n\nClassificar permission delegável/reservada, ROOT, recovery, provisionamento bootstrap, erros e auditoria.\n\n## Decisões vinculantes\n\n* Direito de usar Permission, criar Role, atribuir Role e delegar cada Permission são capacidades distintas; per-Permission delegação explícita dentro de Scope autorizado.\n* Possuir Permission de leitura não autoriza entregá-la a outra Identity, mesmo que o usuário possa criar Roles.\n* Administrador de Tenant não modifica Role de Scope anterior. Nenhuma elevação via role-clone, alteração de Role compartilhada, self-grant, reparent ou concessão indireta.\n* DENY vigente prevalece também em delegação; ações sensíveis internas do IAM/ROOT têm governança central.\n\n## Aceite\n\n* Testes negativos cross-tenant, cross-role, autoelevação, escopos, concorrência/TOCTOU; motivo e autor auditados, cobertura Postgres + API/CI.\n* Referência IIAMS-87/IIAMS-81.\n\n"
+  },
+  {
+    "key": "IIAMS-123",
+    "title": "Testar escalada transitiva, concorrência e autorização negativa",
+    "description": "## Entrega\n\nCenários clone role, adicionar self à role, role regional compartilhada, deny, scopes irmãos, race conditions e bypass.\n\n## Decisões vinculantes\n\n* Direito de usar Permission, criar Role, atribuir Role e delegar cada Permission são capacidades distintas; per-Permission delegação explícita dentro de Scope autorizado.\n* Possuir Permission de leitura não autoriza entregá-la a outra Identity, mesmo que o usuário possa criar Roles.\n* Administrador de Tenant não modifica Role de Scope anterior. Nenhuma elevação via role-clone, alteração de Role compartilhada, self-grant, reparent ou concessão indireta.\n* DENY vigente prevalece também em delegação; ações sensíveis internas do IAM/ROOT têm governança central.\n\n## Aceite\n\n* Testes negativos cross-tenant, cross-role, autoelevação, escopos, concorrência/TOCTOU; motivo e autor auditados, cobertura Postgres + API/CI.\n* Referência IIAMS-87/IIAMS-81.\n\n"
+  }
+]

@@ -19,17 +19,21 @@ import lombok.NoArgsConstructor;
 public class Permission {
 
   private Long id;
-  private PermissionCode code;
+  private String code;
   private String description;
-  private ModuleCode module;
+  private String module;
+  private String serviceCode;
+  private String namespace;
+  private long catalogVersion;
+  private boolean deprecated;
   private Instant createdAt;
   private Instant updatedAt;
 
   private Permission(
       Long id,
-      PermissionCode code,
+      String code,
       String description,
-      ModuleCode module,
+      String module,
       Instant createdAt,
       Instant updatedAt) {
     this.id = id;
@@ -38,6 +42,9 @@ public class Permission {
     this.module = Objects.requireNonNull(module, "Permission module cannot be null");
     this.createdAt = Objects.requireNonNull(createdAt, "Permission createdAt cannot be null");
     this.updatedAt = updatedAt;
+    this.serviceCode = "iiam";
+    this.namespace = "iiam";
+    this.catalogVersion = 1;
   }
 
   public static Permission fromDefinition(PermissionDefinition definition, Instant now) {
@@ -45,14 +52,14 @@ public class Permission {
     Objects.requireNonNull(now, "now cannot be null");
 
     return new Permission(
-        null, definition.getCode(), definition.getDescription(), definition.getModule(), now, now);
+        null, definition.getCode().name(), definition.getDescription(), definition.getModule().name(), now, now);
   }
 
   public static Permission reconstitute(
       Long id,
-      PermissionCode code,
+      String code,
       String description,
-      ModuleCode module,
+      String module,
       Instant createdAt,
       Instant updatedAt) {
     Objects.requireNonNull(id, "Permission id cannot be null when reconstituting");
@@ -60,17 +67,28 @@ public class Permission {
     return new Permission(id, code, description, module, createdAt, updatedAt);
   }
 
+  public static Permission reconstitute(Long id, String code, String description, String module,
+      String owner, String namespace, long version, boolean deprecated, Instant createdAt, Instant updatedAt) {
+    var permission = reconstitute(id, code, description, module, createdAt, updatedAt);
+    permission.serviceCode = Objects.requireNonNull(owner);
+    permission.namespace = Objects.requireNonNull(namespace);
+    if (version < 1) throw new IllegalArgumentException("Invalid catalog version.");
+    permission.catalogVersion = version;
+    permission.deprecated = deprecated;
+    return permission;
+  }
+
   public boolean synchronizeWith(PermissionDefinition definition, Instant synchronizedAt) {
     Objects.requireNonNull(definition, "Permission definition cannot be null");
     Objects.requireNonNull(synchronizedAt, "synchronizedAt cannot be null");
 
-    if (this.code != definition.getCode()) {
-      throw new PermissionCodeMismatchException(this.code, definition.getCode());
+    if (!this.code.equals(definition.getCode().name())) {
+      throw new PermissionCodeMismatchException(this.code, definition.getCode().name());
     }
 
     String synchronizedDescription = validateDescription(definition.getDescription());
-    ModuleCode synchronizedModule =
-        Objects.requireNonNull(definition.getModule(), "Permission module cannot be null");
+    String synchronizedModule =
+        Objects.requireNonNull(definition.getModule(), "Permission module cannot be null").name();
 
     boolean changed = false;
 
@@ -79,7 +97,7 @@ public class Permission {
       changed = true;
     }
 
-    if (this.module != synchronizedModule) {
+    if (!Objects.equals(this.module, synchronizedModule)) {
       this.module = synchronizedModule;
       changed = true;
     }
