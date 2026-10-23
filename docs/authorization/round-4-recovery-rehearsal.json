@@ -1,25 +1,26 @@
 {
-  "preserved" : {
-    "authentication_service_clients" : "63669bd4a325bb0ef2e37ae0e0af915b",
-    "authentication_service_keys" : "7fe343b98942683e08bd631429ba1541",
-    "authentication_service_nonces" : "b14d4cb9408787182dcd8d6c0e3ec78a",
-    "authorization_audit" : "a670d0c73f4fced717cefdf4305dc1cd",
-    "authorization_denies" : "092a908b745f51c490ce0b03b81c54c1",
-    "authorization_identity_roles" : "6bc08a796a96fe634334779c2705fa35",
-    "authorization_permission_delegations" : "d4b1844050769a5e0554f8007a4c794b",
-    "authorization_role_permissions" : "b0ca2a1bdf14abb77ebb8d7c0389d676",
-    "authorization_roles" : "c31fbaca39bc76dd8988d6ccda1cb69a",
-    "authorization_roles__history" : "5634ac938cc5be2c8ccd6e22eb06f153",
-    "authorization_security_events" : "b0a71858ae3512e7735bb9e5eb9869f7",
-    "ima_identities" : "c4d294a9f17b67ccf49e1f2a7165fb45"
+  "immutableAuditAndLastRootGuard": true,
+  "serverVersion": "18.4",
+  "archiveBytes": 164203,
+  "limits": "synthetic local database; not a production backup, disaster recovery SLA, encryption or remote storage validation",
+  "preserved": {
+    "authentication_service_clients": "f3a1f6770d7d7b51ccfe858e391193a0",
+    "authentication_service_keys": "53d0c0e20f7221e67bce244a45b5e6a2",
+    "authentication_service_nonces": "aa4b9e4aef7d54d24bd61d07f24cf5bb",
+    "authorization_audit": "189ab0fc25e039cfef6d6816fd3f7ce8",
+    "authorization_denies": "173cc94aa45f377c9b1905c33dc737f3",
+    "authorization_identity_roles": "b866d6f925bfd108d00f7c5a2b4f13c4",
+    "authorization_permission_delegations": "ef269b287256faad27bf9ee47f56be73",
+    "authorization_role_permissions": "20b737c8dd4623024fc4d15ab069580c",
+    "authorization_roles": "1aa0534247fa26675918bec2c706250b",
+    "authorization_roles__history": "a0e38f976672b9ee19258faff4ab057f",
+    "authorization_security_events": "0bc0dd2d9d14f3ee7ea5803efed06acf",
+    "ima_identities": "6d7465b92433c00466c0d62e2371e710"
   },
-  "restoredToSeparateDatabase" : true,
-  "sha256" : "c7fd23af0e31f48c2dbba4ec8eaeb8b792259d74ddd47fdf003156b9cae3e69a",
-  "startingSchema" : "20",
-  "endingSchema" : "25",
-  "controlledFailureRolledBack" : true,
-  "immutableAuditAndLastRootGuard" : true,
-  "serverVersion" : "18.4",
-  "archiveBytes" : 164212,
-  "limits" : "synthetic local database; not a production backup, disaster recovery SLA, encryption or remote storage validation"
+  "restoredToSeparateDatabase": true,
+  "sha256": "dd68423c78fd0693899c0b7b7e2bd3223cd53a917c9c93c63aa772d57937dfd1",
+  "startingSchema": "20",
+  "endingSchema": "25",
+  "controlledFailureRolledBack": true,
+  "preflightReadOnlyValidated": true
 }
