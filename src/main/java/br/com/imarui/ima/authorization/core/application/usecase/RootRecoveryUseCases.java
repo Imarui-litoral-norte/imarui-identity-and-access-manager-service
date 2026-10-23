@@ -72,6 +72,11 @@ public class RootRecoveryUseCases {
     guard.require(state,initiator,"AUTHORIZATION_ROOT_RECOVERY",scope);
     var previous=rootAssignment(state,initiator,scope); var root=state.roles().get(previous.roleId());
     var rights=state.rolePermissions().getOrDefault(root.id(),Set.of());
+    // A Role can deny a Permission it does not grant. Shedding ROOT must not
+    // reveal another Role's previously blocked grant outside ROOT's composition.
+    var touched=new HashSet<>(rights);
+    state.denies().stream().filter(d -> d.active() && Objects.equals(d.roleId(),root.id()))
+        .forEach(d -> touched.add(d.permission()));
     var impacted=guard.descendants(state,scope);
     var hierarchy=new ScopeHierarchy(state.scopes());
     if(state.assignments().stream().anyMatch(a -> a.active() && a.identityId().equals(recipient) && a.roleId()==root.id() && a.scopeId().equals(scope)))
@@ -96,9 +101,9 @@ public class RootRecoveryUseCases {
       mutations.saveDelegation(revoked);
       mutations.audit(initiator,"ROOT_GOVERNANCE_REVOKED","PERMISSION_DELEGATION",d.id().toString(),scope,reason,d,revoked,now);
     }
-    preserveDenials(transfer,state,recipient,impacted,rights,reason);
-    preserveDenials(transfer,state,initiator,impacted,rights,reason);
-    guard.assertGains(new AuthorizationMutationGuard.Context(initiator,state),policies.current(),impacted,rights,Map.of());
+    preserveDenials(transfer,state,recipient,impacted,touched,reason);
+    preserveDenials(transfer,state,initiator,impacted,touched,reason);
+    guard.assertGains(new AuthorizationMutationGuard.Context(initiator,state),policies.current(),impacted,touched,Map.of());
     recovery.confirm(id,now);
     mutations.audit(recipient,"ROOT_TRANSFER_CONFIRMED","ROOT_TRANSFER",id.toString(),scope,reason,transfer,
         Map.of("assignment",assignment,"initiator",initiator,"recipient",recipient,"confirmedAt",now),now);

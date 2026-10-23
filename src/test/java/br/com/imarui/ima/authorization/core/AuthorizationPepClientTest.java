@@ -21,9 +21,10 @@ class AuthorizationPepClientTest {
   private volatile int status;
   private volatile String body;
   private volatile long delay;
+  private volatile long bodyDelay;
   @BeforeAll static void key() throws Exception { var g=KeyPairGenerator.getInstance("RSA"); g.initialize(2048); key=(RSAPrivateKey)g.generateKeyPair().getPrivate(); }
   @BeforeEach void server() throws Exception {
-    status=200; body="{}"; delay=0; executor=Executors.newFixedThreadPool(2);
+    status=200; body="{}"; delay=0; bodyDelay=0; executor=Executors.newFixedThreadPool(2);
     server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0); server.setExecutor(executor);
     server.createContext("/api/v1/authorization/service/decisions",exchange -> {
       try {
@@ -32,7 +33,10 @@ class AuthorizationPepClientTest {
         var bytes=body.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type","application/json");
         exchange.getResponseHeaders().set("Location","http://127.0.0.1:1/never-forward-credentials");
-        exchange.sendResponseHeaders(status,bytes.length); exchange.getResponseBody().write(bytes);
+        exchange.sendResponseHeaders(status,bytes.length);
+        exchange.getResponseBody().flush();
+        if(bodyDelay>0) try { Thread.sleep(bodyDelay); } catch(InterruptedException e) { Thread.currentThread().interrupt(); return; }
+        exchange.getResponseBody().write(bytes);
       } finally { exchange.close(); }
     }); server.start();
   }
@@ -51,6 +55,17 @@ class AuthorizationPepClientTest {
     delay=300;
     var result=client(50).check("opaque test actor token",UUID.randomUUID(),"test.read","order",UUID.randomUUID());
     assertFalse(result.allowed()); assertEquals(AuthorizationPepClient.Failure.UNAVAILABLE,result.failure());
+  }
+  @Test void deadlineAlsoCoversTheResponseBodyAndCannotAcceptALateAllow() {
+    var correlation=UUID.randomUUID(); bodyDelay=1500;
+    body="{\"allowed\":true,\"reasonCode\":\"ALLOW\",\"decisionId\":\""+UUID.randomUUID()+"\",\"correlationId\":\""+correlation+"\",\"evaluatedAt\":\""+Instant.now()+"\"}";
+    var result=assertTimeoutPreemptively(Duration.ofMillis(900),() -> client(200).check("test",UUID.randomUUID(),"test.read","order",correlation));
+    assertFalse(result.allowed()); assertEquals(AuthorizationPepClient.Failure.UNAVAILABLE,result.failure());
+  }
+  @Test void oversizedBodyIsRejectedBeforeJsonParsing() {
+    body=" ".repeat(32768);
+    var result=client(1000).check("test",UUID.randomUUID(),"test.read","order",UUID.randomUUID());
+    assertFalse(result.allowed()); assertEquals(AuthorizationPepClient.Failure.INTEGRATION_ERROR,result.failure());
   }
   @Test void malformedOrMismatchedAllowCannotBeTrusted() {
     var correlation=UUID.randomUUID(); body="{\"allowed\":true}";

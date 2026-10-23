@@ -57,7 +57,14 @@ public class TechnicalServiceAuthenticationAdapter implements TechnicalServiceAu
           || !digest(body).equals(c.getStringClaim("body_sha256"))) throw new TechnicalAuthenticationException();
       if(c.getJWTID()==null || c.getStringClaim("correlation_id")==null) throw new TechnicalAuthenticationException();
       var nonce=UUID.fromString(c.getJWTID()); var correlation=UUID.fromString(c.getStringClaim("correlation_id"));
-      jdbc.update("delete from authentication_service_nonces where expires_at<=?",Timestamp.from(now));
+      // Bounded maintenance must not serialize fresh proofs behind an unrelated
+      // expired nonce held by another transaction. Expired proofs are rejected above.
+      jdbc.update("""
+          delete from authentication_service_nonces n using (
+            select credential_id,nonce from authentication_service_nonces where expires_at<=?
+            order by expires_at limit 256 for update skip locked
+          ) expired where n.credential_id=expired.credential_id and n.nonce=expired.nonce
+          """,Timestamp.from(now));
       if(jdbc.update("insert into authentication_service_nonces(credential_id,nonce,expires_at) values(?,?,?) on conflict do nothing",
           credential,nonce,Timestamp.from(c.getExpirationTime().toInstant()))!=1) throw new TechnicalAuthenticationException();
       return new Caller(proofKey.clientId(),service,credential,proofKey.operations(),proofKey.roots(),correlation);

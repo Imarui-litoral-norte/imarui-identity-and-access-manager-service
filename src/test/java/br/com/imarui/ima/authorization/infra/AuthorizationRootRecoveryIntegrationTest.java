@@ -19,6 +19,7 @@ class AuthorizationRootRecoveryIntegrationTest extends IdentityIntegrationSuppor
   @Autowired EffectiveAuthorizationUseCases decisions;
   @Autowired ScopeRepository scopes;
   @Autowired ScopeAdministrationUseCases hierarchy;
+  @Autowired RoleAdministrationUseCases roles;
   private static final String PATH="/api/v1/authorization/admin/root/transfers";
   private static final String PASSWORD="Fixture password 123!";
   private static final UUID PLATFORM=AuthorizationScope.PLATFORM_ID;
@@ -119,6 +120,11 @@ class AuthorizationRootRecoveryIntegrationTest extends IdentityIntegrationSuppor
     assertEquals(409,result.statusCode(),result.body());
     assertTrue(jdbc.queryForObject("select count(*) from authorization_security_events where event='ADMINISTRATIVE_REJECTED' and actor_identity_id=? and reason_code='HTTP_409'",Integer.class,reviewer.getId().value())>0);
   }
+  @Test void lastActiveRootCannotBeDemotedToPendingThroughAPersistedLifecycleWrite() {
+    assertThrows(org.springframework.dao.DataIntegrityViolationException.class,() ->
+        jdbc.update("update ima_identities set status='PENDING' where id=?",reviewer.getId().value()));
+    assertEquals("ACTIVE",jdbc.queryForObject("select status from ima_identities where id=?",String.class,reviewer.getId().value()));
+  }
   @Test void rootStillRespectsCommonDenyAndCannotBlockTheRecoveryEnvelope() throws Exception {
     var scope=scopes.tenantScope(tenant.getId().value()).orElseThrow();
     denies.deny("TENANT_READ",scope,reviewer.getId().value(),null,REASON);
@@ -137,6 +143,25 @@ class AuthorizationRootRecoveryIntegrationTest extends IdentityIntegrationSuppor
     assertTrue(decisions.evaluate(recipient.getId().value(),"AUTHORIZATION_ROOT_RECOVERY",PLATFORM).allowed());
     assertFalse(decisions.evaluate(recipient.getId().value(),"TENANT_READ",scope).allowed());
     assertEquals(1,jdbc.queryForObject("select count(*) from authorization_audit where action='ROOT_CONSTRAINT_PRESERVED' and scope_id=?",Integer.class,scope));
+  }
+  @Test void transferCannotRemoveARootRoleDenyForAPermissionOutsideRootComposition() throws Exception {
+    var recipient=user(); var scope=scopes.tenantScope(tenant.getId().value()).orElseThrow();
+    var owner="review-"+UUID.randomUUID().toString().replace("-",""); var permission=owner+".restricted";
+    jdbc.update("insert into authorization_catalog_owners(service_code,namespace,updated_at) values(?,?,current_timestamp)",owner,owner);
+    jdbc.update("insert into authorization_permissions(code,description,module,service_code,namespace,catalog_version,updated_at) values(?,'Review restriction','review',?,?,1,current_timestamp)",permission,owner,owner);
+    denies.bootstrapCatalogAuthority(permission,PLATFORM,REASON);
+    var independent=roles.create("Preexisting grant "+UUID.randomUUID(),br.com.imarui.ima.authorization.core.domain.model.Role.Ownership.GLOBAL,null,null,Set.of(permission),REASON);
+    // Existing legitimate grant; ordinary APIs deliberately forbid self-assignment.
+    jdbc.update("insert into authorization_identity_roles(identity_id,role_id,authorization_scope_id) values(?,?,?)",reviewer.getId().value(),independent.id(),PLATFORM);
+    long root=jdbc.queryForObject("select id from authorization_roles where name='ROOT'",Long.class);
+    assertEquals(0,jdbc.queryForObject("select count(*) from authorization_role_permissions rp join authorization_permissions p on p.id=rp.permission_id where rp.role_id=? and p.code=?",Integer.class,root,permission));
+    denies.deny(permission,scope,null,root,REASON);
+    assertFalse(decisions.evaluate(reviewer.getId().value(),permission,scope).allowed());
+    var id=approval(recipient,liveToken(reviewer));
+    var result=http("POST",PATH+"/"+id+"/confirm",confirmBody(PASSWORD),liveToken(recipient));
+    assertEquals(200,result.statusCode(),result.body());
+    assertFalse(decisions.evaluate(reviewer.getId().value(),permission,scope).allowed(),"Shedding ROOT must not shed its DENY on unrelated Role grants");
+    assertEquals(1,jdbc.queryForObject("select count(*) from authorization_denies where identity_id=? and permission_code=? and scope_id=? and active",Integer.class,reviewer.getId().value(),permission,scope));
   }
   @Test void independentlyScopedRootCanTransferItsOwnRealmWithoutObtainingPlatformAuthority() throws Exception {
     var recipient=user(); var next=user();

@@ -24,7 +24,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
   @Autowired TechnicalClientAdministrationUseCases clients;
-  @Autowired TechnicalServiceAuthentication technicalAuthentication;
+  @org.springframework.test.context.bean.override.mockito.MockitoSpyBean TechnicalServiceAuthentication technicalAuthentication;
   @Autowired PdpUseCases pdp;
   @Autowired CatalogOwnerAdministrationUseCases owners;
   @Autowired RoleAdministrationUseCases roles;
@@ -240,6 +240,35 @@ class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
       var a=pool.submit(action); var c=pool.submit(action);
       assertEquals(Set.of(200,401),Set.of(a.get(20,java.util.concurrent.TimeUnit.SECONDS),c.get(20,java.util.concurrent.TimeUnit.SECONDS)));
     } finally { pool.shutdownNow(); }
+  }
+  @Test void anUnrelatedLockedExpiredNonceCannotBlockFreshAuthentication() throws Exception {
+    var stale=UUID.randomUUID();
+    jdbc.update("insert into authentication_service_nonces values(?,?,?)",keyId,stale,java.sql.Timestamp.from(fixtureClock.instant().minusSeconds(10)));
+    try(var connection=jdbc.getDataSource().getConnection()) {
+      connection.setAutoCommit(false);
+      try(var statement=connection.prepareStatement("select nonce from authentication_service_nonces where credential_id=? and nonce=? for update")) {
+        statement.setObject(1,keyId); statement.setObject(2,stale); statement.executeQuery().close();
+      }
+      try {
+        var response=assertTimeoutPreemptively(Duration.ofSeconds(2),() -> send(CATALOG,manifest(1),null));
+        assertEquals(200,response.statusCode(),response.body());
+      } finally { connection.rollback(); }
+    }
+  }
+  @Test void connectionFailureInTechnicalAuthenticationReturnsUnavailableAndNeverAllow() throws Exception {
+    org.mockito.Mockito.doThrow(new org.springframework.jdbc.CannotGetJdbcConnectionException("Isolated dependency failure"))
+        .when(technicalAuthentication).verify(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.any(byte[].class));
+    assertEquals(503,send(CATALOG,manifest(1),null).statusCode());
+  }
+  @Test void expiredHumanTokenAndTechnicalProofAsHumanTokenAreRejected() throws Exception {
+    var user=granted();
+    var expired=new TransactionTemplate(transactions).execute(s -> {
+      var past=fixtureClock.instant().minusSeconds(1000); var session=authenticationStore.createSession(user.getId().value(),past);
+      return tokenIssuer.issue(user.getId().value(),session.getPublicId(),past);
+    });
+    assertEquals(401,send(PDP,request(user,expired,scope()),null).statusCode());
+    var technical=proof(PDP,request(user,token(user),scope()));
+    assertEquals(401,send(PDP,request(user,technical,scope()),null).statusCode());
   }
   @Test void batchUsesOneActorAndOneCurrentPolicySnapshot() throws Exception {
     var user=granted(); var jwt=token(user); var correlation=UUID.randomUUID();

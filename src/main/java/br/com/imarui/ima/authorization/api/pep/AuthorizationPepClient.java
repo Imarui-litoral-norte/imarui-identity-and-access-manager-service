@@ -10,6 +10,8 @@ import java.security.*;
 import java.security.interfaces.RSAPrivateKey;
 import java.time.*;
 import java.util.*;
+import java.util.concurrent.*;
+import java.nio.ByteBuffer;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Reference backend PEP. The resolver receives only a resource key, never a frontend Scope. */
@@ -55,15 +57,18 @@ public final class AuthorizationPepClient {
       byte[] bytes=json.writeValueAsString(body).getBytes(StandardCharsets.UTF_8);
       if(bytes.length>65536) return deny(Failure.INTEGRATION_ERROR,correlation);
       String assertion=proof(bytes,correlation);
-      var response=http.send(HttpRequest.newBuilder(endpoint).timeout(timeout).header("Content-Type","application/json")
+      var pending=http.sendAsync(HttpRequest.newBuilder(endpoint).timeout(timeout).header("Content-Type","application/json")
           .header("Cache-Control","no-store")
-          .header("Authorization","Service "+assertion).POST(HttpRequest.BodyPublishers.ofByteArray(bytes)).build(),HttpResponse.BodyHandlers.ofString());
+          .header("Authorization","Service "+assertion).POST(HttpRequest.BodyPublishers.ofByteArray(bytes)).build(),info -> boundedBody());
+      HttpResponse<byte[]> response;
+      try { response=pending.get(timeout.toNanos(),TimeUnit.NANOSECONDS); }
+      finally { if(!pending.isDone()) pending.cancel(true); }
       int status=response.statusCode();
       if(status==401) return deny(Failure.UNAUTHENTICATED,correlation);
       if(status==404) return deny(Failure.NOT_FOUND,correlation);
       if(status==429) return deny(Failure.RATE_LIMITED,correlation);
       if(status>=500) return deny(Failure.UNAVAILABLE,correlation);
-      if(status!=200 && status!=403 || response.body().length()>16384) return deny(Failure.INTEGRATION_ERROR,correlation);
+      if(status!=200 && status!=403) return deny(Failure.INTEGRATION_ERROR,correlation);
       if(!response.headers().firstValue("Content-Type").orElse("").contains("json")) return deny(Failure.INTEGRATION_ERROR,correlation);
       var result=json.readTree(response.body());
       if(status==403 && !result.has("decisionId")) return deny(Failure.FORBIDDEN,correlation);
@@ -76,9 +81,35 @@ public final class AuthorizationPepClient {
       if(!allowed && status==403 && "DENY".equals(result.path("reasonCode").asText())) return new Decision(false,Failure.DENIED,id,correlation);
       return deny(Failure.INTEGRATION_ERROR,correlation);
     } catch(NoSuchElementException unknown) { return deny(Failure.NOT_FOUND,correlation); }
-      catch(java.io.IOException unavailable) { return deny(Failure.UNAVAILABLE,correlation); }
+      catch(TimeoutException unavailable) { return deny(Failure.UNAVAILABLE,correlation); }
+      catch(ExecutionException unavailable) {
+        var cause=unavailable.getCause();
+        while(cause instanceof CompletionException && cause.getCause()!=null) cause=cause.getCause();
+        return deny(cause instanceof OversizedResponse?Failure.INTEGRATION_ERROR:Failure.UNAVAILABLE,correlation);
+      }
       catch(InterruptedException interrupted) { Thread.currentThread().interrupt(); return deny(Failure.UNAVAILABLE,correlation); }
       catch(Exception invalid) { return deny(Failure.INTEGRATION_ERROR,correlation); }
+  }
+
+  private static final class OversizedResponse extends java.io.IOException {}
+  /** Cancel on the wire, before buffering an unbounded body. The future deadline covers all chunks. */
+  private static HttpResponse.BodySubscriber<byte[]> boundedBody() {
+    var delegate=HttpResponse.BodySubscribers.ofByteArray();
+    return new HttpResponse.BodySubscriber<>() {
+      private Flow.Subscription subscription;
+      private long received;
+      private boolean terminated;
+      public CompletionStage<byte[]> getBody() { return delegate.getBody(); }
+      public void onSubscribe(Flow.Subscription subscription) { this.subscription=subscription; delegate.onSubscribe(subscription); }
+      public void onNext(List<ByteBuffer> chunks) {
+        if(terminated) return;
+        for(var chunk:chunks) received+=chunk.remaining();
+        if(received>16384) { terminated=true; subscription.cancel(); delegate.onError(new OversizedResponse()); }
+        else delegate.onNext(chunks);
+      }
+      public void onError(Throwable error) { if(!terminated) { terminated=true; delegate.onError(error); } }
+      public void onComplete() { if(!terminated) { terminated=true; delegate.onComplete(); } }
+    };
   }
 
   private String proof(byte[] body,UUID correlation) throws Exception {
