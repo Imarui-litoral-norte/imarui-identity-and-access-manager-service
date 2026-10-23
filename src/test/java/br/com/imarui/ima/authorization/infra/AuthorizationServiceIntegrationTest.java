@@ -185,6 +185,7 @@ class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
     var user=granted(); var other=user(); var jwt=token(user);
     assertEquals(401,send(PDP,request(other,jwt,scope()),null).statusCode());
     assertEquals(403,send(PDP,request(user,jwt,PLATFORM),null).statusCode());
+    assertEquals(1,jdbc.queryForObject("select count(*) from authorization_security_events where event='PDP_ACTOR_REJECTED' and service_code=? and actor_identity_id is null",Integer.class,service));
   }
   @Test void technicalJurisdictionAndPermissionOwnerAreEnforced() throws Exception {
     var user=granted(); var jwt=token(user);
@@ -280,6 +281,60 @@ class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
     var forged=new br.com.imarui.ima.authorization.api.http.ServiceAuthorizationController.DecisionRequest(jwt,reviewer.getId().value(),permission(),"TENANT",tenant.getId().value().toString(),scope(),correlation);
     var wrong=json.writeValueAsString(new br.com.imarui.ima.authorization.api.http.ServiceAuthorizationController.Batch(correlation,List.of(item,forged)));
     assertEquals(400,send(path,wrong,null).statusCode());
+  }
+  @Test void mixedBatchReportsEachDecisionAndABoundaryFailureRollsBackEarlierDecisionEvents() throws Exception {
+    var user=granted(); var jwt=token(user); var correlation=UUID.randomUUID(); var other=service+".resource.write";
+    var next=new PermissionManifest(service,service,2,List.of(new PermissionManifest.Entry(permission(),"Read","resources",false),new PermissionManifest.Entry(other,"Write","resources",false)));
+    assertEquals(200,send(CATALOG,json.writeValueAsString(next),null).statusCode());
+    var a=new br.com.imarui.ima.authorization.api.http.ServiceAuthorizationController.DecisionRequest(jwt,user.getId().value(),permission(),"TENANT",tenant.getId().value().toString(),scope(),correlation);
+    var b=new br.com.imarui.ima.authorization.api.http.ServiceAuthorizationController.DecisionRequest(jwt,user.getId().value(),other,"TENANT",tenant.getId().value().toString(),scope(),correlation);
+    String path=PDP+"/batch";
+    var response=send(path,json.writeValueAsString(new br.com.imarui.ima.authorization.api.http.ServiceAuthorizationController.Batch(correlation,List.of(a,b))),null);
+    assertEquals(200,response.statusCode(),response.body());
+    assertTrue(json.readTree(response.body()).get(0).path("allowed").asBoolean());
+    assertFalse(json.readTree(response.body()).get(1).path("allowed").asBoolean());
+    var aborted=UUID.randomUUID();
+    var first=new br.com.imarui.ima.authorization.api.http.ServiceAuthorizationController.DecisionRequest(jwt,user.getId().value(),permission(),"TENANT",tenant.getId().value().toString(),scope(),aborted);
+    var forged=new br.com.imarui.ima.authorization.api.http.ServiceAuthorizationController.DecisionRequest(jwt,user.getId().value(),permission(),"TENANT",tenant.getId().value().toString(),PLATFORM,aborted);
+    assertEquals(403,send(path,json.writeValueAsString(new br.com.imarui.ima.authorization.api.http.ServiceAuthorizationController.Batch(aborted,List.of(first,forged))),null).statusCode());
+    assertEquals(0,jdbc.queryForObject("select count(*) from authorization_security_events where event='PDP_DECISION' and correlation_id=?",Integer.class,aborted));
+  }
+  @Test void aDecisionAlreadyStartedCanUseItsSnapshotButTheNextDecisionSeesCommittedRevocation() throws Exception {
+    var user=granted(); var jwt=token(user); var resource="frozen-"+UUID.randomUUID();
+    clients.bind(service,"ORDER",resource,scope(),REASON);
+    var body=json.writeValueAsString(new br.com.imarui.ima.authorization.api.http.ServiceAuthorizationController.DecisionRequest(jwt,user.getId().value(),permission(),"ORDER",resource,scope(),UUID.randomUUID()));
+    var executor=java.util.concurrent.Executors.newSingleThreadExecutor();
+    try(var connection=jdbc.getDataSource().getConnection()) {
+      connection.setAutoCommit(false);
+      try(var statement=connection.createStatement()) { statement.execute("lock table authorization_service_resources in access exclusive mode"); }
+      var pending=executor.submit(() -> send(PDP,body,null));
+      try {
+        long deadline=System.nanoTime()+Duration.ofSeconds(2).toNanos(); boolean waiting=false;
+        while(System.nanoTime()<deadline) {
+          waiting=jdbc.queryForObject("select exists(select 1 from pg_stat_activity where datname=current_database() and wait_event_type='Lock' and query like '%from authorization_service_resources where service_code%')",Boolean.class);
+          if(waiting) break; Thread.sleep(15);
+        }
+        assertTrue(waiting,"The decision must have prepared its RR policy snapshot before the revocation");
+        denies.deny(permission(),scope(),user.getId().value(),null,REASON);
+      } finally { connection.rollback(); }
+      var earlier=pending.get(10,java.util.concurrent.TimeUnit.SECONDS);
+      assertEquals(200,earlier.statusCode(),earlier.body());
+      assertEquals(403,send(PDP,body,null).statusCode());
+    } finally { executor.shutdownNow(); }
+  }
+  @Test void denyAuditFailureAlsoFailsClosed() throws Exception {
+    var user=granted(); var jwt=token(user); denies.deny(permission(),scope(),user.getId().value(),null,REASON);
+    jdbc.execute("create function test_deny_audit_failure() returns trigger language plpgsql as $$ begin if new.event='PDP_DECISION' then raise exception 'isolated audit failure'; end if; return new; end $$");
+    jdbc.execute("create trigger test_deny_audit_failure before insert on authorization_security_events for each row execute function test_deny_audit_failure()");
+    try { assertEquals(503,send(PDP,request(user,jwt,scope()),null).statusCode()); }
+    finally { jdbc.execute("drop trigger test_deny_audit_failure on authorization_security_events"); jdbc.execute("drop function test_deny_audit_failure()"); }
+  }
+  @Test void nonceCleanupIsBoundedAndNeverDeletesAnUnexpiredReplayBarrier() throws Exception {
+    jdbc.update("insert into authentication_service_nonces select ?,gen_random_uuid(),'2000-01-01Z'::timestamptz from generate_series(1,600)",keyId);
+    var live=UUID.randomUUID(); jdbc.update("insert into authentication_service_nonces values(?,?,?)",keyId,live,java.sql.Timestamp.from(fixtureClock.instant().plusSeconds(60)));
+    assertEquals(200,send(CATALOG,manifest(1),null).statusCode());
+    assertEquals(344,jdbc.queryForObject("select count(*) from authentication_service_nonces where credential_id=? and expires_at='2000-01-01Z'",Integer.class,keyId));
+    assertEquals(1,jdbc.queryForObject("select count(*) from authentication_service_nonces where credential_id=? and nonce=?",Integer.class,keyId,live));
   }
   @Test void realConsumerResolvesItsResourceServerSideAndFailsClosedForTheSiblingTenant() throws Exception {
     var user=granted(); var jwt=token(user);

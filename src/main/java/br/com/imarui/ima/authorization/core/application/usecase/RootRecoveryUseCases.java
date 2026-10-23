@@ -31,6 +31,8 @@ public class RootRecoveryUseCases {
   private final RootRecoveryRepository recovery;
   private final Clock clock;
   private final PlatformTransactionManager transactions;
+  private final io.micrometer.core.instrument.MeterRegistry metrics;
+  private static final org.slf4j.Logger log=org.slf4j.LoggerFactory.getLogger(RootRecoveryUseCases.class);
 
   public Approval initiate(UUID recipient,UUID scope,String password,PolicyChangeReason reason) {
     var actor=actors.requireIdentityId(); var sid=sessions.requireSessionId();
@@ -48,6 +50,7 @@ public class RootRecoveryUseCases {
         reason.reason(),reason.correlationId(),now,now.plusSeconds(600),null);
     recovery.create(transfer);
     mutations.audit(actor,"ROOT_TRANSFER_REQUESTED","ROOT_TRANSFER",transfer.id().toString(),scope,reason,null,transfer,now);
+    signal("REQUESTED",transfer);
     return view(transfer);
   }
 
@@ -107,6 +110,7 @@ public class RootRecoveryUseCases {
     recovery.confirm(id,now);
     mutations.audit(recipient,"ROOT_TRANSFER_CONFIRMED","ROOT_TRANSFER",id.toString(),scope,reason,transfer,
         Map.of("assignment",assignment,"initiator",initiator,"recipient",recipient,"confirmedAt",now),now);
+    signal("CONFIRMED",transfer);
     return new Approval(id,initiator,recipient,scope,transfer.expiresAt(),"COMPLETED",RECOVERY,true);
   }
 
@@ -150,4 +154,15 @@ public class RootRecoveryUseCases {
   }
   private Approval view(RootTransfer t) { return new Approval(t.id(),t.initiatorId(),t.recipientId(),t.scopeId(),t.expiresAt(),
       t.confirmedAt()!=null?"COMPLETED":t.pending(clock.instant())?"PENDING":"EXPIRED",RECOVERY,true); }
+
+  private void signal(String event,RootTransfer transfer) {
+    org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+        new org.springframework.transaction.support.TransactionSynchronization() {
+          public void afterCommit() {
+            metrics.counter("iiam.root.transfers","event",event).increment();
+            log.warn("authorization_root_transfer event={} transferId={} scopeId={} correlationId={}",
+                event,transfer.id(),transfer.scopeId(),transfer.correlationId());
+          }
+        });
+  }
 }

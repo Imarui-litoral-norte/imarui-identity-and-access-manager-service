@@ -20,6 +20,7 @@ class AuthorizationRootRecoveryIntegrationTest extends IdentityIntegrationSuppor
   @Autowired ScopeRepository scopes;
   @Autowired ScopeAdministrationUseCases hierarchy;
   @Autowired RoleAdministrationUseCases roles;
+  @Autowired io.micrometer.core.instrument.MeterRegistry metrics;
   private static final String PATH="/api/v1/authorization/admin/root/transfers";
   private static final String PASSWORD="Fixture password 123!";
   private static final UUID PLATFORM=AuthorizationScope.PLATFORM_ID;
@@ -144,7 +145,9 @@ class AuthorizationRootRecoveryIntegrationTest extends IdentityIntegrationSuppor
     assertFalse(decisions.evaluate(recipient.getId().value(),"TENANT_READ",scope).allowed());
     assertEquals(1,jdbc.queryForObject("select count(*) from authorization_audit where action='ROOT_CONSTRAINT_PRESERVED' and scope_id=?",Integer.class,scope));
   }
-  @Test void transferCannotRemoveARootRoleDenyForAPermissionOutsideRootComposition() throws Exception {
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(booleans={false,true})
+  void transferCannotRemoveARootRoleDenyForAPermissionOutsideRootComposition(boolean inherited) throws Exception {
     var recipient=user(); var scope=scopes.tenantScope(tenant.getId().value()).orElseThrow();
     var owner="review-"+UUID.randomUUID().toString().replace("-",""); var permission=owner+".restricted";
     jdbc.update("insert into authorization_catalog_owners(service_code,namespace,updated_at) values(?,?,current_timestamp)",owner,owner);
@@ -155,13 +158,56 @@ class AuthorizationRootRecoveryIntegrationTest extends IdentityIntegrationSuppor
     jdbc.update("insert into authorization_identity_roles(identity_id,role_id,authorization_scope_id) values(?,?,?)",reviewer.getId().value(),independent.id(),PLATFORM);
     long root=jdbc.queryForObject("select id from authorization_roles where name='ROOT'",Long.class);
     assertEquals(0,jdbc.queryForObject("select count(*) from authorization_role_permissions rp join authorization_permissions p on p.id=rp.permission_id where rp.role_id=? and p.code=?",Integer.class,root,permission));
-    denies.deny(permission,scope,null,root,REASON);
+    var deniedScope=inherited?PLATFORM:scope;
+    denies.deny(permission,deniedScope,null,root,REASON);
     assertFalse(decisions.evaluate(reviewer.getId().value(),permission,scope).allowed());
     var id=approval(recipient,liveToken(reviewer));
     var result=http("POST",PATH+"/"+id+"/confirm",confirmBody(PASSWORD),liveToken(recipient));
     assertEquals(200,result.statusCode(),result.body());
     assertFalse(decisions.evaluate(reviewer.getId().value(),permission,scope).allowed(),"Shedding ROOT must not shed its DENY on unrelated Role grants");
-    assertEquals(1,jdbc.queryForObject("select count(*) from authorization_denies where identity_id=? and permission_code=? and scope_id=? and active",Integer.class,reviewer.getId().value(),permission,scope));
+    assertEquals(1,jdbc.queryForObject("select count(*) from authorization_denies where identity_id=? and permission_code=? and scope_id=? and active",Integer.class,reviewer.getId().value(),permission,deniedScope));
+  }
+  @Test void recoverySignalsOnlyCommittedRequestsAndConfirmationsWithoutDoubleCounting() throws Exception {
+    double requested=metrics.counter("iiam.root.transfers","event","REQUESTED").count();
+    double confirmed=metrics.counter("iiam.root.transfers","event","CONFIRMED").count();
+    var recipient=user(); var id=approval(recipient,liveToken(reviewer)); var jwt=liveToken(recipient);
+    assertEquals(requested+1,metrics.counter("iiam.root.transfers","event","REQUESTED").count());
+    assertEquals(200,http("POST",PATH+"/"+id+"/confirm",confirmBody(PASSWORD),jwt).statusCode());
+    assertEquals(confirmed+1,metrics.counter("iiam.root.transfers","event","CONFIRMED").count());
+    assertEquals(200,http("POST",PATH+"/"+id+"/confirm",confirmBody(PASSWORD),jwt).statusCode());
+    assertEquals(confirmed+1,metrics.counter("iiam.root.transfers","event","CONFIRMED").count());
+  }
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(strings={"ROOT_GOVERNANCE_REVOKED","ROOT_TRANSFER_CONFIRMED"})
+  void partialDelegationOrFinalAuditFailureRollsBackTheEntireTransfer(String action) throws Exception {
+    var recipient=user(); var id=approval(recipient,liveToken(reviewer)); var jwt=liveToken(recipient);
+    double confirmed=metrics.counter("iiam.root.transfers","event","CONFIRMED").count();
+    jdbc.execute("create function test_recovery_failure() returns trigger language plpgsql as $$ begin if new.action='"+action+"' then raise exception 'isolated recovery failure'; end if; return new; end $$");
+    jdbc.execute("create trigger test_recovery_failure before insert on authorization_audit for each row execute function test_recovery_failure()");
+    try { assertEquals(503,http("POST",PATH+"/"+id+"/confirm",confirmBody(PASSWORD),jwt).statusCode()); }
+    finally { jdbc.execute("drop trigger test_recovery_failure on authorization_audit"); jdbc.execute("drop function test_recovery_failure()"); }
+    assertNull(jdbc.queryForObject("select confirmed_at from authorization_root_transfers where id=?",java.sql.Timestamp.class,id));
+    assertEquals(0,jdbc.queryForObject("select count(*) from authorization_permission_delegations where identity_id=?",Integer.class,recipient.getId().value()));
+    assertEquals(0,jdbc.queryForObject("select count(*) from authorization_identity_roles where identity_id=?",Integer.class,recipient.getId().value()));
+    assertTrue(decisions.evaluate(reviewer.getId().value(),"AUTHORIZATION_ROOT_RECOVERY",PLATFORM).allowed());
+    assertEquals(confirmed,metrics.counter("iiam.root.transfers","event","CONFIRMED").count());
+    assertEquals(200,http("POST",PATH+"/"+id+"/confirm",confirmBody(PASSWORD),jwt).statusCode());
+  }
+  @Test void recipientDisabledBeforeConfirmationCannotReceiveRoot() throws Exception {
+    var recipient=user(); var id=approval(recipient,liveToken(reviewer)); var jwt=liveToken(recipient);
+    disable.execute(new br.com.imarui.ima.identity.core.application.command.identity.DisableIdentityCommand(recipient.getId()));
+    assertEquals(401,http("POST",PATH+"/"+id+"/confirm",confirmBody(PASSWORD),jwt).statusCode());
+    assertNull(jdbc.queryForObject("select confirmed_at from authorization_root_transfers where id=?",java.sql.Timestamp.class,id));
+  }
+  @Test void changedRootCompositionIsRevalidatedAtConfirmationWithoutInventingDelegation() throws Exception {
+    var recipient=user(); var id=approval(recipient,liveToken(reviewer));
+    var owner="changed-"+UUID.randomUUID().toString().replace("-",""); var code=owner+".new";
+    jdbc.update("insert into authorization_catalog_owners(service_code,namespace,updated_at) values(?,?,current_timestamp)",owner,owner);
+    jdbc.update("insert into authorization_permissions(code,description,module,service_code,namespace,catalog_version,updated_at) values(?,'New definition','review',?,?,1,current_timestamp)",code,owner,owner);
+    jdbc.update("insert into authorization_role_permissions(role_id,permission_id) select r.id,p.id from authorization_roles r cross join authorization_permissions p where r.name='ROOT' and p.code=?",code);
+    assertEquals(403,http("POST",PATH+"/"+id+"/confirm",confirmBody(PASSWORD),liveToken(recipient)).statusCode());
+    assertNull(jdbc.queryForObject("select confirmed_at from authorization_root_transfers where id=?",java.sql.Timestamp.class,id));
+    assertEquals(0,jdbc.queryForObject("select count(*) from authorization_identity_roles where identity_id=?",Integer.class,recipient.getId().value()));
   }
   @Test void independentlyScopedRootCanTransferItsOwnRealmWithoutObtainingPlatformAuthority() throws Exception {
     var recipient=user(); var next=user();

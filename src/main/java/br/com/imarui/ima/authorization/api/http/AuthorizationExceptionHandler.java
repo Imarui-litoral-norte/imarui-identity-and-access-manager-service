@@ -39,6 +39,12 @@ public class AuthorizationExceptionHandler {
       br.com.imarui.ima.authentication.core.application.exception.AuthenticationFailure.class})
   public ProblemDetail invalidActor(Exception e,jakarta.servlet.http.HttpServletResponse response) {
     response.setHeader("WWW-Authenticate","Bearer realm=\"actor\"");
+    var authentication=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+    if(authentication!=null && authentication.getPrincipal() instanceof br.com.imarui.ima.authentication.api.module.TechnicalServiceAuthentication.Caller caller) {
+      try {
+        events.record("PDP_ACTOR_REJECTED",null,caller.serviceCode(),caller.credentialId().toString(),null,"INVALID_ACTOR_CONTEXT",caller.correlationId());
+      } catch(RuntimeException auditUnavailable) { return problem(503,"SECURITY_AUDIT_UNAVAILABLE"); }
+    }
     return problem(401,e instanceof br.com.imarui.ima.authentication.core.application.exception.AuthenticationFailure?"REAUTHENTICATION_FAILED":"INVALID_ACTOR_CONTEXT");
   }
   @ExceptionHandler(NoSuchElementException.class)
