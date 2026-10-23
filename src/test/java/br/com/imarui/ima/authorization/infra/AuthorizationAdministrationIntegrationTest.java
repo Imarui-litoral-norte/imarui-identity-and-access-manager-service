@@ -26,6 +26,7 @@ class AuthorizationAdministrationIntegrationTest extends IdentityIntegrationSupp
   @Autowired CatalogOwnerAdministrationUseCases catalogOwners;
   @Autowired br.com.imarui.ima.authorization.core.repository.PermissionCatalogRepository catalogRepository;
   @Autowired java.time.Clock clock;
+  @Autowired br.com.imarui.ima.authorization.core.repository.AuthorizationPolicyRepository policy;
   private static final UUID PLATFORM=AuthorizationScope.PLATFORM_ID;
   private static final PolicyChangeReason REASON=new PolicyChangeReason("Authorized policy maintenance",UUID.fromString("00000000-0000-0000-0000-000000000081"));
 
@@ -204,6 +205,38 @@ class AuthorizationAdministrationIntegrationTest extends IdentityIntegrationSupp
     assertThrows(SecurityException.class,() -> hierarchy.revise(local.id(),local.name(),local.status(),newParent.id(),REASON));
     assertEquals(oldParent.id(),scopes.find(local.id()).orElseThrow().parentId());
     assertFalse(allowed(target,"IDENTITY_READ",local.id()));
+  }
+  @Test void reparentingCannotRestoreDeniedDelegationEvenWhenTheActorHasNoUsageGrant() {
+    var manager=user(); var oldParent=hierarchy.create(unique("DENIED"),"Denied region",PLATFORM,REASON);
+    var newParent=hierarchy.create(unique("OPEN"),"Other region",PLATFORM,REASON);
+    var resource=scopes.find(scope()).orElseThrow();
+    hierarchy.revise(resource.id(),resource.name(),resource.status(),oldParent.id(),REASON);
+    operator(manager,PLATFORM,Set.of("AUTHORIZATION_SCOPE_MANAGE"));
+    rules.delegate(manager.getId().value(),"IDENTITY_READ",PLATFORM,false,REASON);
+    rules.deny("IDENTITY_READ",oldParent.id(),manager.getId().value(),null,REASON);
+    assertFalse(allowed(manager,"IDENTITY_READ",resource.id()));
+    assertFalse(Boolean.TRUE.equals(new TransactionTemplate(transactions).execute(s -> new br.com.imarui.ima.authorization.core.domain.policy.EffectiveAuthorizationEvaluator().mayDelegate(policy.current(),manager.getId().value(),"IDENTITY_READ",resource.id(),false))));
+    actor(manager.getId());
+    assertThrows(SecurityException.class,() -> hierarchy.revise(resource.id(),resource.name(),resource.status(),newParent.id(),REASON));
+    assertEquals(oldParent.id(),scopes.find(resource.id()).orElseThrow().parentId());
+    assertFalse(Boolean.TRUE.equals(new TransactionTemplate(transactions).execute(s -> new br.com.imarui.ima.authorization.core.domain.policy.EffectiveAuthorizationEvaluator().mayDelegate(policy.current(),manager.getId().value(),"IDENTITY_READ",resource.id(),false))));
+  }
+  @Test void denyRevocationCannotRestoreTheActorsDelegationWithoutAnyUsageGrant() {
+    var manager=user(); operator(manager,PLATFORM,Set.of("AUTHORIZATION_DENY_MANAGE"));
+    rules.delegate(manager.getId().value(),"IDENTITY_READ",PLATFORM,false,REASON);
+    var deny=rules.deny("IDENTITY_READ",scope(),manager.getId().value(),null,REASON);
+    assertFalse(allowed(manager,"IDENTITY_READ",scope())); actor(manager.getId());
+    assertThrows(SecurityException.class,() -> rules.revokeDeny(deny.id(),REASON));
+    assertTrue(jdbc.queryForObject("select active from authorization_denies where id=?",Boolean.class,deny.id()));
+  }
+  @Test void disablingADenyingRoleCannotRestoreTheActorsDelegationWithoutAnyUsageGrant() {
+    var manager=user(); operator(manager,PLATFORM,Set.of("AUTHORIZATION_ROLE_MANAGE"));
+    var restricted=global(Set.of()); grant(manager,restricted,PLATFORM);
+    rules.delegate(manager.getId().value(),"IDENTITY_READ",PLATFORM,false,REASON);
+    rules.deny("IDENTITY_READ",scope(),null,restricted.id(),REASON);
+    assertFalse(allowed(manager,"IDENTITY_READ",scope())); actor(manager.getId());
+    assertThrows(SecurityException.class,() -> roles.revise(restricted.id(),restricted.name(),Role.Status.INACTIVE,Set.of(),REASON));
+    assertEquals("ACTIVE",jdbc.queryForObject("select status from authorization_roles where id=?",String.class,restricted.id()));
   }
 
   @Test void rootCannotEscapeItsOwnOrdinaryDenyByMovingTheResource() {

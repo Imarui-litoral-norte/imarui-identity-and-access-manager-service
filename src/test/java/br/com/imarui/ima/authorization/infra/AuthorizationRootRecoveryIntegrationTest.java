@@ -146,8 +146,8 @@ class AuthorizationRootRecoveryIntegrationTest extends IdentityIntegrationSuppor
     assertEquals(1,jdbc.queryForObject("select count(*) from authorization_audit where action='ROOT_CONSTRAINT_PRESERVED' and scope_id=?",Integer.class,scope));
   }
   @org.junit.jupiter.params.ParameterizedTest
-  @org.junit.jupiter.params.provider.ValueSource(booleans={false,true})
-  void transferCannotRemoveARootRoleDenyForAPermissionOutsideRootComposition(boolean inherited) throws Exception {
+  @org.junit.jupiter.params.provider.CsvSource({"false,true","true,true","false,false","true,false"})
+  void transferCannotRemoveARootRoleDenyForAPermissionOutsideRootComposition(boolean inherited,boolean usageGrant) throws Exception {
     var recipient=user(); var scope=scopes.tenantScope(tenant.getId().value()).orElseThrow();
     var owner="review-"+UUID.randomUUID().toString().replace("-",""); var permission=owner+".restricted";
     jdbc.update("insert into authorization_catalog_owners(service_code,namespace,updated_at) values(?,?,current_timestamp)",owner,owner);
@@ -155,7 +155,7 @@ class AuthorizationRootRecoveryIntegrationTest extends IdentityIntegrationSuppor
     denies.bootstrapCatalogAuthority(permission,PLATFORM,REASON);
     var independent=roles.create("Preexisting grant "+UUID.randomUUID(),br.com.imarui.ima.authorization.core.domain.model.Role.Ownership.GLOBAL,null,null,Set.of(permission),REASON);
     // Existing legitimate grant; ordinary APIs deliberately forbid self-assignment.
-    jdbc.update("insert into authorization_identity_roles(identity_id,role_id,authorization_scope_id) values(?,?,?)",reviewer.getId().value(),independent.id(),PLATFORM);
+    if(usageGrant) jdbc.update("insert into authorization_identity_roles(identity_id,role_id,authorization_scope_id) values(?,?,?)",reviewer.getId().value(),independent.id(),PLATFORM);
     long root=jdbc.queryForObject("select id from authorization_roles where name='ROOT'",Long.class);
     assertEquals(0,jdbc.queryForObject("select count(*) from authorization_role_permissions rp join authorization_permissions p on p.id=rp.permission_id where rp.role_id=? and p.code=?",Integer.class,root,permission));
     var deniedScope=inherited?PLATFORM:scope;
@@ -198,6 +198,22 @@ class AuthorizationRootRecoveryIntegrationTest extends IdentityIntegrationSuppor
     disable.execute(new br.com.imarui.ima.identity.core.application.command.identity.DisableIdentityCommand(recipient.getId()));
     assertEquals(401,http("POST",PATH+"/"+id+"/confirm",confirmBody(PASSWORD),jwt).statusCode());
     assertNull(jdbc.queryForObject("select confirmed_at from authorization_root_transfers where id=?",java.sql.Timestamp.class,id));
+  }
+  @Test @Timeout(20) void policyLockTimeoutDoesNotConsumeTheApprovalOrTransferAnyAuthority() throws Exception {
+    var recipient=user(); var id=approval(recipient,liveToken(reviewer)); var jwt=liveToken(recipient);
+    try(var connection=jdbc.getDataSource().getConnection();var statement=connection.createStatement()) {
+      statement.execute("select pg_advisory_lock(810082)");
+      try {
+        var response=java.net.http.HttpClient.newHttpClient().send(java.net.http.HttpRequest.newBuilder(
+            java.net.URI.create("http://localhost:"+port+PATH+"/"+id+"/confirm"))
+            .timeout(java.time.Duration.ofSeconds(15)).header("Authorization","Bearer "+jwt).header("Content-Type","application/json")
+            .POST(java.net.http.HttpRequest.BodyPublishers.ofString(confirmBody(PASSWORD))).build(),java.net.http.HttpResponse.BodyHandlers.ofString());
+        assertEquals(503,response.statusCode(),response.body());
+      } finally { statement.execute("select pg_advisory_unlock(810082)"); }
+    }
+    assertNull(jdbc.queryForObject("select confirmed_at from authorization_root_transfers where id=?",java.sql.Timestamp.class,id));
+    assertEquals(0,jdbc.queryForObject("select count(*) from authorization_identity_roles where identity_id=?",Integer.class,recipient.getId().value()));
+    assertEquals(200,http("POST",PATH+"/"+id+"/confirm",confirmBody(PASSWORD),jwt).statusCode());
   }
   @Test void changedRootCompositionIsRevalidatedAtConfirmationWithoutInventingDelegation() throws Exception {
     var recipient=user(); var id=approval(recipient,liveToken(reviewer));

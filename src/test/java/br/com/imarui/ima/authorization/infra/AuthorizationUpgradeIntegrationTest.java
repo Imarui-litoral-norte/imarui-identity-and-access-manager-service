@@ -153,4 +153,27 @@ class AuthorizationUpgradeIntegrationTest extends IdentityIntegrationSupport {
       }
     } finally { jdbc.execute("drop schema if exists "+schema+" cascade"); }
   }
+  @Test void populatedV24KeepsRootIdsAndGrantsWhileV25ClosesPendingDemotion() throws Exception {
+    String schema="auth_v24_upgrade_"+UUID.randomUUID().toString().replace("-",""); String url=url();
+    var identity=UUID.randomUUID(); var assignment=UUID.randomUUID();
+    try(var c=DriverManager.getConnection(url,"identity_test","identity_test")) {
+      flyway(url,schema,"24").migrate(); c.setSchema(schema);
+      try(var s=c.createStatement()) {
+        s.execute("insert into ima_identities(id,kind,primary_email_id,primary_email,primary_email_type,primary_email_verified,primary_email_created_at,status,created_at,updated_at,version,nickname) values('"+identity+"','SERVICE','"+UUID.randomUUID()+"','v24-root@example.test','PRIMARY',true,current_timestamp,'ACTIVE',current_timestamp,current_timestamp,0,'v24-root')");
+        s.execute("insert into ima_service_identities(id,name) values('"+identity+"','V24 ROOT')");
+        s.execute("insert into authorization_roles(id,name,ownership,active) values(86002,'ROOT','GLOBAL',true)");
+        s.execute("insert into authorization_role_permissions(role_id,permission_id) select 86002,id from authorization_permissions where code='AUTHORIZATION_ROOT_RECOVERY'");
+        s.execute("insert into authorization_identity_roles(id,identity_id,role_id,authorization_scope_id) values('"+assignment+"','"+identity+"',86002,'"+AuthorizationScope.PLATFORM_ID+"')");
+      }
+      flyway(url,schema,null).migrate(); flyway(url,schema,null).validate();
+      try(var s=c.createStatement()) {
+        var rejected=assertThrows(SQLException.class,() -> s.execute("update ima_identities set status='PENDING' where id='"+identity+"'"));
+        assertEquals("23514",rejected.getSQLState());
+      }
+      try(var s=c.createStatement();var rows=s.executeQuery("select a.id,a.role_id,i.status,(select count(*) from authorization_role_permissions where role_id=86002),(select count(*) from authorization_permission_delegations where identity_id='"+identity+"') from authorization_identity_roles a join ima_identities i on i.id=a.identity_id where a.identity_id='"+identity+"'")) {
+        assertTrue(rows.next()); assertEquals(assignment,rows.getObject(1,UUID.class)); assertEquals(86002,rows.getLong(2));
+        assertEquals("ACTIVE",rows.getString(3)); assertEquals(1,rows.getInt(4)); assertEquals(0,rows.getInt(5));
+      }
+    } finally { jdbc.execute("drop schema if exists "+schema+" cascade"); }
+  }
 }

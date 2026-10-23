@@ -93,10 +93,15 @@ public class AuthorizationMutationGuard {
     recipients.addAll(afterPotential.activeIdentities());
     for (UUID recipient:recipients) for (UUID scope:affectedScopes) for (String permission:permissions) {
       UUID origin=originsForNewScopes.getOrDefault(scope,scope);
-      if (evaluator.evaluate(afterPotential,recipient,permission,scope,afterHierarchy).allowed()
-          && !evaluator.evaluate(beforePotential,recipient,permission,origin,beforeHierarchy).allowed()) {
+      boolean usageGain=evaluator.evaluate(afterPotential,recipient,permission,scope,afterHierarchy).allowed()
+          && !evaluator.evaluate(beforePotential,recipient,permission,origin,beforeHierarchy).allowed();
+      boolean authorityAfter=evaluator.mayDelegate(afterPotential,recipient,permission,scope,false,afterHierarchy);
+      boolean delegationGain=authorityAfter && !evaluator.mayDelegate(beforePotential,recipient,permission,origin,false,beforeHierarchy);
+      boolean redelegationGain=authorityAfter && evaluator.mayDelegate(afterPotential,recipient,permission,scope,true,afterHierarchy)
+          && !evaluator.mayDelegate(beforePotential,recipient,permission,origin,true,beforeHierarchy);
+      if (usageGain || delegationGain || redelegationGain) {
         if (recipient.equals(context.actor())) throw new SecurityException("Self-grant or indirect self-escalation rejected.");
-        delegate(context.before(),context.actor(),permission,origin,false,context.hierarchy());
+        delegate(context.before(),context.actor(),permission,origin,delegationGain || redelegationGain,context.hierarchy());
       }
     }
   }
@@ -123,6 +128,7 @@ public class AuthorizationMutationGuard {
   private AuthorizationPolicyState potential(AuthorizationPolicyState state) {
     var recipients=new HashSet<>(state.activeIdentities());
     state.assignments().forEach(a -> recipients.add(a.identityId()));
+    state.delegations().forEach(d -> recipients.add(d.identityId()));
     var availableScopes=state.scopes().stream().map(s -> new AuthorizationScope(s.id(),s.code(),s.name(),
         AuthorizationScope.Status.ACTIVE,s.parentId(),s.createdAt(),s.updatedAt(),s.version())).toList();
     return new AuthorizationPolicyState(availableScopes,state.roles(),state.rolePermissions(),state.assignments(),

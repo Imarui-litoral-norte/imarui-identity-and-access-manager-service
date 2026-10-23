@@ -132,9 +132,14 @@ public class RootRecoveryUseCases {
     var tree=new ScopeHierarchy(current.scopes());
     var ordered=impacted.stream().sorted(Comparator.comparingInt((UUID id) -> tree.ancestors(id).size()).thenComparing(UUID::toString)).toList();
     for(var scope:ordered) for(var code:rights.stream().sorted().toList()) {
-      if(evaluator.evaluate(previous,subject,code,scope,tree).allowed()
-          || !evaluator.evaluate(current,subject,code,scope,tree).allowed()
-          || evaluator.evaluate(previous,transfer.initiatorId(),code,scope,tree).reason()!=EffectiveAuthorizationEvaluator.Reason.EXPLICIT_DENY) continue;
+      if(evaluator.evaluate(previous,transfer.initiatorId(),code,scope,tree).reason()!=EffectiveAuthorizationEvaluator.Reason.EXPLICIT_DENY) continue;
+      boolean usageGain=evaluator.evaluate(current,subject,code,scope,tree).allowed()
+          && !evaluator.evaluate(previous,subject,code,scope,tree).allowed();
+      boolean delegationGain=evaluator.mayDelegate(current,subject,code,scope,false,tree)
+          && !evaluator.mayDelegate(previous,subject,code,scope,false,tree);
+      boolean redelegationGain=evaluator.mayDelegate(current,subject,code,scope,true,tree)
+          && !evaluator.mayDelegate(previous,subject,code,scope,true,tree);
+      if(!usageGain && !delegationGain && !redelegationGain) continue;
       var now=clock.instant();
       var deny=new DenyRule(UUID.randomUUID(),code,scope,subject,null,true,reason.reason(),now,now,0);
       mutations.saveDeny(deny);

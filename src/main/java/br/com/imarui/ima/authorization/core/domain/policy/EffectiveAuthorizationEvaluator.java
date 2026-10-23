@@ -62,10 +62,10 @@ public final class EffectiveAuthorizationEvaluator {
       // A live ancestor authority may configure an inactive descendant without activating access there.
       // An authority whose own administrative ancestry is inactive cannot be exercised.
       hierarchy.ancestors(scope);
-      if (denied(state,identity,permission,scope,effectiveRoles(state,identity,scope,hierarchy),hierarchy)) return false;
-      return state.delegations().stream().anyMatch(d -> d.active() && d.identityId().equals(identity)
+      boolean authority=state.delegations().stream().anyMatch(d -> d.active() && d.identityId().equals(identity)
           && d.permission().equals(permission) && hierarchy.active(d.scopeId()) && hierarchy.covers(d.scopeId(),scope)
           && (!redelegating || d.redelegable()));
+      return authority && !denied(state,identity,permission,scope,effectiveRoles(state,identity,scope,hierarchy),hierarchy);
     } catch (IllegalArgumentException corruptOrUnknownScope) { return false; }
   }
 

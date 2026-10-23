@@ -145,6 +145,21 @@ class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
     assertEquals(401,send(CATALOG,body,proof(CATALOG,body,service,jwtProperties.getAudience()+":services",now.minusSeconds(120))).statusCode());
     keyId=UUID.randomUUID(); assertEquals(401,send(CATALOG,body,null).statusCode());
   }
+  @Test void proofLifetimeMustBePositiveAndOtherAlgorithmTypeOrServiceKeysAreRejected() throws Exception {
+    var body=manifest(1); var original=SignedJWT.parse(proof(CATALOG,body));
+    var backwards=new SignedJWT(original.getHeader(),new JWTClaimsSet.Builder(original.getJWTClaimsSet())
+        .issueTime(Date.from(fixtureClock.instant().plusSeconds(4))).expirationTime(Date.from(fixtureClock.instant().plusSeconds(3))).build());
+    backwards.sign(new RSASSASigner(signingKey));
+    assertEquals(401,send(CATALOG,body,backwards.serialize()).statusCode());
+    var wrongType=new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).type(new JOSEObjectType("at+jwt")).keyID(keyId.toString()).build(),original.getJWTClaimsSet());
+    wrongType.sign(new RSASSASigner(signingKey)); assertEquals(401,send(CATALOG,body,wrongType.serialize()).statusCode());
+    var symmetric=new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.HS256).type(new JOSEObjectType("iiam-service+jwt")).keyID(keyId.toString()).build(),original.getJWTClaimsSet());
+    symmetric.sign(new com.nimbusds.jose.crypto.MACSigner(new byte[32])); assertEquals(401,send(CATALOG,body,symmetric.serialize()).statusCode());
+    var another="other-"+UUID.randomUUID().toString().replace("-",""); owners.enroll(another,another,REASON);
+    var otherClient=clients.enroll(another,Set.of(TechnicalServiceAuthentication.Operation.CATALOG_SYNC),Set.of(PLATFORM),Base64.getEncoder().encodeToString(pair.getPublic().getEncoded()),fixtureClock.instant().plusSeconds(3600),REASON);
+    var otherKid=new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).type(new JOSEObjectType("iiam-service+jwt")).keyID(otherClient.keys().get(0).id().toString()).build(),original.getJWTClaimsSet());
+    otherKid.sign(new RSASSASigner(signingKey)); assertEquals(401,send(CATALOG,body,otherKid.serialize()).statusCode());
+  }
   @Test void humanTokenAloneCannotAuthenticateATechnicalCaller() throws Exception {
     var response=http("POST",CATALOG,manifest(1),token(reviewer));
     assertEquals(401,response.statusCode());
@@ -329,11 +344,23 @@ class AuthorizationServiceIntegrationTest extends IdentityIntegrationSupport {
     try { assertEquals(503,send(PDP,request(user,jwt,scope()),null).statusCode()); }
     finally { jdbc.execute("drop trigger test_deny_audit_failure on authorization_security_events"); jdbc.execute("drop function test_deny_audit_failure()"); }
   }
+  @Test void rejectedActorAuditFailureReturnsUnavailableWithoutExposingTheUntrustedToken() throws Exception {
+    var user=granted(); var body=request(reviewer,token(user),scope());
+    jdbc.execute("create function test_actor_audit_failure() returns trigger language plpgsql as $$ begin if new.event='PDP_ACTOR_REJECTED' then raise exception 'isolated audit failure'; end if; return new; end $$");
+    jdbc.execute("create trigger test_actor_audit_failure before insert on authorization_security_events for each row execute function test_actor_audit_failure()");
+    try {
+      var response=send(PDP,body,null); assertEquals(503,response.statusCode(),response.body());
+      assertTrue(response.body().contains("SECURITY_AUDIT_UNAVAILABLE"));
+    } finally { jdbc.execute("drop trigger test_actor_audit_failure on authorization_security_events"); jdbc.execute("drop function test_actor_audit_failure()"); }
+  }
   @Test void nonceCleanupIsBoundedAndNeverDeletesAnUnexpiredReplayBarrier() throws Exception {
     jdbc.update("insert into authentication_service_nonces select ?,gen_random_uuid(),'2000-01-01Z'::timestamptz from generate_series(1,600)",keyId);
+    assertEquals(600,jdbc.queryForObject("select count(*) from authentication_service_nonces where credential_id=? and expires_at='2000-01-01Z'",Integer.class,keyId));
     var live=UUID.randomUUID(); jdbc.update("insert into authentication_service_nonces values(?,?,?)",keyId,live,java.sql.Timestamp.from(fixtureClock.instant().plusSeconds(60)));
+    var cutoff=java.sql.Timestamp.from(fixtureClock.instant());
+    int expired=jdbc.queryForObject("select count(*) from authentication_service_nonces where expires_at<=?",Integer.class,cutoff);
     assertEquals(200,send(CATALOG,manifest(1),null).statusCode());
-    assertEquals(344,jdbc.queryForObject("select count(*) from authentication_service_nonces where credential_id=? and expires_at='2000-01-01Z'",Integer.class,keyId));
+    assertEquals(expired-256,jdbc.queryForObject("select count(*) from authentication_service_nonces where expires_at<=?",Integer.class,cutoff));
     assertEquals(1,jdbc.queryForObject("select count(*) from authentication_service_nonces where credential_id=? and nonce=?",Integer.class,keyId,live));
   }
   @Test void realConsumerResolvesItsResourceServerSideAndFailsClosedForTheSiblingTenant() throws Exception {

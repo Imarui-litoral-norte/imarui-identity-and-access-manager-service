@@ -49,6 +49,7 @@ public class TechnicalServiceAuthenticationAdapter implements TechnicalServiceAu
       if(!jwt.verify(new RSASSAVerifier(key)) || !service.equals(c.getSubject()) || !service.equals(c.getIssuer())
           || !List.of(properties.getAudience()+":services").equals(c.getAudience())
           || c.getIssueTime()==null || c.getExpirationTime()==null
+          || !c.getExpirationTime().after(c.getIssueTime())
           || c.getIssueTime().toInstant().isAfter(now.plusSeconds(5)) || !c.getExpirationTime().toInstant().isAfter(now)
           || Duration.between(c.getIssueTime().toInstant(),c.getExpirationTime().toInstant()).getSeconds()>60
           || c.getIssueTime().toInstant().isBefore(now.minusSeconds(60))
@@ -60,10 +61,11 @@ public class TechnicalServiceAuthenticationAdapter implements TechnicalServiceAu
       // Bounded maintenance must not serialize fresh proofs behind an unrelated
       // expired nonce held by another transaction. Expired proofs are rejected above.
       jdbc.update("""
-          delete from authentication_service_nonces n using (
+          with expired as materialized (
             select credential_id,nonce from authentication_service_nonces where expires_at<=?
             order by expires_at limit 256 for update skip locked
-          ) expired where n.credential_id=expired.credential_id and n.nonce=expired.nonce
+          ) delete from authentication_service_nonces n using expired
+          where n.credential_id=expired.credential_id and n.nonce=expired.nonce
           """,Timestamp.from(now));
       if(jdbc.update("insert into authentication_service_nonces(credential_id,nonce,expires_at) values(?,?,?) on conflict do nothing",
           credential,nonce,Timestamp.from(c.getExpirationTime().toInstant()))!=1) throw new TechnicalAuthenticationException();
