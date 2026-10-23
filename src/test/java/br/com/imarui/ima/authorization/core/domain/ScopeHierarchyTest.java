@@ -86,4 +86,14 @@ class ScopeHierarchyTest {
     assertThrows(UnsupportedOperationException.class,() -> old.ancestors(child.id()).clear());
     assertThrows(IllegalArgumentException.class,() -> next.active(UUID.randomUUID()));
   }
+  @Test void unusuallyDeepTreesRemainValidatedWhenPreparedPathBudgetIsExceeded() {
+    var scopes=new ArrayList<AuthorizationScope>(); UUID parent=null;
+    for(int i=0;i<600;i++) { var scope=node("DEEP_"+i,parent); scopes.add(scope); parent=scope.id(); }
+    var tree=new ScopeHierarchy(scopes);
+    assertEquals(600,tree.ancestors(parent).size()); assertTrue(tree.covers(scopes.get(0).id(),parent));
+    assertThrows(IllegalArgumentException.class,() -> tree.ancestors(UUID.randomUUID()));
+    var broken=scopes.get(599).revise("Broken",AuthorizationScope.Status.ACTIVE,UUID.randomUUID(),NOW);
+    scopes.set(599,broken);
+    assertThrows(IllegalArgumentException.class,() -> new ScopeHierarchy(scopes));
+  }
 }
