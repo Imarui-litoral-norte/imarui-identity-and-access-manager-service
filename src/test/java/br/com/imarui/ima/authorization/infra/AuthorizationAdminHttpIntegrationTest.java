@@ -80,6 +80,27 @@ class AuthorizationAdminHttpIntegrationTest extends IdentityIntegrationSupport {
     assertEquals(403,http("GET",API+"/scopes?scopeId="+sibling.id(),null,jwt).statusCode());
     assertEquals(403,http("GET",API+"/roles/"+shared.id()+"/permissions",null,jwt).statusCode());
   }
+  @Test void aQueuedAdministrativeMutationRevalidatesItsRevokedHumanSessionAfterThePolicyLock() throws Exception {
+    var manager=localAdmin(); var jwt=liveToken(manager); var roleName=name();
+    var body=json.writeValueAsString(new RoleCreate(roleName,Role.Ownership.TENANT,scope(),tenant.getId().value(),Set.of(),REASON.reason(),UUID.randomUUID()));
+    var executor=java.util.concurrent.Executors.newSingleThreadExecutor();
+    try(var connection=jdbc.getDataSource().getConnection();var statement=connection.createStatement()) {
+      statement.execute("select pg_advisory_lock(810082)");
+      var pending=executor.submit(() -> http("POST",API+"/roles",body,jwt));
+      try {
+        boolean queued=false; long deadline=System.nanoTime()+java.time.Duration.ofSeconds(2).toNanos();
+        while(System.nanoTime()<deadline) {
+          queued=jdbc.queryForObject("select exists(select 1 from pg_stat_activity where datname=current_database() and wait_event='advisory' and query like '%pg_advisory_xact_lock(810082)%')",Boolean.class);
+          if(queued) break; Thread.sleep(15);
+        }
+        assertTrue(queued,"The request must already be authenticated and waiting for the policy lock");
+        jdbc.update("update authentication_sessions set session_status='REVOKED',revoked_at=current_timestamp where identity_id=?",manager.getId().value());
+      } finally { statement.execute("select pg_advisory_unlock(810082)"); }
+      var response=pending.get(10,java.util.concurrent.TimeUnit.SECONDS);
+      assertEquals(401,response.statusCode(),response.body());
+      assertEquals(0,jdbc.queryForObject("select count(*) from authorization_roles where name=?",Integer.class,roleName));
+    } finally { executor.shutdownNow(); }
+  }
   @Test void denyApiIsIdempotentAndRevocationHasAnExplicitVersion() throws Exception {
     var target=user(); var jwt=liveToken(reviewer);
     var block=new Block("IDENTITY_READ",scope(),target.getId().value(),null,REASON.reason(),UUID.randomUUID()); var body=json.writeValueAsString(block);

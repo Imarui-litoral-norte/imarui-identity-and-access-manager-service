@@ -8,5 +8,15 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class AuthorizationActorAdapter implements AuthorizationActor {
   private final CurrentActor currentActor;
-  public UUID requireIdentityId() { return currentActor.requireIdentityId().value(); }
+  private final br.com.imarui.ima.authorization.core.application.port.AuthenticatedHumanContext humans;
+  public UUID requireIdentityId() {
+    var identity=currentActor.requireIdentityId().value();
+    var authentication=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+    if(authentication instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken jwt) {
+      // Mutation guards invoke this after acquiring the policy lock; read paths
+      // invoke it inside their policy snapshot. A filter's earlier SID check is insufficient.
+      humans.verify(jwt.getToken().getTokenValue(),identity);
+    }
+    return identity;
+  }
 }
