@@ -47,6 +47,12 @@ public class IdentityApplicationEntity {
   @Column(name = "identity_kind", nullable = false, length = 30)
   private IdentityKind kind;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name="approved_kind", length=30)
+  private IdentityKind approvedKind;
+
+  public void recordApprovedKind(IdentityKind value) { this.approvedKind=value; }
+
   @Column(name = "email", nullable = false, length = 254)
   private String email;
 

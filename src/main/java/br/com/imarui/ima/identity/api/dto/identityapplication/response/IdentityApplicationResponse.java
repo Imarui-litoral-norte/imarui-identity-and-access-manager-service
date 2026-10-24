@@ -35,7 +35,8 @@ public record IdentityApplicationResponse(
         @io.swagger.v3.oas.annotations.media.Schema(description = "Tenant atribuído na aprovação.", accessMode = io.swagger.v3.oas.annotations.media.Schema.AccessMode.READ_ONLY)
         UUID assignedTenantId,
         @io.swagger.v3.oas.annotations.media.Schema(description = "Vínculo criado na aprovação.", accessMode = io.swagger.v3.oas.annotations.media.Schema.AccessMode.READ_ONLY)
-        UUID resultingAffiliationId
+        UUID resultingAffiliationId,
+        IdentityKind approvedKind
 ) {
 
     public static IdentityApplicationResponse from(
@@ -59,7 +60,8 @@ public record IdentityApplicationResponse(
                 result.rejectionReason(),
                 result.resolvedIdentityId(),
                 result.assignedTenantId(),
-                result.resultingAffiliationId()
+                result.resultingAffiliationId(),
+                result.approvedKind()
         );
     }
 }

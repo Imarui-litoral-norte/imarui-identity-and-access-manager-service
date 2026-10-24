@@ -20,11 +20,19 @@ public final class IdentityProvisioning {
   private IdentityProvisioning() {}
 
   public static Identity identity(IdentityApplication application, Instant now) {
+    return identity(application, now, application.getKind());
+  }
+
+  public static Identity identity(IdentityApplication application, Instant now, br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind approvedKind) {
     var id = IdentityId.generate();
     var email =
         application.getEmail() == null
             ? null
             : IdentityEmail.create(application.getEmail(), EmailType.PRIMARY, now);
+    if (approvedKind == br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind.SERVICE && application.getKind() != approvedKind) {
+      String name = application.getDetails() instanceof PersonIdentityApplicationDetails p ? p.fullName().value() : ((LegalEntityIdentityApplicationDetails)application.getDetails()).legalName().value();
+      return ServiceIdentity.create(id, email, ServiceName.from(name), null, now, application.getNickname());
+    }
     if (application.getDetails() instanceof PersonIdentityApplicationDetails p)
       return PersonIdentity.create(
           id,

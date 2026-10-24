@@ -27,6 +27,15 @@ public final class IdentityApplication {
   }
 
   private final Email email;
+  private br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind approvedKind;
+
+  public void restoreApprovedKind(br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind kind) {
+    if (status == IdentityApplicationStatus.APPROVED) {
+      if (kind == null || kind != getKind() && kind != br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind.SERVICE)
+        throw new IllegalArgumentException("Invalid approved identity kind");
+      approvedKind = kind;
+    } else if (kind != null) throw new IllegalArgumentException("Unreviewed application cannot have an approved kind");
+  }
   private final IdentityApplicationDetails details;
   private IdentityApplicationStatus status;
   private final Instant requestedAt;
@@ -60,6 +69,7 @@ public final class IdentityApplication {
     this.details = Objects.requireNonNull(details, "details cannot be null");
 
     this.status = Objects.requireNonNull(status, "status cannot be null");
+    this.approvedKind = status == IdentityApplicationStatus.APPROVED ? details.kind() : null;
 
     this.requestedAt = Objects.requireNonNull(requestedAt, "requestedAt cannot be null");
 
@@ -148,6 +158,7 @@ public final class IdentityApplication {
     validateEventTime(now);
     validateCanBeReviewed();
 
+    approvedKind = getKind();
     status = IdentityApplicationStatus.APPROVED;
     reviewedAt = now;
     this.reviewedBy = reviewedBy;

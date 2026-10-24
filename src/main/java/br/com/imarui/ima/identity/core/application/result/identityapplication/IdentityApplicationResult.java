@@ -21,7 +21,8 @@ public record IdentityApplicationResult(
         String rejectionReason,
         UUID resolvedIdentityId,
         UUID assignedTenantId,
-        UUID resultingAffiliationId
+        UUID resultingAffiliationId,
+        IdentityKind approvedKind
 ) {
 
     public static IdentityApplicationResult from(
@@ -55,7 +56,8 @@ public record IdentityApplicationResult(
                         : application.getAssignedTenantId().value(),
                 application.getResultingAffiliationId() == null
                         ? null
-                        : application.getResultingAffiliationId().value()
+                        : application.getResultingAffiliationId().value(),
+                application.getApprovedKind()
         );
     }
 }

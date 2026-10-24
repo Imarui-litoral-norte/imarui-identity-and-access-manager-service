@@ -35,6 +35,9 @@ public class ApproveIdentityApplicationUseCase {
     if (!application.isPending())
       throw new IdentityApplicationReviewNotAllowedException(
           application.getId(), application.getStatus());
+    var approvedKind = command.identityKind() == null ? application.getKind() : command.identityKind();
+    if (approvedKind != application.getKind() && approvedKind != br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind.SERVICE)
+      throw new IllegalArgumentException("Identity kind does not match the application document");
     registrationLock.acquire(application);
     conflicts.check(application, false);
     var tenant =
@@ -43,7 +46,7 @@ public class ApproveIdentityApplicationUseCase {
             .orElseThrow(() -> new TenantNotFoundException(command.tenantId()));
     if (!tenant.canProvisionIdentities()) throw new TenantUnavailableException();
     var now = clock.instant();
-    var identity = IdentityProvisioning.identity(application, now);
+    var identity = IdentityProvisioning.identity(application, now, approvedKind);
     identity.assignNickname(application.getNickname());
     identity = identities.save(identity);
     var affiliation =
@@ -51,6 +54,7 @@ public class ApproveIdentityApplicationUseCase {
             IdentityProvisioning.affiliation(
                 command.affiliation(), tenant.getId(), identity.getId(), now, affiliations));
     application.approve(actor, identity.getId(), tenant.getId(), affiliation.getId(), now);
+    application.restoreApprovedKind(approvedKind);
     return IdentityApplicationResult.from(applications.save(application));
   }
 }

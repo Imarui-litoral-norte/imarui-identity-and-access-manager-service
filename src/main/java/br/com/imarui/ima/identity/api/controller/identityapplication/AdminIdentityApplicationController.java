@@ -109,7 +109,7 @@ public class AdminIdentityApplicationController {
       summary = "Aprovar solicitação e criar vínculo",
       description =
           "Aprova somente PENDING, com reviewer resolvido do ator autenticado e Tenant ACTIVE."
-              + " Revalida CPF/CNPJ e nickname por tipo sob locks transacionais; e-mail não é chave"
+              + " Revalida CPF/CNPJ e nickname/e-mail globais sob locks transacionais; e-mail é chave"
               + " única. Cria a Identity em PENDING e a Affiliation escolhida em ACTIVE; a Identity"
               + " requer ativação explícita para uso operacional. EMPLOYEE exige registration;"
               + " CUSTOMER exige customerCode; SUPPLIER exige supplierCode; PARTNER/EXTERNAL não"
@@ -125,7 +125,7 @@ public class AdminIdentityApplicationController {
         new ApproveIdentityApplicationCommand(
             IdentityApplicationId.from(identityApplicationId),
             TenantId.from(request.tenantId()),
-            request.affiliation().toSelection());
+            request.affiliation().toSelection(), request.identityKind());
     IdentityApplicationResult result = approveIdentityApplicationUseCase.execute(command);
 
     return ResponseEntity.ok(IdentityApplicationResponse.from(result));

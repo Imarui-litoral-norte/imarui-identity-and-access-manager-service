@@ -7,7 +7,7 @@ import java.util.Objects;
 
 public record ServiceName(String value) {
 
-    private static final int MAX_LENGTH = 100;
+    private static final int MAX_LENGTH = 150;
 
     public ServiceName {
         Objects.requireNonNull(

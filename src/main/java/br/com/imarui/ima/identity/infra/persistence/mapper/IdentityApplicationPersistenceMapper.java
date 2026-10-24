@@ -28,11 +28,13 @@ public class IdentityApplicationPersistenceMapper {
   public IdentityApplicationEntity toEntity(IdentityApplication value) {
     var entity = baseEntity(value);
     entity.assignNickname(value.getNickname());
+    entity.recordApprovedKind(value.getApprovedKind());
     return entity;
   }
 
   public IdentityApplication toDomain(IdentityApplicationEntity entity) {
     var value = baseDomain(entity);
+    value.restoreApprovedKind(entity.getApprovedKind());
 
     return value;
   }
@@ -89,6 +91,7 @@ public class IdentityApplicationPersistenceMapper {
 
   public void updateEntity(IdentityApplication application, IdentityApplicationEntity entity) {
     entity.assignNickname(application.getNickname());
+    entity.recordApprovedKind(application.getApprovedKind());
     entity.updateFrom(
         application.getStatus(),
         application.getReviewedAt(),

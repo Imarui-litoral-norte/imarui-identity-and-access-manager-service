@@ -35,6 +35,18 @@ public class IdentityApplicationController {
   private final GetIdentityApplicationUseCase getIdentityApplicationUseCase;
   private final IdentityApplicationCommandFactory commandFactory;
 
+  @PostMapping(value="/users", consumes=MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<IdentityApplicationResponse> createUser(@Valid @RequestBody br.com.imarui.ima.identity.api.dto.identityapplication.request.create.CreateUserIdentityApplicationRequest request) {
+    return created(createIdentityApplicationUseCase.execute(request.toCommand()));
+  }
+  @PostMapping(value="/services", consumes=MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<IdentityApplicationResponse> createService(@Valid @RequestBody br.com.imarui.ima.identity.api.dto.identityapplication.request.create.CreateServiceApplicationRequest request) {
+    return created(createIdentityApplicationUseCase.execute(request.toCommand()));
+  }
+  private ResponseEntity<IdentityApplicationResponse> created(IdentityApplicationResult result) {
+    return ResponseEntity.created(java.net.URI.create("/api/v1/identity-applications/"+result.id())).body(IdentityApplicationResponse.from(result));
+  }
+
   @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
   @io.swagger.v3.oas.annotations.responses.ApiResponse(
       responseCode = "201",
