@@ -82,9 +82,9 @@ class AuthenticationIntegrationTest extends IdentityIntegrationSupport {
     assertEquals(
         200,
         http("GET", "/api/v1/identities/" + i.getId(), null, issued.accessToken()).statusCode());
-    assertThrows(
-        AuthenticationFailure.class,
-        () -> authentication.login(kind, kind.name().toLowerCase() + "@example.test", PASSWORD));
+    var emailLogin = authentication.login(null, kind.name().toLowerCase() + "@example.test", PASSWORD);
+    assertNotNull(emailLogin.accessToken());
+    authentication.logout(emailLogin.refreshToken());
     String document =
         kind == IdentityKind.PERSON
             ? "529.982.247-25"
@@ -102,18 +102,11 @@ class AuthenticationIntegrationTest extends IdentityIntegrationSupport {
   }
 
   @Test
-  void nicknameIsUniqueWithinKindAndMayRepeatAcrossKinds() {
-    for (var kind : IdentityKind.values()) pending(kind, "same-kind-safe");
-    var duplicate = service("different@example.test");
-    duplicate.assignNickname("SAME-KIND-SAFE");
-    assertThrows(
-        org.springframework.dao.DataIntegrityViolationException.class,
-        () -> identities.save(duplicate));
-    assertTrue(
-        jdbc.queryForObject(
-                "select count(*) from ima_identities where nickname='same-kind-safe'",
-                Integer.class)
-            == 3);
+  void nicknameIsGloballyUniqueAcrossKinds() {
+    pending(IdentityKind.PERSON,"same-global-login");
+    var duplicate=service("different@example.test"); duplicate.assignNickname("SAME-GLOBAL-LOGIN");
+    assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->identities.save(duplicate));
+    assertEquals(1,jdbc.queryForObject("select count(*) from ima_identities where nickname='same-global-login'",Integer.class));
   }
 
   @Test

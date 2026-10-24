@@ -112,11 +112,11 @@ class IdentityApplicationIntegrationTest extends IdentityIntegrationSupport {
   }
 
   @Test
-  void sameEmailIsAllowedAcrossKindsAndRejectionReleasesPendingKey() {
+  void sameEmailIsRejectedAcrossKindsAndRejectionReleasesPendingKey() {
     var service = request(IdentityKind.SERVICE, "shared@example.test");
-    var company = request(IdentityKind.LEGAL_ENTITY, "shared@example.test");
+    assertThrows(IdentityConflictException.class, () -> request(IdentityKind.LEGAL_ENTITY, "shared@example.test"));
     approve.execute(approval(service, AffiliationType.PARTNER, null));
-    approve.execute(approval(company, AffiliationType.EXTERNAL, null));
+    assertThrows(IdentityConflictException.class, () -> request(IdentityKind.LEGAL_ENTITY, "shared@example.test"));
     var rejected = request(IdentityKind.SERVICE, "reusable@example.test");
     reject.execute(new RejectIdentityApplicationCommand(rejected, "No"));
     assertNotNull(request(IdentityKind.SERVICE, "reusable@example.test"));

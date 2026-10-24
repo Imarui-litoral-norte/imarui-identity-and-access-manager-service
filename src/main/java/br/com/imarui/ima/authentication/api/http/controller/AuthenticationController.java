@@ -86,7 +86,7 @@ public class AuthenticationController {
       summary = "Autenticar Identity",
       description =
           "Kind explícito; PERSON nickname/CPF, LEGAL_ENTITY nickname/CNPJ, SERVICE nickname."
-              + " E-mail não é login. Access JWT 900s; refresh somente em cookie HttpOnly Secure."
+              + " Apelido, CPF, CNPJ ou e-mail resolvem uma única Identity sem informar o tipo. Access JWT 900s; refresh somente em cookie HttpOnly Secure."
               + " Requer X-XSRF-TOKEN.")
   public ResponseEntity<Access> login(@Valid @RequestBody Login body, HttpServletRequest request) {
     secure(request);

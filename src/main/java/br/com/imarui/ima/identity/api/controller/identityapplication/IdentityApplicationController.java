@@ -33,49 +33,23 @@ public class IdentityApplicationController {
 
   private final CreateIdentityApplicationUseCase createIdentityApplicationUseCase;
   private final GetIdentityApplicationUseCase getIdentityApplicationUseCase;
-  private final IdentityApplicationCommandFactory commandFactory;
 
   @PostMapping(value="/users", consumes=MediaType.APPLICATION_JSON_VALUE)
+  @br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup(value="Solicitações · Cadastro", order=40)
+  @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+  @io.swagger.v3.oas.annotations.Operation(summary="Solicitar acesso com CPF ou CNPJ", description="Infere PERSON ou LEGAL_ENTITY pelo documento válido. Cria somente solicitação PENDING; apelido e e-mail são únicos globalmente.")
   public ResponseEntity<IdentityApplicationResponse> createUser(@Valid @RequestBody br.com.imarui.ima.identity.api.dto.identityapplication.request.create.CreateUserIdentityApplicationRequest request) {
     return created(createIdentityApplicationUseCase.execute(request.toCommand()));
   }
   @PostMapping(value="/services", consumes=MediaType.APPLICATION_JSON_VALUE)
+  @br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup(value="Solicitações · Cadastro", order=40)
+  @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+  @io.swagger.v3.oas.annotations.Operation(summary="Solicitar acesso de serviço", description="Sem documento. Cria somente solicitação PENDING; SERVICE só é efetivado pela aprovação administrativa.")
   public ResponseEntity<IdentityApplicationResponse> createService(@Valid @RequestBody br.com.imarui.ima.identity.api.dto.identityapplication.request.create.CreateServiceApplicationRequest request) {
     return created(createIdentityApplicationUseCase.execute(request.toCommand()));
   }
   private ResponseEntity<IdentityApplicationResponse> created(IdentityApplicationResult result) {
     return ResponseEntity.created(java.net.URI.create("/api/v1/identity-applications/"+result.id())).body(IdentityApplicationResponse.from(result));
-  }
-
-  @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-  @io.swagger.v3.oas.annotations.responses.ApiResponse(
-      responseCode = "201",
-      content =
-          @io.swagger.v3.oas.annotations.media.Content(
-              schema =
-                  @io.swagger.v3.oas.annotations.media.Schema(
-                      implementation = IdentityApplicationResponse.class)))
-  @io.swagger.v3.oas.annotations.Operation(
-      summary = "Solicitar cadastro de identidade",
-      description =
-          "Cria solicitação PENDING para PERSON, LEGAL_ENTITY ou SERVICE. Normaliza e-mail para"
-              + " minúsculas e CPF/CNPJ para dígitos. E-mail é obrigatório para todos os tipos,"
-              + " permite repetição inclusive dentro do mesmo tipo e serve somente como contato."
-              + " Nickname é obrigatório e único por IdentityKind; CPF/CNPJ não podem conflitar."
-              + " Solicitações rejeitadas e histórico de exclusão não reservam essas chaves. Não"
-              + " cria Identity, Affiliation ou credencial. Retorna 201 e Location.")
-  @br.com.imarui.ima.platform.openapi.group.SwaggerOperationGroup(
-      value = "Solicitações · Cadastro",
-      order = 40)
-  public ResponseEntity<IdentityApplicationResponse> create(
-      @Valid @RequestBody CreateIdentityApplicationRequest request) {
-
-    CreateIdentityApplicationCommand command = commandFactory.from(request);
-    IdentityApplicationResult result = createIdentityApplicationUseCase.execute(command);
-
-    return ResponseEntity.created(
-            java.net.URI.create("/api/v1/identity-applications/" + result.id()))
-        .body(IdentityApplicationResponse.from(result));
   }
 
   @org.springframework.security.access.prepost.PreAuthorize(

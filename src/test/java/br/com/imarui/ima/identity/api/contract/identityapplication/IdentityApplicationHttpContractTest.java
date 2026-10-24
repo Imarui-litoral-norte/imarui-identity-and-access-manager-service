@@ -44,11 +44,11 @@ import br.com.imarui.ima.identity.support.IdentityIntegrationSupport;
 class IdentityApplicationHttpContractTest extends IdentityIntegrationSupport {
     @Test void httpValidationConflictAndAdministrativePermissionAreEnforced() throws Exception {
         var body="{\"type\":\"SERVICE\",\"nickname\":\"fixture-service\",\"name\":\"HTTP service\",\"email\":\"duplicate-http@example.test\"}";
-        assertEquals(201,http("POST","/api/v1/identity-applications",body,null).statusCode());
-        var conflict=http("POST","/api/v1/identity-applications",body,null);
+        assertEquals(201,http("POST","/api/v1/identity-applications/services",body,null).statusCode());
+        var conflict=http("POST","/api/v1/identity-applications/services",body,null);
         assertEquals(409,conflict.statusCode(),conflict.body());
         assertEquals("IDENTITY_CONFLICT",json.readTree(conflict.body()).path("code").asText());
-        var invalid=http("POST","/api/v1/identity-applications","{\"type\":\"SERVICE\",\"nickname\":\"fixture-service\",\"name\":\"\",\"email\":\"bad\"}",null);
+        var invalid=http("POST","/api/v1/identity-applications/services","{\"type\":\"SERVICE\",\"nickname\":\"fixture-service\",\"name\":\"\",\"email\":\"bad\"}",null);
         assertEquals(400,invalid.statusCode(),invalid.body());
         assertTrue(invalid.headers().firstValue("Content-Type").orElse("").startsWith("application/problem+json"));
         var denied=http("POST","/api/v1/admin/identities/"+reviewer.getId()+"/disable",null,token(reviewer.getId()));

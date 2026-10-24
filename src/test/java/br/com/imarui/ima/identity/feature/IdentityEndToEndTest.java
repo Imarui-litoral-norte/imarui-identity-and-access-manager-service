@@ -44,7 +44,7 @@ import br.com.imarui.ima.identity.support.IdentityIntegrationSupport;
 class IdentityEndToEndTest extends IdentityIntegrationSupport {
     @Test void httpOnboardingLifecycleErrorsAndSelfDeleteAreFunctional() throws Exception {
         var admin=token(reviewer.getId(),"IDENTITY_APPLICATION_REVIEW","IDENTITY_MANAGE","IDENTITY_READ");
-        var created=http("POST","/api/v1/identity-applications","{\"type\":\"SERVICE\",\"nickname\":\"fixture-service\",\"name\":\"HTTP service\",\"email\":\"http-created@example.test\"}",null);
+        var created=http("POST","/api/v1/identity-applications/services","{\"nickname\":\"fixture-service\",\"name\":\"HTTP service\",\"email\":\"http-created@example.test\"}",null);
         assertEquals(201,created.statusCode(),created.body()); assertTrue(created.headers().firstValue("Location").isPresent());
         var applicationId=json.readTree(created.body()).path("id").asText();
         var approved=http("POST","/api/v1/admin/identity-applications/"+applicationId+"/approve","{\"tenantId\":\""+tenant.getId()+"\",\"affiliation\":{\"type\":\"EXTERNAL\"}}",admin);

@@ -40,4 +40,19 @@ class GlobalLoginIdentifiersIntegrationTest extends IdentityIntegrationSupport {
     assertThrows(IdentityConflictException.class,()->create.execute(new CreatePersonIdentityApplicationCommand("Person","52998224725","reviewer@example.test",null,null,"different-login")));
     assertThrows(IdentityConflictException.class,()->create.execute(new CreatePersonIdentityApplicationCommand("Person","52998224725","other@example.test",null,null,"reviewer")));
   }
+
+  @Test void concurrentApplicationsAcrossKindsHaveOnlyOneEmailWinner() throws Exception {
+    var gate=new java.util.concurrent.CountDownLatch(1);
+    var pool=java.util.concurrent.Executors.newFixedThreadPool(2);
+    try {
+      var commands=java.util.List.<CreateIdentityApplicationCommand>of(
+        new CreatePersonIdentityApplicationCommand("Person","52998224725","race@example.test",null,null,"race-person"),
+        new CreateServiceIdentityApplicationCommand("Service",null,"RACE@example.test","race-service"));
+      var results=new java.util.ArrayList<java.util.concurrent.Future<Boolean>>();
+      for(var command:commands) results.add(pool.submit(()->{gate.await();try{create.execute(command);return true;}catch(IdentityConflictException expected){return false;}}));
+      gate.countDown();int winners=0;for(var result:results)if(result.get(15,java.util.concurrent.TimeUnit.SECONDS))winners++;
+      assertEquals(1,winners);
+      assertEquals(1,jdbc.queryForObject("select count(*) from ima_identity_applications where status='PENDING'",Integer.class));
+    }finally{pool.shutdownNow();}
+  }
 }

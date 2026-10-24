@@ -3,7 +3,7 @@
 ## Sequência web
 
 1. `GET /authentication/csrf` com `credentials: include`; guardar o `token` retornado em memória.
-2. `POST /authentication/login`, com cookie CSRF, header `X-XSRF-TOKEN` e JSON `{ "identityKind":"SERVICE", "identifier":"my-integration", "password":"<senha>" }`.
+2. `POST /authentication/login`, com cookie CSRF, header `X-XSRF-TOKEN` e JSON `{ "identifier":"my-integration", "password":"<senha>" }`.
 3. Resposta: `{ "accessToken":"<JWT>", "tokenType":"Bearer", "expiresIn":900 }`. Guardar access em memória. Refresh é somente `Set-Cookie: IIAM_REFRESH=...; Path=/authentication; Secure; HttpOnly; SameSite=Lax`.
 4. Enviar `Authorization: Bearer <access>` às APIs protegidas.
 5. `POST /authentication/refresh` diretamente no IIAM, com cookies e header CSRF. Recebe outro access e um novo cookie refresh. Não existe refresh em DTO, query string ou localStorage.
@@ -15,11 +15,11 @@ Os cookies são host-only: Domain deliberadamente omitido. Portas diferentes no 
 
 ## Primeiro acesso, recuperação e senha
 
-- `POST /authentication/activation/request` com `{identityKind,identifier}`: 202 genérico. E-mail é obrigatório nos três kinds e pode ser compartilhado; somente o contato da Identity resolvida recebe convite. A existência da conta não é revelada.
+- `POST /authentication/activation/request` com `{identifier}`: 202 genérico. E-mail é obrigatório nos três kinds e é único globalmente; somente o contato da Identity resolvida recebe convite. A existência da conta não é revelada.
 - `POST /authentication/activation/complete` com `{token,password}`: 204; consome convite de ativação, persiste credencial e PENDING→ACTIVE atomicamente. Não inicia sessão automaticamente.
 - SERVICE local ou externo utiliza o mesmo endpoint público de conclusão; prova inicial é convite criptográfico de uso único entregue previamente pelo operador. Conhecer nickname/UUID não permite obter o convite.
 - Operador com `AUTHENTICATION_INVITATION_CREATE` pode chamar `POST /authentication/admin/identities/{id}/invitation`. Retorno no-store contém somente o convite recém-gerado para entrega segura. Nunca enviar essa resposta para logs de gateway.
-- `POST /authentication/recovery/request` com `{identityKind,identifier}`: 202 genérico; e-mail é canal de contato. `POST /authentication/recovery/complete` com `{token,password}`: 204 e revogação de sessões anteriores.
+- `POST /authentication/recovery/request` com `{identifier}`: 202 genérico; e-mail é identificador de login e canal de contato. `POST /authentication/recovery/complete` com `{token,password}`: 204 e revogação de sessões anteriores.
 - `POST /authentication/password` com Bearer e `{currentPassword,newPassword}`: exige senha atual; revoga todas as sessões, inclusive a atual.
 - Senhas: mínimo 12 caracteres e máximo 72 bytes UTF-8, respeitando BCrypt. Convite de ativação vale 24 horas; recuperação vale 15 minutos. Emissão ou envio de um novo link preserva os anteriores não expirados. O consumo bem-sucedido de qualquer link invalida os demais da mesma Identity/finalidade, atomicamente; finalidades diferentes permanecem isoladas.
 
@@ -80,3 +80,5 @@ Bearer A + cookie B são aceitos somente com o mesmo `sub` e `sid`, inclusive qu
 Bearer expirado, mesmo acompanhado de cookie válido, retorna 401 na cadeia JWT sem efeito no cookie/sessão. O cliente deve repetir omitindo o Bearer expirado e mantendo cookie + CSRF. Cookie desconhecido sozinho não seleciona outra sessão e é limpo idempotentemente; junto de Bearer é incompatível e retorna 401.
 
 O convite administrativo não exige justificativa. Registra administrador, alvo, ação, UTC, resultado e origem da conexão, sem segredos. E-mail nunca identifica login/recuperação, mesmo sendo obrigatório e compartilhável. SSO/OIDC, clientes nativos, RBAC contextual e Gateway não são dependências destes fluxos.
+
+A partir de V26, apelido e e-mail são únicos globalmente. `identityKind` legado é opcional e ignorado na resolução. Veja [contrato atualizado](../global-identity-identifiers.md).

@@ -34,7 +34,7 @@ class AuthenticationStabilizationIntegrationTest extends IdentityIntegrationSupp
   static final String NEXT = "Strong replacement password 456!";
 
   Identity pending(String nickname) {
-    var i = service("shared@example.test");
+    var i = service(nickname + "@example.test");
     i.assignNickname(nickname);
     return identities.save(i);
   }
@@ -74,7 +74,7 @@ class AuthenticationStabilizationIntegrationTest extends IdentityIntegrationSupp
 
   @ParameterizedTest
   @EnumSource(IdentityKind.class)
-  void sharedEmailAllowsTwoRegistrationsAndDocumentNicknameUniquenessRemains(IdentityKind kind) {
+  void globalEmailBlocksSecondRegistrationAndDocumentNicknameUniquenessRemains(IdentityKind kind) {
     CreateIdentityApplicationCommand a =
         switch (kind) {
           case PERSON ->
@@ -100,29 +100,10 @@ class AuthenticationStabilizationIntegrationTest extends IdentityIntegrationSupp
                   "Service Two", null, "shared@example.test", "account-two");
         };
     var first = create.execute(a);
-    var second = create.execute(b);
-    assertNotEquals(first.id(), second.id());
-    var x =
-        approve.execute(
-            approval(
-                IdentityApplicationId.from(first.id()),
-                br.com.imarui.ima.identity.core.domain.enums.affiliation.AffiliationType.EXTERNAL,
-                null));
-    var y =
-        approve.execute(
-            approval(
-                IdentityApplicationId.from(second.id()),
-                br.com.imarui.ima.identity.core.domain.enums.affiliation.AffiliationType.EXTERNAL,
-                null));
-    assertNotEquals(x.resolvedIdentityId(), y.resolvedIdentityId());
-    assertThrows(
-        br.com.imarui.ima.identity.core.application.exception.IdentityConflictException.class,
-        () -> create.execute(a));
-    assertEquals(
-        2,
-        jdbc.queryForObject(
-            "select count(*) from ima_identities where primary_email='shared@example.test'",
-            Integer.class));
+    assertThrows(br.com.imarui.ima.identity.core.application.exception.IdentityConflictException.class,()->create.execute(b));
+    approve.execute(approval(IdentityApplicationId.from(first.id()), br.com.imarui.ima.identity.core.domain.enums.affiliation.AffiliationType.EXTERNAL,null));
+    assertThrows(br.com.imarui.ima.identity.core.application.exception.IdentityConflictException.class,()->create.execute(b));
+    assertEquals(1,jdbc.queryForObject("select count(*) from ima_identities where primary_email='shared@example.test'",Integer.class));
   }
 
   @ParameterizedTest
@@ -130,73 +111,65 @@ class AuthenticationStabilizationIntegrationTest extends IdentityIntegrationSupp
   void missingOrInvalidEmailAndMissingNicknameAreRejectedForEveryKind(IdentityKind kind)
       throws Exception {
     var body = new LinkedHashMap<String, Object>();
-    body.put("type", kind);
+
     body.put("nickname", "contact-required");
     if (kind == IdentityKind.PERSON) {
-      body.put("fullName", "Person Test");
-      body.put("cpf", "52998224725");
+      body.put("name", "Person Test");
+      body.put("document", "52998224725");
     }
     if (kind == IdentityKind.LEGAL_ENTITY) {
-      body.put("legalName", "Company Test");
-      body.put("cnpj", "11222333000181");
+      body.put("name", "Company Test");
+      body.put("document", "11222333000181");
     }
     if (kind == IdentityKind.SERVICE) body.put("name", "Service Test");
     for (String email : List.of("", "invalid", " ")) {
       body.put("email", email);
       assertEquals(
           400,
-          http("POST", "/api/v1/identity-applications", json.writeValueAsString(body), null)
+          http("POST", "/api/v1/identity-applications/"+(kind==IdentityKind.SERVICE?"services":"users"), json.writeValueAsString(body), null)
               .statusCode());
     }
     body.remove("email");
     assertEquals(
         400,
-        http("POST", "/api/v1/identity-applications", json.writeValueAsString(body), null)
+        http("POST", "/api/v1/identity-applications/"+(kind==IdentityKind.SERVICE?"services":"users"), json.writeValueAsString(body), null)
             .statusCode());
     body.put("email", "valid@example.test");
     body.remove("nickname");
     assertEquals(
         400,
-        http("POST", "/api/v1/identity-applications", json.writeValueAsString(body), null)
+        http("POST", "/api/v1/identity-applications/"+(kind==IdentityKind.SERVICE?"services":"users"), json.writeValueAsString(body), null)
             .statusCode());
   }
 
   @Test
-  void emailUpdateMayReuseAnotherIdentityContact() {
+  void emailUpdateCannotReuseAnotherIdentityLogin() {
     var a = pending("contact-a");
     var b = pending("contact-b");
     b.changePrimaryEmail(
         IdentityEmail.create(Email.from("other@example.test"), EmailType.PRIMARY, Instant.now()),
         Instant.now());
     identities.save(b);
-    b.changePrimaryEmail(
-        IdentityEmail.create(
-            Email.from(a.getPrimaryEmail().email().value()), EmailType.PRIMARY, Instant.now()),
-        Instant.now());
-    identities.save(b);
-    assertEquals(
-        2,
-        jdbc.queryForObject(
-            "select count(*) from ima_identities where primary_email='shared@example.test'",
-            Integer.class));
+    b.changePrimaryEmail(IdentityEmail.create(Email.from(a.getPrimaryEmail().email().value()),EmailType.PRIMARY,Instant.now()),Instant.now());
+    assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->identities.save(b));
   }
 
   @Test
-  void recoveryWithSharedContactSelectsOnlyKindAndNickname() {
+  void recoveryResolvesGlobalEmailAndNicknameWithoutKind() {
     var a = active("shared-a");
     var b = active("shared-b");
     authentication.request(IdentityKind.SERVICE, "shared-b", Purpose.PASSWORD_RESET);
     assertEquals(
         List.of(b.getId().value()),
         jdbc.queryForList("select identity_id from authentication_notification_jobs", UUID.class));
-    authentication.request(IdentityKind.SERVICE, "shared@example.test", Purpose.PASSWORD_RESET);
+    authentication.request(null, "SHARED-B@EXAMPLE.TEST", Purpose.PASSWORD_RESET);
     assertEquals(
         1,
         jdbc.queryForObject(
             "select count(*) from authentication_notification_jobs", Integer.class));
     assertTrue(worker.processOne());
     var secret = org.mockito.ArgumentCaptor.forClass(String.class);
-    verify(mail).send(eq("shared@example.test"), secret.capture(), eq(Purpose.PASSWORD_RESET));
+    verify(mail).send(eq("shared-b@example.test"), secret.capture(), eq(Purpose.PASSWORD_RESET));
     authentication.complete(secret.getValue(), NEXT, Purpose.PASSWORD_RESET);
     assertNotNull(authentication.login(IdentityKind.SERVICE, "shared-a", PASSWORD));
     assertNotNull(authentication.login(IdentityKind.SERVICE, "shared-b", NEXT));

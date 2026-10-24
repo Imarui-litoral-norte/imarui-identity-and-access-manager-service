@@ -39,7 +39,8 @@ class IdentityOpenApiIntegrationTest extends IdentityIntegrationSupport {
             "200",
             "PERMISSION",
             "IDENTITY_MANAGE"),
-        Arguments.of("/api/v1/identity-applications", "post", "201", "PUBLIC", ""),
+        Arguments.of("/api/v1/identity-applications/users", "post", "201", "PUBLIC", ""),
+        Arguments.of("/api/v1/identity-applications/services", "post", "201", "PUBLIC", ""),
         Arguments.of(
             "/api/v1/identity-applications/{identityApplicationId}",
             "get",
@@ -158,16 +159,16 @@ class IdentityOpenApiIntegrationTest extends IdentityIntegrationSupport {
     var paths = spec().path("paths");
     var create =
         paths
-            .path("/api/v1/identity-applications")
+            .path("/api/v1/identity-applications/users")
             .path("post")
             .path("requestBody")
             .path("content")
             .path("application/json")
             .path("examples");
-    assertEquals(3, create.size());
+    assertEquals(2, create.size());
     for (var example : create) {
       var request =
-          json.readValue(example.path("value").toString(), CreateIdentityApplicationRequest.class);
+          json.readValue(example.path("value").toString(), br.com.imarui.ima.identity.api.dto.identityapplication.request.create.CreateUserIdentityApplicationRequest.class);
       assertTrue(validator.validate(request).isEmpty());
     }
     var approval =
@@ -191,7 +192,8 @@ class IdentityOpenApiIntegrationTest extends IdentityIntegrationSupport {
   void schemasDescribePolymorphismErrorsAndReadOnlyFields() throws Exception {
     var schemas = spec().path("components").path("schemas");
     assertEquals(3, schemas.path("IdentityDetailsResponse").path("oneOf").size());
-    assertEquals(3, schemas.path("CreateIdentityApplicationRequest").path("oneOf").size());
+    assertTrue(schemas.has("CreateUserIdentityApplicationRequest"));
+    assertTrue(schemas.has("CreateServiceApplicationRequest"));
     assertTrue(
         schemas
             .path("IdentityResponse")
@@ -233,9 +235,9 @@ class IdentityOpenApiIntegrationTest extends IdentityIntegrationSupport {
           if (entry instanceof String text) assertNotNull(strict.readTree(text));
     }
     var schemas = spec().path("components").path("schemas");
-    for (String kind : List.of("Person", "LegalEntity", "Service")) {
+    for (String kind : List.of("UserIdentity", "Service")) {
       var required =
-          schemas.path("Create" + kind + "IdentityApplicationRequest").path("required").toString();
+          schemas.path("Create" + kind + "ApplicationRequest").path("required").toString();
       assertTrue(required.contains("email"), required);
       assertTrue(required.contains("nickname"), required);
     }

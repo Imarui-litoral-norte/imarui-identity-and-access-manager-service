@@ -26,7 +26,7 @@ public class IdentityOperationCustomizer implements GlobalOperationCustomizer {
         if (!handler.getBeanType().getPackageName().startsWith("br.com.imarui.ima.identity.api.controller")) return operation;
         String controller = handler.getBeanType().getSimpleName();
         String method = handler.getMethod().getName();
-        boolean publicCreation = controller.equals("IdentityApplicationController") && method.equals("create");
+        boolean publicCreation = controller.equals("IdentityApplicationController") && (method.equals("createUser") || method.equals("createService"));
         boolean ownerRead = controller.equals("IdentityController");
         boolean selfDelete = controller.equals("SelfIdentityController");
         operation.setOperationId("identity_" + controller.replace("Controller", "") + "_" + method);
@@ -40,7 +40,7 @@ public class IdentityOperationCustomizer implements GlobalOperationCustomizer {
             errors.put("401", List.of("AUTHENTICATION_REQUIRED", "CURRENT_ACTOR_REQUIRED"));
             if (!selfDelete) errors.put("403", List.of("IDENTITY_ACCESS_DENIED"));
         }
-        if (!method.equals("create") && !method.equals("findAll")) {
+        if (!method.startsWith("create") && !method.equals("findAll")) {
             String code = controller.contains("Tenant") ? "TENANT_NOT_FOUND" : controller.contains("Application") ? "IDENTITY_APPLICATION_NOT_FOUND" : "IDENTITY_NOT_FOUND";
             errors.put("404", method.equals("approve") ? List.of(code, "TENANT_NOT_FOUND") : List.of(code));
         }
@@ -52,7 +52,7 @@ public class IdentityOperationCustomizer implements GlobalOperationCustomizer {
                 case "reactivate" -> "TENANT_REACTIVATION_NOT_ALLOWED";
                 default -> "TENANT_RENAME_NOT_ALLOWED";
             } : "IDENTITY_INVALID_STATE";
-            errors.put("409", selfDelete || method.equals("create") && publicCreation ? List.of("IDENTITY_CONFLICT") : List.of(code, "IDENTITY_CONFLICT"));
+            errors.put("409", selfDelete || publicCreation ? List.of("IDENTITY_CONFLICT") : List.of(code, "IDENTITY_CONFLICT"));
         }
         errors.put("500", List.of("INTERNAL_SERVER_ERROR"));
         errors.forEach((status, codes) -> operation.getResponses().addApiResponse(status, error(status, codes)));
@@ -67,14 +67,14 @@ public class IdentityOperationCustomizer implements GlobalOperationCustomizer {
             operation.getRequestBody().setDescription(requestDescription(method, controller));
             operation.getRequestBody().getContent().values().forEach(media -> requestExamples(method, controller).forEach((name, value) -> media.addExamples(name, example(value))));
         }
-        String successCode = selfDelete ? "204" : method.equals("create") ? "201" : "200";
+        String successCode = selfDelete ? "204" : method.startsWith("create") ? "201" : "200";
         var success = operation.getResponses().get(successCode);
         if (success != null) {
             success.setDescription(selfDelete ? "Exclusão confirmada atomicamente; resposta sem corpo." : "Operação concluída. Os exemplos representam dados fictícios.");
             if (selfDelete) success.setContent(null);
             else if (success.getContent() != null) success.getContent().values().forEach(media ->
                 responseExamples(controller, method).forEach((name, value) -> media.addExamples(name, example(value))));
-            if (method.equals("create")) success.addHeaderObject("Location", new Header().description("URI do recurso criado: relativa para IdentityApplication e absoluta para Tenant. A leitura exige a permissão da superfície de consulta.").schema(new StringSchema().format("uri-reference")));
+            if (method.startsWith("create")) success.addHeaderObject("Location", new Header().description("URI do recurso criado: relativa para IdentityApplication e absoluta para Tenant. A leitura exige a permissão da superfície de consulta.").schema(new StringSchema().format("uri-reference")));
         }
         return operation;
     }
@@ -94,11 +94,12 @@ public class IdentityOperationCustomizer implements GlobalOperationCustomizer {
             case "reject" -> "Motivo obrigatório: 1–500 caracteres após aparar.";
             case "delete" -> "Corpo e motivo opcionais. O alvo sempre vem da identidade autenticada; não há campo de ID de destino.";
             case "rename" -> "Novo nome do Tenant. Código e estado não são editáveis por esta operação.";
-            default -> controller.contains("Application") ? "O discriminador type seleciona os campos de PERSON, LEGAL_ENTITY ou SERVICE." : "Código estável e nome do novo Tenant.";
+            default -> controller.contains("Application") ? "Usuários exigem CPF/CNPJ válido; serviços não recebem documento. Apelido e e-mail são únicos globalmente." : "Código estável e nome do novo Tenant.";
         };
     }
     private Map<String,String> requestExamples(String method, String controller) {
-        if (method.equals("create") && controller.contains("Application")) return IdentityApiExamples.APPLICATION_REQUESTS;
+        if (method.equals("createUser")) return Map.of("Pessoa", "{\"name\":\"Pessoa Exemplo\",\"document\":\"52998224725\",\"nickname\":\"person-example\",\"email\":\"pessoa@example.test\"}", "Empresa", "{\"name\":\"Empresa Exemplo\",\"document\":\"11222333000181\",\"nickname\":\"company-example\",\"email\":\"empresa@example.test\"}");
+        if (method.equals("createService")) return Map.of("Serviço", "{\"name\":\"Integração Exemplo\",\"nickname\":\"service-example\",\"email\":\"servico@example.test\",\"description\":\"Integração\"}");
         if (method.equals("approve")) return IdentityApiExamples.APPROVAL_REQUESTS;
         if (method.equals("reject")) return Map.of("Motivo", "{\"reason\":\"Dados insuficientes para o cadastro\"}");
         if (method.equals("delete")) return Map.of("Solicitação própria", "{\"reason\":\"Encerramento solicitado pelo titular\"}");

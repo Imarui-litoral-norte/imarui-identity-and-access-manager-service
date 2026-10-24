@@ -64,3 +64,7 @@ src/main/java/.../platform  composição técnica, segurança e OpenAPI
 src/main/resources/static/openapi-custom
 src/test/java/.../identity  cenários por camada e feature
 ```
+
+## Identificação global e solicitações
+
+Consulte [o contrato atualizado de login e aprovação](docs/global-identity-identifiers.md) para as migrations V26/V27, endpoints users/services e tipo aprovado administrativamente.

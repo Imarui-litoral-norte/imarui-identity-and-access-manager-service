@@ -168,7 +168,6 @@ public class IdentityApiSecurityConfiguration {
             a ->
                 a.requestMatchers(
                         HttpMethod.POST,
-                        "/api/v1/identity-applications",
                         "/api/v1/identity-applications/users",
                         "/api/v1/identity-applications/services",
                         "/authentication/login",
