@@ -8,8 +8,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IdentityApplicationRepository {
-  boolean existsPendingNickname(
-      String nickname, br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind kind);
+  boolean existsPendingNickname(String nickname);
+
+  boolean existsPendingEmail(String email);
 
   IdentityApplication save(IdentityApplication identityApplication);
 

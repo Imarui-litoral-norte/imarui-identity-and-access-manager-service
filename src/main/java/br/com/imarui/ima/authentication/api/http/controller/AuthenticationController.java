@@ -35,8 +35,8 @@ public class AuthenticationController {
   private boolean requireHttps;
 
   public record Login(
-      @NotNull IdentityKind identityKind,
-      @NotBlank @Size(max = 128) String identifier,
+      IdentityKind identityKind,
+      @NotBlank @Size(max = 254) String identifier,
       @NotBlank @Size(max = 72) String password) {
     @Override
     public String toString() {
@@ -45,7 +45,7 @@ public class AuthenticationController {
   }
 
   public record Identification(
-      @NotNull IdentityKind identityKind, @NotBlank @Size(max = 128) String identifier) {}
+      IdentityKind identityKind, @NotBlank @Size(max = 254) String identifier) {}
 
   public record Complete(
       @NotBlank @Size(max = 256) String token, @NotBlank @Size(max = 72) String password) {
@@ -90,7 +90,7 @@ public class AuthenticationController {
               + " Requer X-XSRF-TOKEN.")
   public ResponseEntity<Access> login(@Valid @RequestBody Login body, HttpServletRequest request) {
     secure(request);
-    throttle("login", body.identityKind() + ":" + normalize(body.identifier()), request, 30);
+    throttle("login", normalize(body.identifier()), request, 30);
     return response(auth.login(body.identityKind(), body.identifier(), body.password()));
   }
 
@@ -138,7 +138,7 @@ public class AuthenticationController {
               + " recebe convite por operador autorizado.")
   public void activationRequest(@Valid @RequestBody Identification body, HttpServletRequest req) {
     secure(req);
-    throttle("activation", body.identityKind() + ":" + normalize(body.identifier()), req, 5);
+    throttle("activation", normalize(body.identifier()), req, 5);
     auth.request(body.identityKind(), body.identifier(), Purpose.ACCOUNT_ACTIVATION);
   }
 
@@ -151,7 +151,7 @@ public class AuthenticationController {
               + " entrega.")
   public void recoveryRequest(@Valid @RequestBody Identification body, HttpServletRequest req) {
     secure(req);
-    throttle("recovery", body.identityKind() + ":" + normalize(body.identifier()), req, 5);
+    throttle("recovery", normalize(body.identifier()), req, 5);
     auth.request(body.identityKind(), body.identifier(), Purpose.PASSWORD_RESET);
   }
 

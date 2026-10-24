@@ -19,33 +19,19 @@ public class IdentityAuthenticationAdapter implements IdentityAuthenticationApi 
   private final Clock clock;
 
   public Optional<Account> resolve(IdentityKind kind, String identifier) {
-    if (kind == null || identifier == null || identifier.length() > 128 || identifier.contains("@"))
-      return Optional.empty();
+    if (identifier == null || identifier.length() > 254) return Optional.empty();
     String normalized = identifier.trim().toLowerCase(Locale.ROOT);
     List<UUID> ids;
-    if (normalized.matches("[0-9. /-]+") && kind != IdentityKind.SERVICE) {
+    if (normalized.contains("@")) {
+      ids = jdbc.queryForList("select id from ima_identities where lower(btrim(primary_email))=?", UUID.class, normalized);
+    } else if (normalized.matches("[0-9. /-]+")) {
       String digits = normalized.replaceAll("[^0-9]", "");
-      if (kind == IdentityKind.PERSON && digits.length() == 11)
-        ids =
-            jdbc.queryForList(
-                "select id from ima_person_identities where cpf=?", UUID.class, digits);
-      else if (kind == IdentityKind.LEGAL_ENTITY && digits.length() == 14)
-        ids =
-            jdbc.queryForList(
-                "select id from ima_legal_entity_identities where cnpj=?", UUID.class, digits);
+      if (digits.length() == 11) ids = jdbc.queryForList("select id from ima_person_identities where cpf=?", UUID.class, digits);
+      else if (digits.length() == 14) ids = jdbc.queryForList("select id from ima_legal_entity_identities where cnpj=?", UUID.class, digits);
       else return Optional.empty();
     } else {
-      try {
-        normalized = Nickname.from(normalized).value();
-      } catch (IllegalArgumentException e) {
-        return Optional.empty();
-      }
-      ids =
-          jdbc.queryForList(
-              "select id from ima_identities where kind=? and nickname=?",
-              UUID.class,
-              kind.name(),
-              normalized);
+      try { normalized = Nickname.from(normalized).value(); } catch (IllegalArgumentException ex) { return Optional.empty(); }
+      ids = jdbc.queryForList("select id from ima_identities where nickname=?", UUID.class, normalized);
     }
     return ids.size() == 1 ? find(ids.get(0)) : Optional.empty();
   }

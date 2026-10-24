@@ -14,10 +14,12 @@ public class IdentityApplicationConflicts {
 
   public void check(IdentityApplication application, boolean includePending) {
     if (application.getNickname() != null
-        && (identities.existsNickname(application.getNickname(), application.getKind())
+        && (identities.existsNickname(application.getNickname())
             || includePending
-                && applications.existsPendingNickname(
-                    application.getNickname(), application.getKind())))
+                && applications.existsPendingNickname(application.getNickname())))
+      throw new IdentityConflictException();
+    if (application.getEmail() != null && (identities.existsEmail(application.getEmail().value())
+        || includePending && applications.existsPendingEmail(application.getEmail().value())))
       throw new IdentityConflictException();
     if (application.getDetails() instanceof PersonIdentityApplicationDetails person
         && (identities.findPersonByCpf(person.cpf()).isPresent()

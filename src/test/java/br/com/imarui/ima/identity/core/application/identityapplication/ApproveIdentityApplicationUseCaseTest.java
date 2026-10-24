@@ -93,7 +93,7 @@ class ApproveIdentityApplicationUseCaseTest {
     var application = IdentitySamples.application(IdentityKind.SERVICE);
     when(actor.requireIdentityId()).thenReturn(IdentityId.generate());
     when(applications.findByIdForUpdate(application.getId())).thenReturn(Optional.of(application));
-    when(identities.existsNickname(application.getNickname(), application.getKind()))
+    when(identities.existsNickname(application.getNickname()))
         .thenReturn(true);
     assertThrows(
         IdentityConflictException.class,

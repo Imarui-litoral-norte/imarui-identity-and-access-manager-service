@@ -79,14 +79,10 @@ public class IdentityApplicationRepositoryAdapter implements IdentityApplication
     return jpaRepository.existsByCpfAndStatus(cpf.value(), IdentityApplicationStatus.PENDING);
   }
 
-  public boolean existsPendingNickname(
-      String nickname, br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind kind) {
-    return Boolean.TRUE.equals(
-        jdbc.queryForObject(
-            "select exists(select 1 from ima_identity_applications where identity_kind=? and"
-                + " nickname=? and status='PENDING')",
-            Boolean.class,
-            kind.name(),
-            nickname));
+  public boolean existsPendingNickname(String nickname) {
+    return Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from ima_identity_applications where lower(btrim(nickname))=? and status='PENDING')", Boolean.class, nickname));
+  }
+  public boolean existsPendingEmail(String email) {
+    return Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from ima_identity_applications where lower(btrim(email))=? and status='PENDING')", Boolean.class, email));
   }
 }

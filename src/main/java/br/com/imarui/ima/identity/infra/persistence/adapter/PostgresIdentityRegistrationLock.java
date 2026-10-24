@@ -21,11 +21,18 @@ public class PostgresIdentityRegistrationLock implements IdentityRegistrationLoc
   public void acquire(IdentityApplication application) {
     var keys = new ArrayList<String>();
     if (application.getNickname() != null)
-      keys.add("nickname:" + application.getKind() + ":" + application.getNickname());
+      keys.add("nickname:" + application.getNickname());
     if (application.getDetails() instanceof PersonIdentityApplicationDetails person)
       keys.add("cpf:" + person.cpf().value());
     if (application.getDetails() instanceof LegalEntityIdentityApplicationDetails legal)
       keys.add("cnpj:" + legal.cnpj().value());
+    if (application.getEmail() != null) keys.add("email:" + application.getEmail().value());
+    lockKeys(keys);
+  }
+
+  public void acquireNickname(String nickname) { lockKeys(List.of("nickname:" + nickname)); }
+
+  private void lockKeys(List<String> keys) {
     keys.stream()
         .map(this::hash)
         .distinct()

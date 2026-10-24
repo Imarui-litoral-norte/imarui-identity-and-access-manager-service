@@ -21,7 +21,7 @@ public class IdentityNicknameController {
   @io.swagger.v3.oas.annotations.Operation(
       summary = "Alterar nickname",
       description =
-          "Titular ou IDENTITY_MANAGE; unicidade case-insensitive por kind, protegida no"
+          "Titular ou IDENTITY_MANAGE; unicidade global case-insensitive, protegida no"
               + " PostgreSQL.")
   public IdentityResponse change(
       @PathVariable String identityId, @Valid @RequestBody Rename request) {

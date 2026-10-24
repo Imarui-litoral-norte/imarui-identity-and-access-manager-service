@@ -64,13 +64,10 @@ public class IdentityRepositoryAdapter implements IdentityRepository {
     return jpaRepository.findLegalEntityByCnpj(cnpj.value()).map(mapper::toDomain);
   }
 
-  public boolean existsNickname(
-      String nickname, br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind kind) {
-    return Boolean.TRUE.equals(
-        jdbc.queryForObject(
-            "select exists(select 1 from ima_identities where kind=? and nickname=?)",
-            Boolean.class,
-            kind.name(),
-            nickname));
+  public boolean existsNickname(String nickname) {
+    return Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from ima_identities where lower(btrim(nickname))=?)", Boolean.class, nickname));
+  }
+  public boolean existsEmail(String email) {
+    return Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from ima_identities where lower(btrim(primary_email))=?)", Boolean.class, email));
   }
 }
