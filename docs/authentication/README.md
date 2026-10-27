@@ -34,3 +34,10 @@ Authentication possui `TechnicalServiceAuthentication` (clientes técnicos, chav
 ## Segunda rodada do PR #2
 
 Regras atuais de contato substituem decisões anteriores. Novos links coexistem até expiração ou consumo bem-sucedido de um link da mesma Identity/finalidade. A fila SMTP permite no máximo cinco tentativas totais, com FAILED terminal. Logout compara Bearer/cookie antes dos efeitos. Ver [matriz F-01–F-09](delivery-report.md#segunda-rodada--findings). IIAM continua independente; Gateway é a futura [IIAMS-80](https://logimarui.atlassian.net/browse/IIAMS-80).
+
+## Auditoria integrada
+
+Reset anterior à desativação é recusado pelo cutoff durável mesmo após reativação e antes do worker.
+Login relê o identificador sob lock; falhas da senha atual na troca alimentam o lockout da Credential.
+Casos de uso protegidos revalidam titular/sessão e política após locks de recurso, inclusive convite e
+administração de sessões/refresh. Evidências e limites na [revisão geral](../reviews/IIAM_GENERAL_TECHNICAL_REVIEW.md).

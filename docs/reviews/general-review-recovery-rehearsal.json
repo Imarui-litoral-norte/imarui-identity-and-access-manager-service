@@ -1,0 +1,25 @@
+{
+  "limits" : "synthetic local database; not a production backup, disaster recovery SLA, encryption or remote storage validation",
+  "archiveBytes" : 164276,
+  "serverVersion" : "17.11 (Debian 17.11-1.pgdg13+2)",
+  "immutableAuditAndLastRootGuard" : true,
+  "controlledFailureRolledBack" : true,
+  "endingSchema" : "25",
+  "startingSchema" : "20",
+  "sha256" : "19dab9a9062d67d866886e4b33fa412d628e19c090c53580d4a490618672d592",
+  "restoredToSeparateDatabase" : true,
+  "preserved" : {
+    "authentication_service_clients" : "b43f582f5f7538bc67b2dc636dd84894",
+    "authentication_service_keys" : "fb60e456fb0d7c5d7f4fafcc635340b8",
+    "authentication_service_nonces" : "89c29b86313837ec367ed20b5b41251c",
+    "authorization_audit" : "554a384e4fabd22fe8be6147e1166144",
+    "authorization_denies" : "804a1c0ae8bdea679ea5c76b279949f9",
+    "authorization_identity_roles" : "b1c434ad109dcad13e350821dadea7bf",
+    "authorization_permission_delegations" : "17a3e6ec6751cc2e79c31a51557586e0",
+    "authorization_role_permissions" : "1bba17e277972afd93637995424bc8a0",
+    "authorization_roles" : "34560299ee8b442249e16c550a130781",
+    "authorization_roles__history" : "d619d4ba1959a87fd0956fdfeefbc06f",
+    "authorization_security_events" : "86e9d47e6169d0b3e9c98547c87c65f8",
+    "ima_identities" : "4b03c84886a74598f5c32659eab1fef7"
+  }
+}

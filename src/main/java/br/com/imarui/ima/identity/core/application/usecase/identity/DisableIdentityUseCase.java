@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class DisableIdentityUseCase {
+    private final br.com.imarui.ima.identity.core.application.port.IdentityOperationAccess access;
     private final IdentityRepository identityRepository;
     private final Clock clock;
     private final AccessRevocation accessRevocation;
@@ -21,6 +22,7 @@ public class DisableIdentityUseCase {
     public IdentityResult execute(DisableIdentityCommand command) {
         var identity = identityRepository.findByIdForUpdate(command.identityId())
                 .orElseThrow(() -> new IdentityNotFoundException(command.identityId()));
+        access.requirePlatform("IDENTITY_MANAGE");
         identity.disable(clock.instant());
         var saved = identityRepository.save(identity);
         accessRevocation.revokeIdentity(identity.getId());

@@ -15,12 +15,14 @@ import java.time.Clock;
 @Service
 @RequiredArgsConstructor
 public class GetIdentityUseCase {
+    private final br.com.imarui.ima.identity.core.application.port.IdentityOperationAccess access;
 
     private final IdentityRepository identityRepository;
 
     @Transactional(readOnly = true)
     public IdentityResult execute(GetIdentityUseCaseCommand command) {
         IdentityId identityId = command.identityId();
+        access.requireSelfOrPlatform("IDENTITY_READ", identityId.value());
 
         Identity identity = identityRepository.findById(identityId)
                 .orElseThrow(() -> new IdentityNotFoundException(identityId));

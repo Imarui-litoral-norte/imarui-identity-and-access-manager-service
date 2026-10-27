@@ -15,15 +15,17 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class AdminRefreshTokenService {
+    private final br.com.imarui.ima.authentication.core.port.AuthenticationOperationAccess access;
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final Clock clock;
 
     @Transactional(readOnly=true)
-    public List<AdminRefreshTokenResult> findPage(int page,int size){return AdminRefreshTokenResult.from(refreshTokenRepository.findPage(page,size));}
+    public List<AdminRefreshTokenResult> findPage(int page,int size){access.requirePlatform("AUTHENTICATION_REFRESH_TOKEN_READ"); return AdminRefreshTokenResult.from(refreshTokenRepository.findPage(page,size));}
 
     @Transactional(readOnly = true)
     public List<AdminRefreshTokenResult> findAll() {
+        access.requirePlatform("AUTHENTICATION_REFRESH_TOKEN_READ");
         List<RefreshToken> refreshTokens =
                 refreshTokenRepository.findAll();
 
@@ -34,6 +36,7 @@ public class AdminRefreshTokenService {
     public AdminRefreshTokenResult findById(Long refreshTokenId) {
         RefreshToken refreshToken =
                 findRefreshTokenById(refreshTokenId);
+        access.requirePlatform("AUTHENTICATION_REFRESH_TOKEN_READ");
 
         return AdminRefreshTokenResult.from(refreshToken);
     }
@@ -44,6 +47,7 @@ public class AdminRefreshTokenService {
 
         RefreshToken refreshToken =
                 findRefreshTokenByIdForUpdate(refreshTokenId);
+        access.requirePlatform("AUTHENTICATION_REFRESH_TOKEN_REVOKE");
 
         refreshToken.revoke(now);
 

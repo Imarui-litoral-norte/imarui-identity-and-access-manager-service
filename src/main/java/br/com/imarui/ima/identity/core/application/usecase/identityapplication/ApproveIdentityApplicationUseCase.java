@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ApproveIdentityApplicationUseCase {
+  private final IdentityOperationAccess access;
   private final IdentityApplicationRepository applications;
   private final IdentityRepository identities;
   private final TenantRepository tenants;
@@ -45,6 +46,7 @@ public class ApproveIdentityApplicationUseCase {
             .findByIdForUpdate(command.tenantId())
             .orElseThrow(() -> new TenantNotFoundException(command.tenantId()));
     if (!tenant.canProvisionIdentities()) throw new TenantUnavailableException();
+    access.requirePlatform("IDENTITY_APPLICATION_REVIEW");
     var now = clock.instant();
     var identity = IdentityProvisioning.identity(application, now, approvedKind);
     identity.assignNickname(application.getNickname());

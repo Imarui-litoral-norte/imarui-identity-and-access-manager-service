@@ -664,6 +664,7 @@ class AuthenticationIntegrationTest extends IdentityIntegrationSupport {
     var i = pending(IdentityKind.SERVICE, "password-change");
     complete(i);
     var login = authentication.login(IdentityKind.SERVICE, "password-change", PASSWORD);
+    actor(i.getId());
     assertThrows(
         AuthenticationFailure.class,
         () ->
@@ -735,7 +736,9 @@ class AuthenticationIntegrationTest extends IdentityIntegrationSupport {
           pool.submit(
               () -> {
                 start.await();
-                disable.execute(new DisableIdentityCommand(i.getId()));
+                actor(reviewer.getId());
+                try { disable.execute(new DisableIdentityCommand(i.getId())); }
+                finally { org.springframework.security.core.context.SecurityContextHolder.clearContext(); }
                 return true;
               });
       start.countDown();

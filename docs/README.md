@@ -13,6 +13,7 @@ O contrato HTTP é publicado no OpenAPI; os guias explicam arquitetura, domínio
 | Operação Authorization | [Hardening operacional](authorization/OPERATIONAL_HARDENING.md) | Benchmarks, sinais/alertas, auditoria, retenção e ensaio backup/restore |
 | Validação | [Estratégia de testes](testing/README.md) | Comandos, isolamento e cobertura por feature |
 | Evidências | [Aceite de Identity](identity-acceptance.md) | Rastreabilidade das tarefas e resultados executados |
+| Auditoria integrada | [Revisão técnica geral](reviews/IIAM_GENERAL_TECHNICAL_REVIEW.md) | Findings reproduzidos, correções entre módulos, regressões e limites operacionais |
 
 Antes de alterar uma feature, leia a arquitetura global e o módulo proprietário, confira o código e o OpenAPI
 afetados e atualize essas fontes na mesma mudança. Preserve o ownership de cada informação para evitar guias divergentes.
