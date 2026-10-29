@@ -21,6 +21,21 @@ public class EffectiveAuthorizationUseCases {
     return evaluator.evaluate(policies.current(),identity,permission,scope);
   }
 
+  /** Filter before tenant search/count/pagination, using one current policy snapshot. */
+  public Set<UUID> readableTenants(UUID identity) {
+    var state=policies.current();
+    final ScopeHierarchy hierarchy;
+    try { hierarchy=new ScopeHierarchy(state.scopes()); }
+    catch (IllegalArgumentException corruptHierarchy) {
+      throw new org.springframework.security.access.AccessDeniedException("Tenant directory unavailable.");
+    }
+    if(state.scopes().stream().noneMatch(scope -> evaluator.evaluate(state,identity,"TENANT_READ",scope.id(),hierarchy).allowed()))
+      throw new org.springframework.security.access.AccessDeniedException("Tenant directory requires TENANT_READ in an authorized context.");
+    return state.tenantScopes().entrySet().stream()
+        .filter(binding -> evaluator.evaluate(state,identity,"TENANT_READ",binding.getValue(),hierarchy).allowed())
+        .map(Map.Entry::getKey).collect(java.util.stream.Collectors.toUnmodifiableSet());
+  }
+
   /** Existing unscoped IIAM administrative APIs only consume the migrated PLATFORM boundary. */
   public List<String> platformAuthorities(UUID identity) {
     var state=policies.current();

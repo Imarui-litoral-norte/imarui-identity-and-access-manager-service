@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface TenantJpaRepository
-        extends JpaRepository<TenantEntity, UUID> {
+        extends JpaRepository<TenantEntity, UUID>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<TenantEntity> {
 
     boolean existsByCodeIgnoreCase(String code);
 

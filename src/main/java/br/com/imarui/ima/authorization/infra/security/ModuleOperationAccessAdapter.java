@@ -14,10 +14,14 @@ import org.springframework.stereotype.Component;
 /** Cross-module ports reuse the central evaluator and the stateful human-session verifier. */
 @Component
 @RequiredArgsConstructor
-public class ModuleOperationAccessAdapter implements IdentityOperationAccess, AuthenticationOperationAccess {
+public class ModuleOperationAccessAdapter implements IdentityOperationAccess, AuthenticationOperationAccess, br.com.imarui.ima.identity.core.application.port.TenantDirectoryAccess {
   private final AuthorizationActor actors;
   private final EffectiveAuthorizationUseCases authorizations;
   private final ScopeRepository scopes;
+
+  public java.util.Set<UUID> readableTenantIds() {
+    return authorizations.readableTenants(actors.requireIdentityId());
+  }
 
   public void requirePlatform(String permission) {
     require(actors.requireIdentityId(), permission, AuthorizationScope.PLATFORM_ID);

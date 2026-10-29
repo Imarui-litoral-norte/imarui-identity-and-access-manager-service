@@ -11,6 +11,11 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.Locale;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @Repository
 @RequiredArgsConstructor
@@ -18,6 +23,22 @@ public class TenantRepositoryAdapter implements TenantRepository {
 
     private final TenantJpaRepository jpaRepository;
     private final TenantPersistenceMapper mapper;
+
+    @Override
+    public DirectoryPage search(Set<UUID> readableIds, TenantStatus status, String query, int page, int size) {
+        if (readableIds.isEmpty()) return new DirectoryPage(List.of(), 0, page, size);
+        String pattern = "%" + query.toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+        var result = jpaRepository.findAll((root, criteria, cb) -> {
+            var restrictions = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            restrictions.add(root.get("id").in(readableIds));
+            if (status != null) restrictions.add(cb.equal(root.get("status"), status));
+            if (!query.isEmpty()) restrictions.add(cb.or(
+                    cb.like(cb.lower(root.get("name")), pattern, '\\'),
+                    cb.like(cb.lower(root.get("code")), pattern, '\\')));
+            return cb.and(restrictions.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        }, PageRequest.of(page, size, Sort.by(Sort.Order.asc("name").ignoreCase(), Sort.Order.asc("id"))));
+        return new DirectoryPage(result.getContent().stream().map(mapper::toDomain).toList(), result.getTotalElements(), page, size);
+    }
 
     @Override
     public Tenant save(Tenant tenant) {
