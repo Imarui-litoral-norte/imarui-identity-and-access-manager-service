@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AdminIdentityApplicationController {
 
+  private final br.com.imarui.ima.identity.api.factory.IdentityApplicationCommandFactory commandFactory;
   private final ListIdentityApplicationsUseCase listIdentityApplicationsUseCase;
   private final GetIdentityApplicationUseCase getIdentityApplicationUseCase;
   private final ApproveIdentityApplicationUseCase approveIdentityApplicationUseCase;
@@ -125,7 +126,7 @@ public class AdminIdentityApplicationController {
         new ApproveIdentityApplicationCommand(
             IdentityApplicationId.from(identityApplicationId),
             TenantId.from(request.tenantId()),
-            request.affiliation().toSelection(), request.identityKind());
+            request.affiliation().toSelection(), request.identityKind(), request.corrections() == null ? null : commandFactory.from(request.corrections()));
     IdentityApplicationResult result = approveIdentityApplicationUseCase.execute(command);
 
     return ResponseEntity.ok(IdentityApplicationResponse.from(result));

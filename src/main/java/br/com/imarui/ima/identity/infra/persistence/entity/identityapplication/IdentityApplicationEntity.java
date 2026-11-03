@@ -51,6 +51,12 @@ public class IdentityApplicationEntity {
   @Column(name="approved_kind", length=30)
   private IdentityKind approvedKind;
 
+  public void copyRegistrationFrom(IdentityApplicationEntity source) {
+    email=source.email; fullName=source.fullName; cpf=source.cpf;
+    birthDate=source.birthDate; phoneNumber=source.phoneNumber;
+    legalName=source.legalName; tradeName=source.tradeName; cnpj=source.cnpj;
+    serviceName=source.serviceName; serviceDescription=source.serviceDescription;
+  }
   public void recordApprovedKind(IdentityKind value) { this.approvedKind=value; }
 
   @Column(name = "email", nullable = false, length = 254)

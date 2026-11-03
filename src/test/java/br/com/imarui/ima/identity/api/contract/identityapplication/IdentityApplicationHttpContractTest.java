@@ -55,6 +55,57 @@ class IdentityApplicationHttpContractTest extends IdentityIntegrationSupport {
         assertEquals(403,denied.statusCode(),denied.body()); assertTrue(identities.findById(reviewer.getId()).orElseThrow().isActive());
     }
 
+    @Test void approvalCorrectsPersonNameAndRejectsInvalidDocument() throws Exception {
+        var id=request(IdentityKind.PERSON,"person-before@example.test");
+        var original=(PersonIdentityApplicationDetails)applications.findById(id).orElseThrow().getDetails();
+        var correction=new LinkedHashMap<String,Object>();
+        correction.put("type","PERSON"); correction.put("fullName","Corrected Person Name");
+        correction.put("cpf","11111111111"); correction.put("email","person-after@example.test");
+        correction.put("nickname","person-after"); correction.put("phoneNumber","11987654321");
+        var path="/api/v1/admin/identity-applications/"+id.value()+"/approve";
+        var admin=token(reviewer.getId(),"IDENTITY_APPLICATION_REVIEW");
+        var body=new LinkedHashMap<String,Object>(); body.put("tenantId",tenant.getId().value());
+        body.put("affiliation",Map.of("type","EXTERNAL"));body.put("corrections",correction);
+        assertEquals(400,http("POST",path,json.writeValueAsString(body),admin).statusCode());
+        assertTrue(applications.findById(id).orElseThrow().isPending());
+        correction.put("cpf",original.cpf().value());
+        var response=http("POST",path,json.writeValueAsString(body),admin);
+        assertEquals(200,response.statusCode(),response.body());
+        var saved=applications.findById(id).orElseThrow();
+        assertEquals("Corrected Person Name",((PersonIdentityApplicationDetails)saved.getDetails()).fullName().value());
+    }
+
+    @Test void approvalPersistsCorrectionsAndRequiresReviewPermission() throws Exception {
+        var id=request(IdentityKind.SERVICE,"before@example.test");
+        var path="/api/v1/admin/identity-applications/"+id.value()+"/approve";
+        var body=json.writeValueAsString(Map.of("tenantId",tenant.getId().value(),
+            "affiliation",Map.of("type","EXTERNAL"),"corrections",Map.of(
+            "type","SERVICE","name","Corrected service","description","Corrected description",
+            "email","corrected@example.test","nickname","corrected-service")));
+        assertEquals(403,http("POST",path,body,token(reviewer.getId(),"IDENTITY_APPLICATION_READ")).statusCode());
+        assertEquals("before@example.test",applications.findById(id).orElseThrow().getEmail().value());
+        var response=http("POST",path,body,token(reviewer.getId(),"IDENTITY_APPLICATION_REVIEW"));
+        assertEquals(200,response.statusCode(),response.body());
+        var saved=applications.findById(id).orElseThrow();
+        assertEquals("corrected@example.test",saved.getEmail().value());
+        assertEquals("corrected-service",saved.getNickname());
+        assertEquals("Corrected service",((ServiceIdentityApplicationDetails)saved.getDetails()).name().value());
+        assertEquals("corrected@example.test",identities.findById(saved.getResolvedIdentityId()).orElseThrow().getPrimaryEmail().email().value());
+        assertEquals(409,http("POST",path,body,token(reviewer.getId(),"IDENTITY_APPLICATION_REVIEW")).statusCode());
+    }
+
+    @Test void conflictingCorrectionsDoNotChangePendingApplication() throws Exception {
+        var id=request(IdentityKind.SERVICE,"before-conflict@example.test");
+        var body=json.writeValueAsString(Map.of("tenantId",tenant.getId().value(),
+            "affiliation",Map.of("type","EXTERNAL"),"corrections",Map.of(
+            "type","SERVICE","name","Corrected","email","reviewer@example.test","nickname","corrected-conflict")));
+        var response=http("POST","/api/v1/admin/identity-applications/"+id.value()+"/approve",body,token(reviewer.getId(),"IDENTITY_APPLICATION_REVIEW"));
+        assertEquals(409,response.statusCode(),response.body());
+        var saved=applications.findById(id).orElseThrow();
+        assertTrue(saved.isPending());
+        assertEquals("before-conflict@example.test",saved.getEmail().value());
+    }
+
     @Test void unknownTenantDuringApprovalReturnsNotFoundAndNoPartialWrites() throws Exception {
         var id=request(IdentityKind.SERVICE,"unknown-tenant@example.test");
         var response=http("POST","/api/v1/admin/identity-applications/"+id.value()+"/approve",

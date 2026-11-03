@@ -26,7 +26,7 @@ public final class IdentityApplication {
     nickname = br.com.imarui.ima.identity.core.domain.model.identity.Nickname.from(value).value();
   }
 
-  private final Email email;
+  private Email email;
   private br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind approvedKind;
 
   public void restoreApprovedKind(br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind kind) {
@@ -36,7 +36,15 @@ public final class IdentityApplication {
       approvedKind = kind;
     } else if (kind != null) throw new IllegalArgumentException("Unreviewed application cannot have an approved kind");
   }
-  private final IdentityApplicationDetails details;
+  private IdentityApplicationDetails details;
+  public void correct(Email email, IdentityApplicationDetails details, String nickname) {
+    validateCanBeReviewed();
+    if (details.kind() != getKind()) throw new IllegalArgumentException("Correction cannot change document kind");
+    this.email = Objects.requireNonNull(email);
+    this.details = Objects.requireNonNull(details);
+    assignNickname(nickname);
+  }
+
   private IdentityApplicationStatus status;
   private final Instant requestedAt;
   private Instant reviewedAt;

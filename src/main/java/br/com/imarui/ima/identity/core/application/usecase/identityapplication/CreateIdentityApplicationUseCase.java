@@ -58,7 +58,7 @@ public class CreateIdentityApplicationUseCase {
     return IdentityApplicationResult.from(identityApplicationRepository.save(application));
   }
 
-  private IdentityApplicationDetails detailsFrom(CreateIdentityApplicationCommand command) {
+  public static IdentityApplicationDetails detailsFrom(CreateIdentityApplicationCommand command) {
     if (command instanceof CreatePersonIdentityApplicationCommand person) {
       return new PersonIdentityApplicationDetails(
           IdentityFullName.from(person.fullName()),
@@ -83,15 +83,15 @@ public class CreateIdentityApplicationUseCase {
         "Unsupported identity application command: " + command.getClass().getName());
   }
 
-  private PhoneNumber phoneNumberFrom(String value) {
+  private static PhoneNumber phoneNumberFrom(String value) {
     return value == null ? null : PhoneNumber.from(value);
   }
 
-  private TradeName tradeNameFrom(String value) {
+  private static TradeName tradeNameFrom(String value) {
     return value == null ? null : TradeName.from(value);
   }
 
-  private ServiceDescription serviceDescriptionFrom(String value) {
+  private static ServiceDescription serviceDescriptionFrom(String value) {
     return value == null ? null : ServiceDescription.from(value);
   }
 }

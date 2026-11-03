@@ -36,6 +36,12 @@ public class ApproveIdentityApplicationUseCase {
     if (!application.isPending())
       throw new IdentityApplicationReviewNotAllowedException(
           application.getId(), application.getStatus());
+    access.requirePlatform("IDENTITY_APPLICATION_REVIEW");
+    if (command.corrections() != null) {
+      var correction = command.corrections();
+      application.correct(br.com.imarui.ima.identity.core.domain.model.identity.Email.from(correction.email()),
+          CreateIdentityApplicationUseCase.detailsFrom(correction), correction.nickname());
+    }
     var approvedKind = command.identityKind() == null ? application.getKind() : command.identityKind();
     if (approvedKind != application.getKind() && approvedKind != br.com.imarui.ima.identity.core.domain.enums.identity.IdentityKind.SERVICE)
       throw new IllegalArgumentException("Identity kind does not match the application document");

@@ -92,6 +92,7 @@ public class IdentityApplicationPersistenceMapper {
   public void updateEntity(IdentityApplication application, IdentityApplicationEntity entity) {
     entity.assignNickname(application.getNickname());
     entity.recordApprovedKind(application.getApprovedKind());
+    entity.copyRegistrationFrom(baseEntity(application));
     entity.updateFrom(
         application.getStatus(),
         application.getReviewedAt(),

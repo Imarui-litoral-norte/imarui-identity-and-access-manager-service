@@ -35,3 +35,7 @@ O mecanismo transversal é descrito em [Platform OpenAPI](../../platform/openapi
 sub UUID, iat, exp e permissions. tenant_id é opcional e limita o contexto a um vínculo efetivo.
 Identity não emite tokens nem gerencia senha. O operador inicial/token confiável é pré-requisito do ambiente.
 O contrato gerado explicita permissões obrigatórias, acesso exclusivo do titular e alternativa titular-ou-permissão.
+
+### Correção na aprovação
+
+O POST administrativo de aprovação aceita `corrections` opcional com o mesmo contrato polimórfico de criação (`type`, `nickname`, `email` e campos específicos). Exige IDENTITY_APPLICATION_REVIEW e solicitação PENDING. O tipo documental permanece o solicitado; a classificação aprovada continua seguindo o contrato existente. Correções, identidade e vínculo são persistidos na mesma transação, com revalidação das chaves naturais e reviewer autenticado. Clientes antigos podem omitir `corrections`.
