@@ -1,0 +1,14 @@
+.git
+.github
+.idea
+.vscode
+target
+docs
+scripts
+src/main/resources/application-local.yaml
+.env
+.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx

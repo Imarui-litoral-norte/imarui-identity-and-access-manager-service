@@ -35,3 +35,11 @@ build/
 src/main/resources/application-local.yaml
 
 /.mvn/tools/
+
+# Local deployment credentials and signing material
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx

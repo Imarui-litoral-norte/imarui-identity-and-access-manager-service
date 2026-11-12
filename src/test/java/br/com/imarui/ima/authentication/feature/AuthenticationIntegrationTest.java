@@ -374,6 +374,9 @@ class AuthenticationIntegrationTest extends IdentityIntegrationSupport {
             output.toString());
     try {
       runner.run(new DefaultApplicationArguments());
+      if (Files.getFileStore(output).supportsFileAttributeView(java.nio.file.attribute.PosixFileAttributeView.class))
+        assertEquals(java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"),
+            Files.getPosixFilePermissions(output));
       var result = json.readTree(Files.readString(output));
       String invitation = result.path("invitation").asText();
       authentication.complete(invitation, PASSWORD, Purpose.ACCOUNT_ACTIVATION);
