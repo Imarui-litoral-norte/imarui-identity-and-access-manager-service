@@ -1,36 +1,45 @@
 package br.com.imarui.ima.authentication.feature;
 
 import static org.junit.jupiter.api.Assertions.*;
-
-import br.com.imarui.ima.identity.support.IdentityIntegrationSupport;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.TestPropertySource;
 
 @TestPropertySource(properties = "security.auth.cookie-same-site=None")
-class CrossSiteCookieIntegrationTest extends IdentityIntegrationSupport {
+class CrossSiteCookieIntegrationTest extends BrowserSecurityIntegrationSupport {
   @Test
-  void csrfAndRefreshCookiesShareCrossSitePolicy() throws Exception {
-    var csrf = http("GET", "/authentication/csrf", null, null);
-    String csrfCookie = csrf.headers().firstValue("Set-Cookie").orElseThrow();
-    assertTrue(csrfCookie.contains("SameSite=None"));
-    assertTrue(csrfCookie.contains("Secure"));
-    assertTrue(csrfCookie.contains("HttpOnly"));
-    assertTrue(csrfCookie.contains("Path=/authentication"));
-    String token = json.readTree(csrf.body()).path("token").asText();
-    var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/authentication/logout"))
-        .header("Cookie", csrfCookie.split(";", 2)[0])
-        .header("X-XSRF-TOKEN", token)
-        .POST(HttpRequest.BodyPublishers.noBody()).build();
-    var response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-    assertEquals(204, response.statusCode());
-    String refreshCookie = response.headers().firstValue("Set-Cookie").orElseThrow();
-    assertTrue(refreshCookie.contains("SameSite=None"));
-    assertTrue(refreshCookie.contains("Secure"));
-    assertTrue(refreshCookie.contains("HttpOnly"));
-    assertTrue(refreshCookie.contains("Path=/authentication"));
+  void crossSiteLoginRotatesAndClearsCookiesWithExplicitCors() throws Exception {
+    String origin = "https://frontend.example.test";
+    var csrfResponse = request("GET", "/authentication/csrf", null, null, null, null, origin);
+    assertEquals(200, csrfResponse.statusCode());
+    assertEquals(origin, csrfResponse.headers().firstValue("Access-Control-Allow-Origin").orElseThrow());
+    assertEquals("true", csrfResponse.headers().firstValue("Access-Control-Allow-Credentials").orElseThrow());
+    String csrfCookie = cookie(csrfResponse, "XSRF-TOKEN", "None");
+    String csrf = json.readTree(csrfResponse.body()).path("token").asText();
+    assertFalse(csrf.isBlank());
+    var rejected = request("GET", "/authentication/csrf", null, null, null, null, "https://untrusted.example.test");
+    assertEquals(403, rejected.statusCode());
+    assertTrue(rejected.headers().firstValue("Access-Control-Allow-Origin").isEmpty());
+    var login = request("POST", "/authentication/login", LOGIN, csrfCookie, csrf, null, origin);
+    accessTokenOnly(login);
+    assertEquals(origin, login.headers().firstValue("Access-Control-Allow-Origin").orElseThrow());
+    String refresh = cookie(login, "IIAM_REFRESH", "None");
+    var rotated = request("POST", "/authentication/refresh", "{}", csrfCookie + "; " + refresh, csrf, null, origin);
+    accessTokenOnly(rotated);
+    String replacement = cookie(rotated, "IIAM_REFRESH", "None");
+    assertNotEquals(refresh, replacement);
+    var logout = request("POST", "/authentication/logout", "{}", csrfCookie + "; " + replacement, csrf, null, origin);
+    assertEquals(204, logout.statusCode());
+    assertTrue(logout.headers().firstValue("Set-Cookie").orElseThrow().contains("Max-Age=0"));
+    cookie(logout, "IIAM_REFRESH", "None");
+    assertEquals(401, request("POST", "/authentication/refresh", "{}", csrfCookie + "; " + refresh, csrf, null, origin).statusCode());
+    assertEquals(401, request("POST", "/authentication/refresh", "{}", csrfCookie + "; " + replacement, csrf, null, origin).statusCode());
+    // Replay can revoke the entire session; use a fresh session to test it before logout.
+    var anotherLogin = request("POST", "/authentication/login", LOGIN, csrfCookie, csrf, null, origin);
+    accessTokenOnly(anotherLogin);
+    String old = cookie(anotherLogin, "IIAM_REFRESH", "None");
+    var next = request("POST", "/authentication/refresh", "{}", csrfCookie + "; " + old, csrf, null, origin);
+    accessTokenOnly(next);
+    assertNotEquals(old, cookie(next, "IIAM_REFRESH", "None"));
+    assertEquals(401, request("POST", "/authentication/refresh", "{}", csrfCookie + "; " + old, csrf, null, origin).statusCode());
   }
 }

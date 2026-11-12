@@ -71,6 +71,9 @@ jobs:
           grep -q 'Configure JWT_PRIVATE_KEY_FILE' /tmp/iiam-ci-no-key.log
           docker run -d --name iiam-ci-app "${common[@]}" -v iiam-ci-key:/run/secrets:ro -e JWT_PRIVATE_KEY_FILE=/run/secrets/signing.pem iiam:ci
           for i in {1..90}; do docker exec iiam-ci-app curl -fsS http://127.0.0.1:8080/actuator/health >/dev/null 2>&1 && break; sleep 2; done
-          docker exec iiam-ci-app curl -fsS http://127.0.0.1:8080/actuator/health
+          docker exec iiam-ci-app curl -fsS http://127.0.0.1:8080/actuator/health | python3 -c 'import json,sys; assert json.load(sys.stdin)["status"] == "UP"'
+          docker exec iiam-ci-app curl -fsS -w '\n%{http_code}' http://127.0.0.1:8080/.well-known/jwks.json | python3 -c 'import json,sys; body,status=sys.stdin.read().rsplit("\n",1); assert status=="200"; keys=json.loads(body)["keys"]; assert keys and any(k.get("kty")=="RSA" and k.get("alg")=="RS256" and k.get("kid") and k.get("n") and k.get("e") for k in keys); assert all(not set(k).intersection({"d","p","q","dp","dq","qi"}) for k in keys)'
+          docker exec iiam-ci-app curl -fsS http://127.0.0.1:8080/authentication/csrf | python3 -c 'import json,sys; data=json.load(sys.stdin); assert data.get("token") and data.get("headerName") == "X-XSRF-TOKEN"'
+          [ "$(docker exec iiam-ci-app curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/authentication/sessions)" = 401 ]
           [ "$(docker exec iiam-ci-app id -u)" = 10001 ]
           docker exec iiam-ci-db psql -U iiam -d iiam -Atc 'select count(*) >= 27 from flyway_schema_history where success and version is not null' | grep -qx t

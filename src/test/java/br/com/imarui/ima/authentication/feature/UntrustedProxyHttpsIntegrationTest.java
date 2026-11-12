@@ -25,5 +25,18 @@ class UntrustedProxyHttpsIntegrationTest extends IdentityIntegrationSupport {
         .POST(HttpRequest.BodyPublishers.ofString("{\"identifier\":\"proxy-test@example.test\"}"))
         .build();
     assertEquals(400, HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString()).statusCode());
+    for (boolean contradictory : new boolean[] {false, true}) {
+      var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/authentication/activation/request"))
+          .header("Content-Type", "application/json")
+          .header("Forwarded", "for=198.51.100.10;proto=https")
+          .POST(HttpRequest.BodyPublishers.ofString("{\"identifier\":\"proxy-test@example.test\"}"));
+      if (contradictory) builder.header("X-Forwarded-For", "198.51.100.10").header("X-Forwarded-Proto", "http");
+      assertEquals(400, HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+    }
+    var reverse = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/authentication/activation/request"))
+        .header("Content-Type", "application/json").header("Forwarded", "for=198.51.100.10;proto=http")
+        .header("X-Forwarded-For", "198.51.100.10").header("X-Forwarded-Proto", "https")
+        .POST(HttpRequest.BodyPublishers.ofString("{\"identifier\":\"proxy-test@example.test\"}")).build();
+    assertEquals(400, HttpClient.newHttpClient().send(reverse, HttpResponse.BodyHandlers.ofString()).statusCode());
   }
 }
