@@ -21,9 +21,9 @@ Maven Wrapper e springdoc OpenAPI. Redis e Mail permanecem dependências dos com
 
 ## Execução
 
-Configure DB_URL, DB_USERNAME, DB_PASSWORD e JWT_SECRET (pelo menos 32 bytes UTF-8).
+Configure DB_URL, DB_USERNAME, DB_PASSWORD e JWT_PRIVATE_KEY_FILE (arquivo PEM RSA PKCS8, mínimo 2048 bits) fora dos perfis dev/test.
 JWT_ISSUER e APP_BASE_URL têm defaults documentados no guia de operação. Forneça um operador/token confiável
-para acessar operações protegidas; Identity não cria administrador padrão nem emite tokens de login.
+para acessar operações protegidas; Identity não cria administrador padrão. Authentication possui login e o ROOT inicial exige bootstrap controlado.
 
 ```powershell
 $env:JAVA_HOME = 'C:\path\to\jdk-17'
@@ -32,6 +32,10 @@ $env:JAVA_HOME = 'C:\path\to\jdk-17'
 
 Flyway migra um schema novo e Hibernate valida o modelo. Bancos populados anteriores ao Flyway exigem
 comparação e baseline deliberados conforme o [procedimento de banco](docs/database/README.md).
+
+## Deploy no Coolify
+
+Consulte [o runbook de deploy](docs/deployment/coolify.md) antes de configurar a aplicação, o proxy HTTPS e as credenciais em produção.
 
 ## Documentação HTTP
 

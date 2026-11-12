@@ -45,3 +45,9 @@ jobs:
             target/authorization-operational-benchmark.json
             target/authorization-recovery-rehearsal.json
             target/authorization-audit-capacity.json
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate production Docker image builds
+        run: docker build --tag iiam:ci .

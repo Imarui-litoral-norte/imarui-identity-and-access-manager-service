@@ -1,0 +1,13 @@
+.git
+.github
+.idea
+.vscode
+target
+docs
+scripts
+.env
+.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
