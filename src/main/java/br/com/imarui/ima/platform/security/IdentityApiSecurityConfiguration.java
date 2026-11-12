@@ -41,6 +41,9 @@ public class IdentityApiSecurityConfiguration {
   @org.springframework.beans.factory.annotation.Value("${security.auth.allowed-origins:}")
   private String allowedOrigins;
 
+  @org.springframework.beans.factory.annotation.Value("${security.auth.cookie-same-site:Lax}")
+  private String cookieSameSite;
+
   @Bean
   public JwtDecoder jwtDecoder() {
     var processor = new DefaultJWTProcessor<com.nimbusds.jose.proc.SecurityContext>();
@@ -146,7 +149,9 @@ public class IdentityApiSecurityConfiguration {
                 .toList());
     var csrf = new CookieCsrfTokenRepository();
     csrf.setCookiePath("/authentication");
-    csrf.setCookieCustomizer(c -> c.secure(true).httpOnly(true).sameSite("Lax"));
+    if (!Set.of("Lax", "Strict", "None").contains(cookieSameSite))
+      throw new IllegalStateException("Invalid SameSite policy.");
+    csrf.setCookieCustomizer(c -> c.secure(true).httpOnly(true).sameSite(cookieSameSite));
     var handler = new CsrfTokenRequestAttributeHandler();
     RequestMatcher browserMutation =
         req ->

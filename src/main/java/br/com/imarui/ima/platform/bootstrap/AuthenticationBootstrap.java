@@ -55,18 +55,27 @@ public class AuthenticationBootstrap implements ApplicationRunner {
   public void run(ApplicationArguments args) throws Exception {
     Map<String, String> config = json.readValue(Files.readString(Path.of(input)), Map.class);
     Path target = Path.of(output).toAbsolutePath();
-    Files.createFile(target);
-    var acl = Files.getFileAttributeView(target, AclFileAttributeView.class);
-    if (acl != null) {
-      var owner = Files.getOwner(target);
-      acl.setAcl(
-          List.of(
-              AclEntry.newBuilder()
-                  .setType(AclEntryType.ALLOW)
-                  .setPrincipal(owner)
-                  .setPermissions(EnumSet.allOf(AclEntryPermission.class))
-                  .build()));
-    } else Files.setPosixFilePermissions(target, PosixFilePermissions.fromString("rw-------"));
+    if (Files.getFileStore(target.getParent()).supportsFileAttributeView(PosixFileAttributeView.class)) {
+      // Create with restrictive permissions atomically, before any invitation can be written.
+      Files.createFile(target, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
+    } else {
+      Files.createFile(target);
+      try {
+        var acl = Files.getFileAttributeView(target, AclFileAttributeView.class);
+        if (acl == null) throw new IllegalStateException("Cannot protect bootstrap output.");
+        var owner = Files.getOwner(target);
+        acl.setAcl(
+            List.of(
+                AclEntry.newBuilder()
+                    .setType(AclEntryType.ALLOW)
+                    .setPrincipal(owner)
+                    .setPermissions(EnumSet.allOf(AclEntryPermission.class))
+                    .build()));
+      } catch (Exception failure) {
+        Files.deleteIfExists(target);
+        throw failure;
+      }
+    }
     try {
       tx.executeWithoutResult(
           status -> {

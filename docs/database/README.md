@@ -13,8 +13,10 @@ Flyway é proprietário do DDL versionado em `src/main/resources/db/migration`. 
 | V11–V17 | Scopes/binding Tenant, catálogo federado, ownership/assignments, DENY/delegação, recuperação ROOT, histórico de Identity e ownership explícito |
 | V18–V24 | Unicidade DENY, lifecycle/histórico de Role, autenticação técnica, transferência ROOT, auditoria imutável, índices e proteção de lifecycle de assignment |
 | V25 | Proteção do último ROOT ACTIVE também em transição persistida para PENDING; correção incremental da Rodada 3 |
+| V26 | Identificadores globais de Identity; falha se houver conflitos existentes |
+| V27 | Registro do tipo aprovado e ampliação do nome de SERVICE para conversões de cadastro |
 
-Um schema vazio recebe V1–V25 automaticamente. O [guia operacional de Authorization](../authorization/OPERATIONS.md)
+Um schema vazio recebe V1–V27 automaticamente. O [guia operacional de Authorization](../authorization/OPERATIONS.md)
 explica upgrades V10/V17/V20, reconciliação auditada e rollback. V1–V17 não foram reescritas pelo Epic IIAMS-81.
 Um schema populado anterior ao Flyway exige backup e comparação com V1
 antes de baseline explícito na versão 1. Reconcilie todas as colunas, tipos e constraints, incluindo e-mail de solicitação

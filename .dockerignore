@@ -5,6 +5,7 @@
 target
 docs
 scripts
+src/main/resources/application-local.yaml
 .env
 .env.*
 **/*.pem

@@ -51,3 +51,26 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate production Docker image builds
         run: docker build --tag iiam:ci .
+      - name: Smoke test production container and PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          cleanup() { docker rm -f iiam-ci-app iiam-ci-no-key iiam-ci-db 2>/dev/null || true; docker volume rm iiam-ci-key 2>/dev/null || true; docker network rm iiam-ci 2>/dev/null || true; }
+          trap cleanup EXIT
+          docker network create iiam-ci
+          docker volume create iiam-ci-key
+          docker run --rm --user 0 --entrypoint sh -v iiam-ci-key:/keys iiam:ci -c 'umask 077; openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /keys/signing.pem 2>/dev/null; chown 10001:10001 /keys/signing.pem'
+          docker run -d --name iiam-ci-db --network iiam-ci -e POSTGRES_DB=iiam -e POSTGRES_USER=iiam -e POSTGRES_PASSWORD=test-only postgres:17
+          for i in {1..60}; do docker exec iiam-ci-db pg_isready -U iiam -d iiam && break; sleep 2; done
+          docker exec iiam-ci-db pg_isready -U iiam -d iiam
+          common=(--network iiam-ci -e DB_URL=jdbc:postgresql://iiam-ci-db:5432/iiam -e DB_USERNAME=iiam -e DB_PASSWORD=test-only -e MANAGEMENT_HEALTH_REDIS_ENABLED=false)
+          docker run -d --name iiam-ci-no-key "${common[@]}" iiam:ci
+          for i in {1..90}; do [ "$(docker inspect -f '{{.State.Running}}' iiam-ci-no-key)" = false ] && break; sleep 2; done
+          [ "$(docker inspect -f '{{.State.ExitCode}}' iiam-ci-no-key)" -ne 0 ]
+          docker logs iiam-ci-no-key > /tmp/iiam-ci-no-key.log 2>&1
+          grep -q 'Configure JWT_PRIVATE_KEY_FILE' /tmp/iiam-ci-no-key.log
+          docker run -d --name iiam-ci-app "${common[@]}" -v iiam-ci-key:/run/secrets:ro -e JWT_PRIVATE_KEY_FILE=/run/secrets/signing.pem iiam:ci
+          for i in {1..90}; do docker exec iiam-ci-app curl -fsS http://127.0.0.1:8080/actuator/health >/dev/null 2>&1 && break; sleep 2; done
+          docker exec iiam-ci-app curl -fsS http://127.0.0.1:8080/actuator/health
+          [ "$(docker exec iiam-ci-app id -u)" = 10001 ]
+          docker exec iiam-ci-db psql -U iiam -d iiam -Atc 'select count(*) >= 27 from flyway_schema_history where success and version is not null' | grep -qx t
